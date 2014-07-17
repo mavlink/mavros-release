@@ -4,6 +4,7 @@
  * @author Vladimir Ermakov <vooon341@gmail.com>
  *
  * @addtogroup plugin
+ * @{
  */
 /*
  * Copyright 2014 Vladimir Ermakov.
@@ -317,15 +318,13 @@ public:
 	int retries_remaining;
 };
 
+/**
+ * @brief Parameter manipulation plugin
+ */
 class ParamPlugin : public MavRosPlugin {
 public:
-	ParamPlugin() :
-		BOOTUP_TIME_MS(10000),
-		PARAM_TIMEOUT_MS(1000),
-		LIST_TIMEOUT_MS(30000),
-		RETRIES_COUNT(3)
-	{
-	};
+	ParamPlugin()
+	{ };
 
 	void initialize(UAS &uas_,
 			ros::NodeHandle &nh,
@@ -345,11 +344,11 @@ public:
 		uas->sig_connection_changed.connect(boost::bind(&ParamPlugin::connection_cb, this, _1));
 	}
 
-	std::string get_name() {
+	std::string const get_name() const {
 		return "Param";
 	}
 
-	std::vector<uint8_t> get_supported_messages() {
+	std::vector<uint8_t> const get_supported_messages() const {
 		return {
 			MAVLINK_MSG_ID_PARAM_VALUE
 		};
@@ -432,9 +431,9 @@ private:
 	ros::ServiceServer get_srv;
 
 	std::unique_ptr<boost::asio::deadline_timer> param_timer;
-	const int BOOTUP_TIME_MS;	// = 10000;	//!< APM boot time
-	const int PARAM_TIMEOUT_MS;	// = 1000;	//!< Param wait time
-	const int LIST_TIMEOUT_MS;	// = 30000;	//!< Receive all time
+	static constexpr int BOOTUP_TIME_MS = 10000;	//!< APM boot time
+	static constexpr int PARAM_TIMEOUT_MS = 1000;	//!< Param wait time
+	static constexpr int LIST_TIMEOUT_MS = 30000;	//!< Receive all time
 
 	std::map<std::string, Parameter> parameters;
 	ssize_t param_count;
@@ -442,7 +441,7 @@ private:
 	boost::condition_variable list_receiving;
 	boost::condition_variable set_acked;
 
-	const int RETRIES_COUNT;	// = 3;
+	static constexpr int RETRIES_COUNT = 3;
 
 	inline Parameter::param_t from_param_value(mavlink_param_value_t &msg) {
 		if (uas->is_ardupilotmega())
@@ -461,9 +460,8 @@ private:
 	void param_request_list() {
 		mavlink_message_t msg;
 
-		mavlink_msg_param_request_list_pack(0, 0, &msg,
-				uas->get_tgt_system(),
-				uas->get_tgt_component()
+		mavlink_msg_param_request_list_pack_chan(UAS_PACK_CHAN(uas), &msg,
+				UAS_PACK_TGT(uas)
 				);
 		uas->mav_link->send_message(&msg);
 	}
@@ -482,9 +480,8 @@ private:
 		else
 			param_id[0] = '\0'; // force NULL termination
 
-		mavlink_msg_param_request_read_pack(0, 0, &msg,
-				uas->get_tgt_system(),
-				uas->get_tgt_component(),
+		mavlink_msg_param_request_read_pack_chan(UAS_PACK_CHAN(uas), &msg,
+				UAS_PACK_TGT(uas),
 				param_id,
 				index
 				);
@@ -498,9 +495,8 @@ private:
 		char param_id[sizeof(mavlink_param_set_t::param_id)];
 		strncpy(param_id, param.param_id.c_str(), sizeof(param_id));
 
-		mavlink_msg_param_set_pack(0, 0, &msg,
-				uas->get_tgt_system(),
-				uas->get_tgt_component(),
+		mavlink_msg_param_set_pack_chan(UAS_PACK_CHAN(uas), &msg,
+				UAS_PACK_TGT(uas),
 				param_id,
 				pu.param_float,
 				pu.type
@@ -587,7 +583,7 @@ private:
 	 * Prepare resend timer & send PARAM_SET
 	 */
 	void start_param_set(Parameter &param) {
-		boost::shared_ptr<ParamSetOpt> opt(new ParamSetOpt);
+		boost::shared_ptr<ParamSetOpt> opt = boost::make_shared<ParamSetOpt>();
 
 		opt->param = param;
 		opt->retries_remaining = RETRIES_COUNT;
