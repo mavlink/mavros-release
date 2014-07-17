@@ -4,6 +4,7 @@
  * @author Vladimir Ermakov <vooon341@gmail.com>
  *
  * @addtogroup plugin
+ * @{
  */
 /*
  * Copyright 2013 Vladimir Ermakov.
@@ -36,25 +37,22 @@
 
 namespace mavplugin {
 
+/**
+ * @brief IMU data publication plugin
+ */
 class IMUPubPlugin : public MavRosPlugin {
 public:
 	IMUPubPlugin() :
 		linear_accel_vec(),
 		has_hr_imu(false),
-		has_scaled_imu(false),
-		gauss_to_tesla(1.0e-4),
-		millit_to_tesla(1000.0),
-		millirs_to_radsec(1000.0),
-		millig_to_ms2(9.80665 / 1000.00),
-		millibar_to_pascal(1.0e5)
-	{
-	};
+		has_scaled_imu(false)
+	{ };
 
 	void initialize(UAS &uas_,
 			ros::NodeHandle &nh,
 			diagnostic_updater::Updater &diag_updater)
 	{
-		double linear_stdev, angular_stdev, orientation_stdev;
+		double linear_stdev, angular_stdev, orientation_stdev, mag_stdev;
 
 		uas = &uas_;
 
@@ -62,27 +60,13 @@ public:
 		nh.param("imu/linear_acceleration_stdev", linear_stdev, 0.0003); // check default by MPU6000 spec
 		nh.param("imu/angular_velocity_stdev", angular_stdev, 0.02 * (M_PI / 180.0)); // check default by MPU6000 spec
 		nh.param("imu/orientation_stdev", orientation_stdev, 1.0);
+		nh.param("imu/magnetic_stdev", mag_stdev, 0.0);
 
-		std::fill(linear_acceleration_cov.begin(),
-				linear_acceleration_cov.end(),
-				0.0);
-		linear_acceleration_cov[0+0] =
-			linear_acceleration_cov[3+1] =
-			linear_acceleration_cov[6+2] = std::pow(linear_stdev, 2);
-
-		std::fill(angular_velocity_cov.begin(),
-				angular_velocity_cov.end(),
-				0.0);
-		angular_velocity_cov[0+0] =
-			angular_velocity_cov[3+1] =
-			angular_velocity_cov[6+2] = std::pow(angular_stdev, 2);
-
-		std::fill(orientation_cov.begin(),
-				orientation_cov.end(),
-				0.0);
-		orientation_cov[0+0] =
-			orientation_cov[3+1] =
-			orientation_cov[6+2] = std::pow(orientation_stdev, 2);
+		setup_covariance(linear_acceleration_cov, linear_stdev);
+		setup_covariance(angular_velocity_cov, angular_stdev);
+		setup_covariance(orientation_cov, orientation_stdev);
+		setup_covariance(magnetic_cov, mag_stdev);
+		setup_covariance(unk_orientation_cov, 0.0);
 
 		imu_pub = nh.advertise<sensor_msgs::Imu>("imu/data", 10);
 		magn_pub = nh.advertise<sensor_msgs::MagneticField>("imu/mag", 10);
@@ -91,11 +75,11 @@ public:
 		imu_raw_pub = nh.advertise<sensor_msgs::Imu>("imu/data_raw", 10);
 	}
 
-	std::string get_name() {
+	std::string const get_name() const {
 		return "IMUPub";
 	}
 
-	std::vector<uint8_t> get_supported_messages() {
+	std::vector<uint8_t> const get_supported_messages() const {
 		return {
 			MAVLINK_MSG_ID_ATTITUDE,
 			MAVLINK_MSG_ID_RAW_IMU,
@@ -141,31 +125,41 @@ private:
 	boost::array<double, 9> linear_acceleration_cov;
 	boost::array<double, 9> angular_velocity_cov;
 	boost::array<double, 9> orientation_cov;
+	boost::array<double, 9> unk_orientation_cov;
+	boost::array<double, 9> magnetic_cov;
 
-	const double gauss_to_tesla;		// = 1.0e-4;
-	const double millit_to_tesla;		// = 1000.0;
-	const double millirs_to_radsec;		// = 1000.0;
-	const double millig_to_ms2;		// = 9.80665 / 1000.0;
-	const double millibar_to_pascal;	// = 1.0e5;
+	static constexpr double GAUSS_TO_TESLA = 1.0e-4;
+	static constexpr double MILLIT_TO_TESLA = 1000.0;
+	static constexpr double MILLIRS_TO_RADSEC = 1000.0;
+	static constexpr double MILLIG_TO_MS2 = 9.80665 / 1000.0;
+	static constexpr double MILLIBAR_TO_PASCAL = 1.0e5;
 
+
+	void setup_covariance(boost::array<double, 9> &cov, double stdev) {
+		std::fill(cov.begin(), cov.end(), 0.0);
+		if (stdev == 0.0)
+			cov[0] = -1.0;
+		else {
+			cov[0+0] = cov[3+1] = cov[6+2] = std::pow(stdev, 2);
+		}
+	}
 
 	void handle_attitude(const mavlink_message_t *msg) {
-		if (imu_pub.getNumSubscribers() == 0)
-			return;
-
 		mavlink_attitude_t att;
 		mavlink_msg_attitude_decode(msg, &att);
 
-		sensor_msgs::ImuPtr imu_msg(new sensor_msgs::Imu);
+		sensor_msgs::ImuPtr imu_msg = boost::make_shared<sensor_msgs::Imu>();
 
 		// TODO: check/verify that these are body-fixed
-		imu_msg->orientation = tf::createQuaternionMsgFromRollPitchYaw(
+		tf::Quaternion orientation = tf::createQuaternionFromRPY(
 				att.roll, -att.pitch, -att.yaw);
+		tf::quaternionTFToMsg(orientation, imu_msg->orientation);
 
 		imu_msg->angular_velocity.x = att.rollspeed;
 		imu_msg->angular_velocity.y = -att.pitchspeed;
 		imu_msg->angular_velocity.z = -att.yawspeed;
 
+		// store gyro data to UAS
 		// vector from HIGHRES_IMU or RAW_IMU
 		imu_msg->linear_acceleration = linear_accel_vec;
 
@@ -173,6 +167,17 @@ private:
 		imu_msg->angular_velocity_covariance = angular_velocity_cov;
 		imu_msg->linear_acceleration_covariance = linear_acceleration_cov;
 
+		// store data in UAS
+		tf::Vector3 angular_velocity;
+		tf::Vector3 linear_acceleration;
+		tf::vector3MsgToTF(imu_msg->angular_velocity, angular_velocity);
+		tf::vector3MsgToTF(imu_msg->linear_acceleration, linear_acceleration);
+
+		uas->set_attitude_orientation(orientation);
+		uas->set_attitude_angular_velocity(angular_velocity);
+		uas->set_attitude_linear_acceleration(linear_acceleration);
+
+		// publish data
 		imu_msg->header.frame_id = frame_id;
 		imu_msg->header.stamp = ros::Time::now();
 		imu_pub.publish(imu_msg);
@@ -184,7 +189,7 @@ private:
 	{
 		imu_msg->angular_velocity.x = xg;
 		imu_msg->angular_velocity.y = yg;
-		imu_msg->angular_velocity.z = xg;
+		imu_msg->angular_velocity.z = zg;
 
 		imu_msg->linear_acceleration.x = xa;
 		imu_msg->linear_acceleration.y = ya;
@@ -203,19 +208,15 @@ private:
 		header.frame_id = frame_id;
 
 		/* imu/data_raw filled by HR IMU */
-		if (imu_raw_pub.getNumSubscribers() > 0 &&
-				imu_hr.fields_updated & 0x003f) {
-			sensor_msgs::ImuPtr imu_msg(new sensor_msgs::Imu);
+		if (imu_hr.fields_updated & 0x003f) {
+			sensor_msgs::ImuPtr imu_msg = boost::make_shared<sensor_msgs::Imu>();
 
 			fill_imu_msg_vec(imu_msg,
 					imu_hr.xgyro, -imu_hr.ygyro, -imu_hr.zgyro,
 					imu_hr.xacc, -imu_hr.yacc, -imu_hr.zacc);
 			linear_accel_vec = imu_msg->linear_acceleration;
 
-			std::fill(imu_msg->orientation_covariance.begin(),
-					imu_msg->orientation_covariance.end(), 0);
-			imu_msg->orientation_covariance[0] = -1;
-
+			imu_msg->orientation_covariance = unk_orientation_cov;
 			imu_msg->angular_velocity_covariance = angular_velocity_cov;
 			imu_msg->linear_acceleration_covariance = linear_acceleration_cov;
 
@@ -223,35 +224,30 @@ private:
 			imu_raw_pub.publish(imu_msg);
 		}
 
-		if (magn_pub.getNumSubscribers() > 0 &&
-				imu_hr.fields_updated & 0x01c0) {
-			sensor_msgs::MagneticFieldPtr magn_msg(new sensor_msgs::MagneticField);
+		if (imu_hr.fields_updated & 0x01c0) {
+			sensor_msgs::MagneticFieldPtr magn_msg = boost::make_shared<sensor_msgs::MagneticField>();
 
-			magn_msg->magnetic_field.x = imu_hr.xmag * gauss_to_tesla;
-			magn_msg->magnetic_field.y = imu_hr.ymag * gauss_to_tesla;
-			magn_msg->magnetic_field.z = imu_hr.zmag * gauss_to_tesla;
+			// Convert from local NED plane to ENU
+			magn_msg->magnetic_field.x = imu_hr.ymag * GAUSS_TO_TESLA;
+			magn_msg->magnetic_field.y = imu_hr.xmag * GAUSS_TO_TESLA;
+			magn_msg->magnetic_field.z = -imu_hr.zmag * GAUSS_TO_TESLA;
 
-			// TODO: again covariance
-			std::fill(magn_msg->magnetic_field_covariance.begin(),
-					magn_msg->magnetic_field_covariance.end(), 0);
-			magn_msg->magnetic_field_covariance[0] = -1;
+			magn_msg->magnetic_field_covariance = magnetic_cov;
 
 			magn_msg->header = header;
 			magn_pub.publish(magn_msg);
 		}
 
-		if (press_pub.getNumSubscribers() > 0 &&
-				imu_hr.fields_updated & 0x0e00) {
-			sensor_msgs::FluidPressurePtr atmp_msg(new sensor_msgs::FluidPressure);
+		if (imu_hr.fields_updated & 0x0e00) {
+			sensor_msgs::FluidPressurePtr atmp_msg = boost::make_shared<sensor_msgs::FluidPressure>();
 
-			atmp_msg->fluid_pressure = imu_hr.abs_pressure * millibar_to_pascal;
+			atmp_msg->fluid_pressure = imu_hr.abs_pressure * MILLIBAR_TO_PASCAL;
 			atmp_msg->header = header;
 			press_pub.publish(atmp_msg);
 		}
 
-		if (temp_pub.getNumSubscribers() > 0 &&
-				imu_hr.fields_updated & 0x1000) {
-			sensor_msgs::TemperaturePtr temp_msg(new sensor_msgs::Temperature);
+		if (imu_hr.fields_updated & 0x1000) {
+			sensor_msgs::TemperaturePtr temp_msg = boost::make_shared<sensor_msgs::Temperature>();
 
 			temp_msg->temperature = imu_hr.temperature;
 			temp_msg->header = header;
@@ -263,7 +259,7 @@ private:
 		if (has_hr_imu || has_scaled_imu)
 			return;
 
-		sensor_msgs::ImuPtr imu_msg(new sensor_msgs::Imu);
+		sensor_msgs::ImuPtr imu_msg = boost::make_shared<sensor_msgs::Imu>();
 		mavlink_raw_imu_t imu_raw;
 		mavlink_msg_raw_imu_decode(msg, &imu_raw);
 
@@ -273,25 +269,22 @@ private:
 
 		/* NOTE: APM send SCALED_IMU data as RAW_IMU */
 		fill_imu_msg_vec(imu_msg,
-				imu_raw.xgyro * millirs_to_radsec,
-				-imu_raw.ygyro * millirs_to_radsec,
-				-imu_raw.zgyro * millirs_to_radsec,
-				imu_raw.xacc * millig_to_ms2,
-				-imu_raw.yacc * millig_to_ms2,
-				-imu_raw.zacc * millig_to_ms2);
+				imu_raw.xgyro * MILLIRS_TO_RADSEC,
+				-imu_raw.ygyro * MILLIRS_TO_RADSEC,
+				-imu_raw.zgyro * MILLIRS_TO_RADSEC,
+				imu_raw.xacc * MILLIG_TO_MS2,
+				-imu_raw.yacc * MILLIG_TO_MS2,
+				-imu_raw.zacc * MILLIG_TO_MS2);
 
 		if (!uas->is_ardupilotmega()) {
 			ROS_WARN_THROTTLE_NAMED(60, "imu", "RAW_IMU: linear acceleration known on APM only");
-			linear_accel_vec.x = 0;
-			linear_accel_vec.y = 0;
-			linear_accel_vec.z = 0;
+			linear_accel_vec.x = 0.0;
+			linear_accel_vec.y = 0.0;
+			linear_accel_vec.z = 0.0;
 		} else
 			linear_accel_vec = imu_msg->linear_acceleration;
 
-		std::fill(imu_msg->orientation_covariance.begin(),
-				imu_msg->orientation_covariance.end(), 0);
-		imu_msg->orientation_covariance[0] = -1;
-
+		imu_msg->orientation_covariance = unk_orientation_cov;
 		imu_msg->angular_velocity_covariance = angular_velocity_cov;
 		imu_msg->linear_acceleration_covariance = linear_acceleration_cov;
 
@@ -299,16 +292,14 @@ private:
 		imu_raw_pub.publish(imu_msg);
 
 		/* -*- magnetic vector -*- */
-		sensor_msgs::MagneticFieldPtr magn_msg(new sensor_msgs::MagneticField);
+		sensor_msgs::MagneticFieldPtr magn_msg = boost::make_shared<sensor_msgs::MagneticField>();
 
-		magn_msg->magnetic_field.x = imu_raw.xmag * millit_to_tesla;
-		magn_msg->magnetic_field.y = -imu_raw.ymag * millit_to_tesla;
-		magn_msg->magnetic_field.z = -imu_raw.zmag * millit_to_tesla;
+		// Convert from local NED plane to ENU
+		magn_msg->magnetic_field.x = imu_raw.ymag * MILLIT_TO_TESLA;
+		magn_msg->magnetic_field.y = imu_raw.xmag * MILLIT_TO_TESLA;
+		magn_msg->magnetic_field.z = -imu_raw.zmag * MILLIT_TO_TESLA;
 
-		// TODO: again covariance
-		std::fill(magn_msg->magnetic_field_covariance.begin(),
-				magn_msg->magnetic_field_covariance.end(), 0);
-		magn_msg->magnetic_field_covariance[0] = -1;
+		magn_msg->magnetic_field_covariance = magnetic_cov;
 
 		magn_msg->header = header;
 		magn_pub.publish(magn_msg);
@@ -321,7 +312,7 @@ private:
 		ROS_INFO_COND_NAMED(!has_scaled_imu, "imu", "Scaled IMU message used.");
 		has_scaled_imu = true;
 
-		sensor_msgs::ImuPtr imu_msg(new sensor_msgs::Imu);
+		sensor_msgs::ImuPtr imu_msg = boost::make_shared<sensor_msgs::Imu>();
 		mavlink_scaled_imu_t imu_raw;
 		mavlink_msg_scaled_imu_decode(msg, &imu_raw);
 
@@ -330,18 +321,15 @@ private:
 		header.frame_id = frame_id;
 
 		fill_imu_msg_vec(imu_msg,
-				imu_raw.xgyro * millirs_to_radsec,
-				-imu_raw.ygyro * millirs_to_radsec,
-				-imu_raw.zgyro * millirs_to_radsec,
-				imu_raw.xacc * millig_to_ms2,
-				-imu_raw.yacc * millig_to_ms2,
-				-imu_raw.zacc * millig_to_ms2);
+				imu_raw.xgyro * MILLIRS_TO_RADSEC,
+				-imu_raw.ygyro * MILLIRS_TO_RADSEC,
+				-imu_raw.zgyro * MILLIRS_TO_RADSEC,
+				imu_raw.xacc * MILLIG_TO_MS2,
+				-imu_raw.yacc * MILLIG_TO_MS2,
+				-imu_raw.zacc * MILLIG_TO_MS2);
 		linear_accel_vec = imu_msg->linear_acceleration;
 
-		std::fill(imu_msg->orientation_covariance.begin(),
-				imu_msg->orientation_covariance.end(), 0);
-		imu_msg->orientation_covariance[0] = -1;
-
+		imu_msg->orientation_covariance = unk_orientation_cov;
 		imu_msg->angular_velocity_covariance = angular_velocity_cov;
 		imu_msg->linear_acceleration_covariance = linear_acceleration_cov;
 
@@ -349,16 +337,14 @@ private:
 		imu_raw_pub.publish(imu_msg);
 
 		/* -*- magnetic vector -*- */
-		sensor_msgs::MagneticFieldPtr magn_msg(new sensor_msgs::MagneticField);
+		sensor_msgs::MagneticFieldPtr magn_msg = boost::make_shared<sensor_msgs::MagneticField>();
 
-		magn_msg->magnetic_field.x = imu_raw.xmag * millit_to_tesla;
-		magn_msg->magnetic_field.y = -imu_raw.ymag * millit_to_tesla;
-		magn_msg->magnetic_field.z = -imu_raw.zmag * millit_to_tesla;
+		// Convert from local NED plane to ENU
+		magn_msg->magnetic_field.x = imu_raw.ymag * MILLIT_TO_TESLA;
+		magn_msg->magnetic_field.y = imu_raw.xmag * MILLIT_TO_TESLA;
+		magn_msg->magnetic_field.z = -imu_raw.zmag * MILLIT_TO_TESLA;
 
-		// TODO: again covariance
-		std::fill(magn_msg->magnetic_field_covariance.begin(),
-				magn_msg->magnetic_field_covariance.end(), 0);
-		magn_msg->magnetic_field_covariance[0] = -1;
+		magn_msg->magnetic_field_covariance = magnetic_cov;
 
 		magn_msg->header = header;
 		magn_pub.publish(magn_msg);
@@ -375,12 +361,12 @@ private:
 		header.stamp = ros::Time::now();
 		header.frame_id = frame_id;
 
-		sensor_msgs::TemperaturePtr temp_msg(new sensor_msgs::Temperature);
+		sensor_msgs::TemperaturePtr temp_msg = boost::make_shared<sensor_msgs::Temperature>();
 		temp_msg->temperature = press.temperature / 100.0;
 		temp_msg->header = header;
 		temp_pub.publish(temp_msg);
 
-		sensor_msgs::FluidPressurePtr atmp_msg(new sensor_msgs::FluidPressure);
+		sensor_msgs::FluidPressurePtr atmp_msg = boost::make_shared<sensor_msgs::FluidPressure>();
 		atmp_msg->fluid_pressure = press.press_abs * 100.0;
 		atmp_msg->header = header;
 		press_pub.publish(atmp_msg);
