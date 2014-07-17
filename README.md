@@ -21,7 +21,7 @@ Feutures
 Limitations
 -----------
 
-Only for linux. Depends on [Boost library][4] >= 1.49.
+Only for linux. Depends on [Boost library][4] >= 1.46 (hydro on 12.04).
 Catkin build system required (tested with ROS Hydro Medusa and Indigo Igloo).
 
 This package are dependent on ros-\*-mavlink build from [mavlink-gbp-release][7].
@@ -76,16 +76,16 @@ Installation
 
 Use `wstool` utility for installation. In your workspace do:
 
-    wstool set -t src --git https://github.com/vooon/mavros.git
+    wstool set -t src mavros --git https://github.com/vooon/mavros.git
     wstool update -t src
     rosdep install --from-paths src --ignore-src --rosdistro hydro -y
 
-Then use regular `catkin_make` for biuld and install.
+Then use regular `catkin_make` for build and install.
 Notes: since v0.5 (and [#35][8]) mavlink submodule moved to special ROS 3rd party package [ros-\*-mavlink][7].
 
 ### Installing ros-\*-mavlink from source
 
-If rosdep could'not install mavlink library, you could install it from source:
+If rosdep could not install mavlink library, you could install it from source:
 
     mkdir -p ~/ros_deps/src
     cd ~/ros_deps
@@ -94,15 +94,8 @@ If rosdep could'not install mavlink library, you could install it from source:
     catkin_make_isolated --install-space $ROSINSTALL --install -DCMAKE_BUILD_TYPE=Release
 
 $ROSINSTALL must be writable for user.
-Or you could build debian package by pulling right bloom branch from [mavlink-gbp-release][7].
-
-
-Testing
--------
-
-Simple communication library test (serial-udp bridge):
-
-    catkin_make mavudpproxy && ./devel/lib/mavros/mavudpproxy /dev/ttyACM0 115200
+Or you could build debian package by pulling right bloom branch from [mavlink-gbp-release][7]
+(common naming: `debian/<rosdistro>/<osdistro>/<package>`).
 
 
 Links
