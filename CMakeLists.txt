@@ -14,11 +14,12 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   tf
+  angles
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-find_package(Boost REQUIRED COMPONENTS system thread date_time)
+find_package(Boost REQUIRED COMPONENTS system thread date_time filesystem)
 find_package(mavlink REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -101,19 +102,14 @@ generate_messages(
 #
 # TODO: move dialect list to mavlink package
 
+if(NOT DEFINED mavlink_DIALECTS)
+  list(APPEND mavlink_DIALECTS "ardupilotmega")
+  list(APPEND mavlink_DIALECTS "pixhawk")
+  list(APPEND mavlink_DIALECTS "common")
+endif()
+
 set(MAVLINK_DIALECT "ardupilotmega" CACHE STRING "MAVLink dialect selector")
-set_property(CACHE MAVLINK_DIALECT PROPERTY STRINGS
-  "ardupilotmega"
-  "autoquad"
-  "common"
-  "matrixpilot"
-  "minimal"
-  "pixhawk"
-  "slugs"
-  "test"
-  "ualberta"
-  "sensesoar"
-)
+set_property(CACHE MAVLINK_DIALECT PROPERTY STRINGS ${mavlink_DIALECTS})
 
 
 ###################################
@@ -142,7 +138,6 @@ catkin_package(
 # TODO: Check names of system library include directories (boost)
 include_directories(
   include
-  src/mavconn
   ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
   ${mavlink_INCLUDE_DIRS}
@@ -171,7 +166,9 @@ add_library(mavconn
    src/mavconn/mavconn_serial.cpp
    src/mavconn/mavconn_udp.cpp
 )
-add_dependencies(mavconn ${MAVLINK_DIALECT}.xml-v1.0)
+add_dependencies(mavconn
+  mavros_generate_messages_cpp
+)
 target_link_libraries(mavconn
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
@@ -186,6 +183,9 @@ add_library(mavros_plugins
   src/plugins/waypoint.cpp
   src/plugins/rc_io.cpp
   src/plugins/command.cpp
+  src/plugins/local_position.cpp
+  src/plugins/vision_position.cpp
+  src/plugins/setpoint_position.cpp
 )
 add_dependencies(mavros_plugins
   mavros_generate_messages_cpp
@@ -256,8 +256,14 @@ install(DIRECTORY include/${PROJECT_NAME}/
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(FILES
   mavros_plugins.xml
+  launch/apm2.launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
+
+install(DIRECTORY launch/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+)
+
 
 #############
 ## Testing ##
@@ -267,11 +273,6 @@ install(FILES
 catkin_add_gtest(mavconn-test test/test_mavconn.cpp)
 if(TARGET mavconn-test)
 	target_link_libraries(mavconn-test mavconn)
-endif()
-
-catkin_add_gtest(mavudpproxy test/mavudpproxy.cpp)
-if(TARGET mavudpproxy)
-	target_link_libraries(mavudpproxy mavconn)
 endif()
 
 ## Add folders to be run by python nosetests

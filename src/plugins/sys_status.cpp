@@ -4,6 +4,7 @@
  * @author Vladimir Ermakov <vooon341@gmail.com>
  *
  * @addtogroup plugin
+ * @{
  */
 /*
  * Copyright 2013 Vladimir Ermakov.
@@ -286,16 +287,19 @@ private:
 };
 
 
-
+/**
+ * @brief System status plugin.
+ * Required for most applications.
+ */
 class SystemStatusPlugin : public MavRosPlugin
 {
 public:
 	SystemStatusPlugin() :
-		hb_diag("FCU Heartbeat", 10),
-		mem_diag("FCU Memory"),
-		hwst_diag("FCU Hardware"),
-		sys_diag("FCU System"),
-		batt_diag("FCU Battery")
+		hb_diag("Heartbeat", 10),
+		mem_diag("APM Memory"),
+		hwst_diag("APM Hardware"),
+		sys_diag("System"),
+		batt_diag("Battery")
 	{};
 
 	void initialize(UAS &uas_,
@@ -337,11 +341,11 @@ public:
 		rate_srv = nh.advertiseService("set_stream_rate", &SystemStatusPlugin::set_rate_cb, this);
 	}
 
-	std::string get_name() {
+	const std::string get_name() const {
 		return "SystemStatus";
 	}
 
-	std::vector<uint8_t> get_supported_messages() {
+	const std::vector<uint8_t> get_supported_messages() const {
 		return {
 			MAVLINK_MSG_ID_HEARTBEAT,
 			MAVLINK_MSG_ID_SYS_STATUS,
@@ -370,7 +374,7 @@ public:
 				timeout_timer->expires_from_now(conn_timeout);
 				timeout_timer->async_wait(boost::bind(&SystemStatusPlugin::timeout_cb, this, _1));
 
-				mavros::StatePtr state_msg(new mavros::State);
+				mavros::StatePtr state_msg = boost::make_shared<mavros::State>();
 				state_msg->header.stamp = ros::Time::now();
 				state_msg->armed = hb.base_mode & MAV_MODE_FLAG_SAFETY_ARMED;
 				state_msg->guided = hb.base_mode & MAV_MODE_FLAG_GUIDED_ENABLED;
@@ -389,7 +393,7 @@ public:
 				float curr = stat.current_battery / 100.0;	// 10 mA or -1
 				float rem = stat.battery_remaining / 100.0;	// or -1
 
-				mavros::BatteryStatusPtr batt_msg(new mavros::BatteryStatus);
+				mavros::BatteryStatusPtr batt_msg = boost::make_shared<mavros::BatteryStatus>();
 				batt_msg->header.stamp = ros::Time::now();
 				batt_msg->voltage = volt;
 				batt_msg->current = curr;
@@ -600,7 +604,7 @@ private:
 			return;
 
 		mavlink_message_t msg;
-		mavlink_msg_heartbeat_pack(0, 0, &msg,
+		mavlink_msg_heartbeat_pack_chan(UAS_PACK_CHAN(uas), &msg,
 				MAV_TYPE_ONBOARD_CONTROLLER,
 				MAV_AUTOPILOT_INVALID,
 				MAV_MODE_MANUAL_ARMED,
@@ -619,9 +623,8 @@ private:
 			mavros::StreamRate::Response &res) {
 
 		mavlink_message_t msg;
-		mavlink_msg_request_data_stream_pack(0, 0, &msg,
-				uas->get_tgt_system(),
-				uas->get_tgt_component(),
+		mavlink_msg_request_data_stream_pack_chan(UAS_PACK_CHAN(uas), &msg,
+				UAS_PACK_TGT(uas),
 				req.stream_id,
 				req.message_rate,
 				(req.on_off)? 1 : 0

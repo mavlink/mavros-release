@@ -25,13 +25,13 @@
 #include <ros/console.h>
 #include <diagnostic_updater/diagnostic_updater.h>
 
-#include <mavros/mavconn_interface.h>
-#include "mavconn_serial.h"
-#include "mavconn_udp.h"
+#include <mavros/mavconn_serial.h>
+#include <mavros/mavconn_udp.h>
 
 #include <pluginlib/class_loader.h>
 #include <mavros/mavros_plugin.h>
 #include <mavros/utils.h>
+#include <fnmatch.h>
 
 #include <mavros/Mavlink.h>
 
@@ -43,7 +43,7 @@ using namespace mavplugin;
 class MavlinkDiag : public diagnostic_updater::DiagnosticTask
 {
 public:
-	MavlinkDiag(std::string name) :
+	explicit MavlinkDiag(std::string name) :
 		diagnostic_updater::DiagnosticTask(name),
 		last_drop_count(0),
 		is_connected(false)
@@ -94,7 +94,7 @@ private:
 class MavRos
 {
 public:
-	MavRos(ros::NodeHandle &nh_) :
+	explicit MavRos(const ros::NodeHandle &nh_) :
 		node_handle(nh_),
 		mavlink_node_handle("/mavlink"), // for compatible reasons
 		serial_link_diag("FCU connection"),
@@ -123,6 +123,7 @@ public:
 		node_handle.param("target_system_id", tgt_system_id, 1);
 		node_handle.param("target_component_id", tgt_component_id, 1);
 		node_handle.param("startup_px4_usb_quirk", px4_usb_quirk, false);
+		node_handle.getParam("plugin_blacklist", plugin_blacklist);
 
 		diag_updater.setHardwareID("Mavlink");
 		diag_updater.add(serial_link_diag);
@@ -149,6 +150,7 @@ public:
 		mav_uas.set_tgt(tgt_system_id, tgt_component_id);
 		mav_uas.set_mav_link(serial_link);
 		mav_uas.sig_connection_changed.connect(boost::bind(&MavlinkDiag::set_connection_status, &serial_link_diag, _1));
+		mav_uas.sig_connection_changed.connect(boost::bind(&MavRos::log_connect_change, this, _1));
 
 		auto plugins = plugin_loader.getDeclaredClasses();
 		loaded_plugins.reserve(plugins.size());
@@ -160,7 +162,9 @@ public:
 		if (px4_usb_quirk)
 			startup_px4_usb_quirk();
 
-		ROS_INFO("MAVROS started on MAV %d (component %d)", system_id, component_id);
+		ROS_INFO("MAVROS started. MY ID [%d, %d], TARGET ID [%d, %d]",
+				system_id, component_id,
+				tgt_system_id, tgt_component_id);
 	}
 
 	~MavRos() {};
@@ -192,44 +196,57 @@ private:
 
 	pluginlib::ClassLoader<mavplugin::MavRosPlugin> plugin_loader;
 	std::vector<boost::shared_ptr<MavRosPlugin> > loaded_plugins;
+	std::vector<std::string> plugin_blacklist;
 	std::vector<sig2::signal<void(const mavlink_message_t *message, uint8_t system_id, uint8_t component_id)> >
 		message_route_table; // link interface -> router -> plugin callback
 	UAS mav_uas;
 
 	void mavlink_pub_cb(const mavlink_message_t *mmsg, uint8_t sysid, uint8_t compid) {
-		MavlinkPtr rmsg(new Mavlink);
+		MavlinkPtr rmsg = boost::make_shared<Mavlink>();
 
 		if  (mavlink_pub.getNumSubscribers() == 0)
 			return;
 
 		rmsg->header.stamp = ros::Time::now();
-		rmsg->len = mmsg->len;
-		rmsg->seq = mmsg->seq;
-		rmsg->sysid = mmsg->sysid;
-		rmsg->compid = mmsg->compid;
-		rmsg->msgid = mmsg->msgid;
-		for (size_t i = 0; i < (mmsg->len + 7) / 8; i++)
-			rmsg->payload64.push_back(mmsg->payload64[i]);
-
+		mavutils::copy_mavlink_to_ros(mmsg, rmsg);
 		mavlink_pub.publish(rmsg);
 	}
 
 	void mavlink_sub_cb(const Mavlink::ConstPtr &rmsg) {
 		mavlink_message_t mmsg;
 
-		mmsg.msgid = rmsg->msgid;
-		mmsg.len = rmsg->len;
-		copy(rmsg->payload64.begin(), rmsg->payload64.end(), mmsg.payload64); // TODO: add paranoic checks
-
-		serial_link->send_message(&mmsg, rmsg->sysid, rmsg->compid);
+		if (mavutils::copy_ros_to_mavlink(rmsg, mmsg))
+			serial_link->send_message(&mmsg, rmsg->sysid, rmsg->compid);
+		else
+			ROS_ERROR("Drop mavlink packet: illegal payload64 size");
 	}
 
 	void plugin_route_cb(const mavlink_message_t *mmsg, uint8_t sysid, uint8_t compid) {
 		message_route_table[mmsg->msgid](mmsg, sysid, compid);
 	}
 
+	bool check_in_blacklist(std::string pl_name) {
+		for (auto it = plugin_blacklist.cbegin();
+				it != plugin_blacklist.cend();
+				it++) {
+			int cmp = fnmatch(it->c_str(), pl_name.c_str(), FNM_CASEFOLD);
+			if (cmp == 0)
+				return true;
+			else if (cmp != FNM_NOMATCH)
+				ROS_ERROR("Blacklist check error! fnmatch('%s', '%s')",
+						it->c_str(), pl_name.c_str());
+		}
+
+		return false;
+	}
+
 	void add_plugin(std::string pl_name) {
 		boost::shared_ptr<mavplugin::MavRosPlugin> plugin;
+
+		if (check_in_blacklist(pl_name)) {
+			ROS_INFO_STREAM("Plugin [alias " << pl_name << "] blacklisted");
+			return;
+		}
 
 		try {
 			plugin = plugin_loader.createInstance(pl_name);
@@ -268,6 +285,14 @@ private:
 		serial_link->send_bytes(init, 3);
 		serial_link->send_bytes(nsh, sizeof(nsh) - 1);
 		serial_link->send_bytes(init, 4);	/* NOTE in original init[3] */
+	}
+
+	void log_connect_change(bool connected) {
+		/* note: sys_status plugin required */
+		if (connected)
+			ROS_INFO("CON: Got HEARTBEAT, connected.");
+		else
+			ROS_WARN("CON: Lost connection, HEARTBEAT timed out.");
 	}
 };
 
