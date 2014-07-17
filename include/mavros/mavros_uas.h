@@ -4,6 +4,7 @@
  * @author Vladimir Ermakov <vooon341@gmail.com>
  *
  * @addtogroup plugin
+ * @{
  */
 /*
  * Copyright 2014 Vladimir Ermakov.
@@ -25,9 +26,30 @@
 
 #pragma once
 
+#include <tf/transform_datatypes.h>
 #include <mavros/mavconn_interface.h>
 
 namespace mavplugin {
+
+/**
+ * @brief helper for mavlink_msg_*_pack_chan()
+ *
+ * Filler for first arguments of *_pack_chan functions.
+ */
+#define UAS_PACK_CHAN(uasobjptr)			\
+	(uasobjptr)->mav_link->get_system_id(), 	\
+	(uasobjptr)->mav_link->get_component_id(), 	\
+	(uasobjptr)->mav_link->get_channel()
+
+/**
+ * @brief helper for pack messages with target fields
+ *
+ * Filler for target_system, target_component fields.
+ */
+#define UAS_PACK_TGT(uasobjptr)				\
+	(uasobjptr)->get_tgt_system(), 			\
+	(uasobjptr)->get_tgt_component()
+
 
 /**
  * @brief UAS handler for plugins
@@ -62,10 +84,16 @@ public:
 		return autopilot;
 	};
 
+	/**
+	 * @brief Return communication target system
+	 */
 	inline uint8_t get_tgt_system() {
 		return target_system; // not changed after configuration
 	};
 
+	/**
+	 * @brief Return communication target component
+	 */
 	inline uint8_t get_tgt_component() {
 		return target_component; // not changed after configuration
 	};
@@ -74,6 +102,60 @@ public:
 		target_system = sys;
 		target_component = comp;
 	};
+
+	/**
+	 * @brief Get Attitude angular velocity vector
+	 * @return angilar velocity [ENU, body-fixed]
+	 */
+	inline tf::Vector3 get_attitude_angular_velocity() {
+		boost::recursive_mutex::scoped_lock lock(mutex);
+		return angular_velocity;
+	}
+
+	/**
+	 * @brief Store Attitude angular velocity vector
+	 * @param[in] vec angular velocity [ENU, body-fixed]
+	 */
+	inline void set_attitude_angular_velocity(tf::Vector3 &vec) {
+		boost::recursive_mutex::scoped_lock lock(mutex);
+		angular_velocity = vec;
+	}
+
+	/**
+	 * @brief Get Attitude linear acceleration vector
+	 * @return linear acceleration [ENU, body-fixed]
+	 */
+	inline tf::Vector3 get_attitude_linear_acceleration() {
+		boost::recursive_mutex::scoped_lock lock(mutex);
+		return linear_acceleration;
+	}
+
+	/**
+	 * @brief Store Attitude linear acceleration vector
+	 * @param[in] vec linear acceleration [ENU, body-fixed]
+	 */
+	inline void set_attitude_linear_acceleration(tf::Vector3 &vec) {
+		boost::recursive_mutex::scoped_lock lock(mutex);
+		linear_acceleration = vec;
+	}
+
+	/**
+	 * @brief Get Attitude orientation quaternion
+	 * @return orientation quaternion [ENU, body-fixed]
+	 */
+	inline tf::Quaternion get_attitude_orientation() {
+		boost::recursive_mutex::scoped_lock lock(mutex);
+		return orientation;
+	}
+
+	/**
+	 * @brief Store Attitude orientation quaternion
+	 * @param[in] quat orientation [ENU, body-fixed]
+	 */
+	inline void set_attitude_orientation(tf::Quaternion &quat) {
+		boost::recursive_mutex::scoped_lock lock(mutex);
+		orientation = quat;
+	}
 
 	/**
 	 * For APM quirks
@@ -115,6 +197,9 @@ private:
 	uint8_t target_system;
 	uint8_t target_component;
 	bool connected;
+	tf::Vector3 angular_velocity;
+	tf::Vector3 linear_acceleration;
+	tf::Quaternion orientation;
 	std::unique_ptr<boost::asio::io_service::work> timer_work;
 	boost::thread timer_thread;
 };

@@ -4,6 +4,7 @@
  * @author Vladimir Ermakov <vooon341@gmail.com>
  *
  * @addtogroup plugin
+ * @{
  */
 /*
  * Copyright 2014 Vladimir Ermakov.
@@ -40,17 +41,21 @@ public:
 	uint16_t expected_command;
 	uint8_t result;
 
-	CommandTransaction(uint16_t command) :
+	explicit CommandTransaction(uint16_t command) :
 		ack(),
 		expected_command(command),
 		result(MAV_RESULT_FAILED)
 	{ }
 };
 
+/**
+ * @brief Command plugin.
+ *
+ * Send any command via COMMAND_LONG
+ */
 class CommandPlugin : public MavRosPlugin {
 public:
-	CommandPlugin() :
-		ACK_TIMEOUT_MS(5000)
+	CommandPlugin()
 	{ };
 
 	void initialize(UAS &uas_,
@@ -66,11 +71,11 @@ public:
 		set_home_srv = cmd_nh.advertiseService("set_home", &CommandPlugin::set_home_cb, this);
 	}
 
-	std::string get_name() {
+	std::string const get_name() const {
 		return "Command";
 	}
 
-	std::vector<uint8_t> get_supported_messages() {
+	std::vector<uint8_t> const get_supported_messages() const {
 		return {
 			MAVLINK_MSG_ID_COMMAND_ACK
 		};
@@ -104,7 +109,7 @@ private:
 	ros::ServiceServer set_home_srv;
 
 	std::list<CommandTransaction *> ack_waiting_list;
-	const int ACK_TIMEOUT_MS;	// = 5000;
+	static constexpr int ACK_TIMEOUT_MS = 5000;
 
 	/* -*- mid-level functions -*- */
 
@@ -184,9 +189,8 @@ private:
 			float param7) {
 		mavlink_message_t msg;
 
-		mavlink_msg_command_long_pack(0, 0, &msg,
-				uas->get_tgt_system(),
-				uas->get_tgt_component(),
+		mavlink_msg_command_long_pack_chan(UAS_PACK_CHAN(uas), &msg,
+				UAS_PACK_TGT(uas),
 				command,
 				confirmation,
 				param1,
