@@ -4,6 +4,7 @@
  * @author Vladimir Ermakov <vooon341@gmail.com>
  *
  * @addtogroup plugin
+ * @{
  */
 /*
  * Copyright 2014 Vladimir Ermakov.
@@ -33,14 +34,16 @@
 
 namespace mavplugin {
 
+/**
+ * @brief RC IO plugin
+ */
 class RCIOPlugin : public MavRosPlugin {
 public:
 	RCIOPlugin() :
 		raw_rc_in(0),
 		raw_rc_out(0),
 		has_rc_channels_msg(false)
-	{
-	};
+	{ };
 
 	void initialize(UAS &uas_,
 			ros::NodeHandle &nh,
@@ -56,11 +59,11 @@ public:
 		uas->sig_connection_changed.connect(boost::bind(&RCIOPlugin::connection_cb, this, _1));
 	};
 
-	std::string get_name() {
+	std::string const get_name() const {
 		return "RCIO";
 	};
 
-	std::vector<uint8_t> get_supported_messages() {
+	std::vector<uint8_t> const get_supported_messages() const {
 		return {
 			MAVLINK_MSG_ID_RC_CHANNELS_RAW,
 			MAVLINK_MSG_ID_RC_CHANNELS,
@@ -129,7 +132,7 @@ private:
 		SET_RC_IN(8);
 #undef SET_RC_IN
 
-		mavros::RCInPtr rcin_msg(new mavros::RCIn);
+		mavros::RCInPtr rcin_msg = boost::make_shared<mavros::RCIn>();
 
 		rcin_msg->header.stamp = ros::Time::now();
 		rcin_msg->rssi = port.rssi;
@@ -176,7 +179,7 @@ private:
 		IFSET_RC_IN(18);
 #undef IFSET_RC_IN
 
-		mavros::RCInPtr rcin_msg(new mavros::RCIn);
+		mavros::RCInPtr rcin_msg = boost::make_shared<mavros::RCIn>();
 
 		rcin_msg->header.stamp = ros::Time::now();
 		rcin_msg->rssi = channels.rssi;
@@ -205,7 +208,7 @@ private:
 		SET_RC_OUT(8);
 #undef SET_RC_OUT
 
-		mavros::RCOutPtr rcout_msg(new mavros::RCOut);
+		mavros::RCOutPtr rcout_msg = boost::make_shared<mavros::RCOut>();
 
 		rcout_msg->header.stamp = ros::Time::now();
 		rcout_msg->channels = raw_rc_out;
@@ -218,9 +221,8 @@ private:
 	void rc_channels_override(boost::array<uint16_t, 8> &channels) {
 		mavlink_message_t msg;
 
-		mavlink_msg_rc_channels_override_pack(0, 0, &msg,
-				uas->get_tgt_system(),
-				uas->get_tgt_component(),
+		mavlink_msg_rc_channels_override_pack_chan(UAS_PACK_CHAN(uas), &msg,
+				UAS_PACK_TGT(uas),
 				channels[0],
 				channels[1],
 				channels[2],
