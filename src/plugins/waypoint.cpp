@@ -4,6 +4,7 @@
  * @author Vladimir Ermakov <vooon341@gmail.com>
  *
  * @addtogroup plugin
+ * @{
  */
 /*
  * Copyright 2014 Vladimir Ermakov.
@@ -140,20 +141,18 @@ public:
 	}
 };
 
+
+/**
+ * @brief Mission manupulation plugin
+ */
 class WaypointPlugin : public MavRosPlugin {
 public:
 	WaypointPlugin() :
 		wp_state(WP_IDLE),
 		wp_retries(RETRIES_COUNT),
 		do_pull_after_gcs(false),
-		reshedule_pull(false),
-		BOOT_TIME_MS(15000),
-		LIST_TIMEOUT_MS(30000),
-		WP_TIMEOUT_MS(1000),
-		RESHEDULE_MS(5000),
-		RETRIES_COUNT(3)
-	{
-	};
+		reshedule_pull(false)
+	{ };
 
 	void initialize(UAS &uas_,
 			ros::NodeHandle &nh,
@@ -178,11 +177,11 @@ public:
 		uas->sig_connection_changed.connect(boost::bind(&WaypointPlugin::connection_cb, this, _1));
 	};
 
-	std::string get_name() {
+	std::string const get_name() const {
 		return "Waypoint";
 	};
 
-	std::vector<uint8_t> get_supported_messages() {
+	std::vector<uint8_t> const get_supported_messages() const {
 		return {
 			MAVLINK_MSG_ID_MISSION_ITEM,
 			MAVLINK_MSG_ID_MISSION_REQUEST,
@@ -270,11 +269,12 @@ private:
 	std::unique_ptr<boost::asio::deadline_timer> shedule_timer;
 	bool do_pull_after_gcs;
 	bool reshedule_pull;
-	const int BOOT_TIME_MS;		// = 15000;
-	const int LIST_TIMEOUT_MS;	// = 30000;
-	const int WP_TIMEOUT_MS;	// = 1000;
-	const int RESHEDULE_MS;		// = 5000;
-	const int RETRIES_COUNT;	// = 3;
+
+	static constexpr int BOOT_TIME_MS = 15000;
+	static constexpr int LIST_TIMEOUT_MS = 30000;
+	static constexpr int WP_TIMEOUT_MS = 1000;
+	static constexpr int RESHEDULE_MS = 5000;
+	static constexpr int RETRIES_COUNT = 3;
 
 	/* -*- rx handlers -*- */
 
@@ -507,6 +507,9 @@ private:
 			case WP_SET_CUR:
 				mission_set_current(wp_set_active);
 				break;
+
+			case WP_IDLE:
+				break;
 			}
 
 			restart_timeout_timer_int();
@@ -624,7 +627,7 @@ private:
 	}
 
 	void publish_waypoints() {
-		mavros::WaypointListPtr wpl(new mavros::WaypointList);
+		mavros::WaypointListPtr wpl = boost::make_shared<mavros::WaypointList>();
 		boost::recursive_mutex::scoped_lock lock(mutex);
 
 		wpl->waypoints.clear();
@@ -644,9 +647,8 @@ private:
 	void mission_item(WaypointItem &wp) {
 		mavlink_message_t msg;
 
-		mavlink_msg_mission_item_pack(0, 0, &msg,
-				uas->get_tgt_system(),
-				uas->get_tgt_component(),
+		mavlink_msg_mission_item_pack_chan(UAS_PACK_CHAN(uas), &msg,
+				UAS_PACK_TGT(uas),
 				wp.seq,
 				wp.frame,
 				wp.command,
@@ -666,9 +668,8 @@ private:
 	void mission_request(uint16_t seq) {
 		mavlink_message_t msg;
 
-		mavlink_msg_mission_request_pack(0, 0, &msg,
-				uas->get_tgt_system(),
-				uas->get_tgt_component(),
+		mavlink_msg_mission_request_pack_chan(UAS_PACK_CHAN(uas), &msg,
+				UAS_PACK_TGT(uas),
 				seq
 				);
 		uas->mav_link->send_message(&msg);
@@ -677,9 +678,8 @@ private:
 	void mission_set_current(uint16_t seq) {
 		mavlink_message_t msg;
 
-		mavlink_msg_mission_set_current_pack(0, 0, &msg,
-				uas->get_tgt_system(),
-				uas->get_tgt_component(),
+		mavlink_msg_mission_set_current_pack_chan(UAS_PACK_CHAN(uas), &msg,
+				UAS_PACK_TGT(uas),
 				seq
 				);
 		uas->mav_link->send_message(&msg);
@@ -688,9 +688,8 @@ private:
 	void mission_request_list() {
 		mavlink_message_t msg;
 
-		mavlink_msg_mission_request_list_pack(0, 0, &msg,
-				uas->get_tgt_system(),
-				uas->get_tgt_component()
+		mavlink_msg_mission_request_list_pack_chan(UAS_PACK_CHAN(uas), &msg,
+				UAS_PACK_TGT(uas)
 				);
 		uas->mav_link->send_message(&msg);
 	}
@@ -698,9 +697,8 @@ private:
 	void mission_count(uint16_t cnt) {
 		mavlink_message_t msg;
 
-		mavlink_msg_mission_count_pack(0, 0, &msg,
-				uas->get_tgt_system(),
-				uas->get_tgt_component(),
+		mavlink_msg_mission_count_pack_chan(UAS_PACK_CHAN(uas), &msg,
+				UAS_PACK_TGT(uas),
 				cnt
 				);
 		uas->mav_link->send_message(&msg);
@@ -709,9 +707,8 @@ private:
 	void mission_clear_all() {
 		mavlink_message_t msg;
 
-		mavlink_msg_mission_clear_all_pack(0, 0, &msg,
-				uas->get_tgt_system(),
-				uas->get_tgt_component()
+		mavlink_msg_mission_clear_all_pack_chan(UAS_PACK_CHAN(uas), &msg,
+				UAS_PACK_TGT(uas)
 				);
 		uas->mav_link->send_message(&msg);
 	}
@@ -719,9 +716,8 @@ private:
 	void mission_ack(enum MAV_MISSION_RESULT type) {
 		mavlink_message_t msg;
 
-		mavlink_msg_mission_ack_pack(0, 0, &msg,
-				uas->get_tgt_system(),
-				uas->get_tgt_component(),
+		mavlink_msg_mission_ack_pack_chan(UAS_PACK_CHAN(uas), &msg,
+				UAS_PACK_TGT(uas),
 				type
 				);
 		uas->mav_link->send_message(&msg);

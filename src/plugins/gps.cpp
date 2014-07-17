@@ -4,6 +4,7 @@
  * @author Vladimir Ermakov <vooon341@gmail.com>
  *
  * @addtogroup plugin
+ * @{
  */
 /*
  * Copyright 2013 Vladimir Ermakov.
@@ -23,7 +24,7 @@
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#include <cmath>
+#include <angles/angles.h>
 #include <mavros/mavros_plugin.h>
 #include <pluginlib/class_list_macros.h>
 
@@ -37,7 +38,7 @@ namespace mavplugin {
 class GPSInfo : public diagnostic_updater::DiagnosticTask
 {
 public:
-	GPSInfo(const std::string name) :
+	explicit GPSInfo(const std::string name) :
 		diagnostic_updater::DiagnosticTask(name),
 		satellites_visible(-1),
 		fix_type(0)
@@ -72,10 +73,15 @@ private:
 };
 
 
+/**
+ * @brief GPS plugin
+ *
+ * This plugin implements same ROS topics as nmea_navsat_driver package.
+ */
 class GPSPlugin : public MavRosPlugin {
 public:
 	GPSPlugin() :
-		gps_diag("FCU GPS")
+		gps_diag("GPS")
 	{};
 
 	void initialize(UAS &uas,
@@ -92,11 +98,11 @@ public:
 		vel_pub = nh.advertise<geometry_msgs::TwistStamped>("gps_vel", 10);
 	}
 
-	std::string get_name() {
+	std::string const get_name() const {
 		return "GPS";
 	}
 
-	std::vector<uint8_t> get_supported_messages() {
+	std::vector<uint8_t> const get_supported_messages() const {
 		return {
 			MAVLINK_MSG_ID_GPS_RAW_INT,
 			MAVLINK_MSG_ID_GPS_STATUS,
@@ -111,8 +117,8 @@ public:
 				mavlink_gps_raw_int_t raw_gps;
 				mavlink_msg_gps_raw_int_decode(msg, &raw_gps);
 
-				sensor_msgs::NavSatFixPtr fix(new sensor_msgs::NavSatFix);
-				geometry_msgs::TwistStampedPtr vel(new geometry_msgs::TwistStamped);
+				sensor_msgs::NavSatFixPtr fix = boost::make_shared<sensor_msgs::NavSatFix>();
+				geometry_msgs::TwistStampedPtr vel = boost::make_shared<geometry_msgs::TwistStamped>();
 
 				gps_diag.set_gps_raw(raw_gps);
 				if (raw_gps.fix_type < 2) {
@@ -138,7 +144,7 @@ public:
 					// From nmea_navsat_driver
 					fix->position_covariance[0] = hdop2;
 					fix->position_covariance[4] = hdop2;
-					fix->position_covariance[8] = pow(2 * hdop, 2);
+					fix->position_covariance[8] = std::pow(2 * hdop, 2);
 					fix->position_covariance_type =
 						sensor_msgs::NavSatFix::COVARIANCE_TYPE_APPROXIMATED;
 				}
@@ -155,7 +161,7 @@ public:
 				if (raw_gps.vel != UINT16_MAX &&
 						raw_gps.cog != UINT16_MAX) {
 					double speed = raw_gps.vel / 1E2; // m/s
-					double course = raw_gps.cog / 1E2; // deg
+					double course = angles::from_degrees(raw_gps.cog / 1E2); // rad
 
 					// From nmea_navsat_driver
 					vel->twist.linear.x = speed * std::sin(course);
@@ -191,7 +197,7 @@ public:
 					return;
 				}
 
-				sensor_msgs::TimeReferencePtr time(new sensor_msgs::TimeReference);
+				sensor_msgs::TimeReferencePtr time = boost::make_shared<sensor_msgs::TimeReference>();
 				ros::Time time_ref(
 						mtime.time_unix_usec / 1000000,			// t_sec
 						(mtime.time_unix_usec % 1000000) * 1000);	// t_nsec
