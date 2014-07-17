@@ -20,10 +20,11 @@
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#include "mavconn_udp.h"
+#include <mavros/mavconn_udp.h>
 #include <mavros/utils.h>
 #include <ros/console.h>
 #include <ros/assert.h>
+#include <algorithm>
 
 using namespace mavconn;
 using namespace boost::asio::ip;
@@ -35,7 +36,10 @@ MAVConnUDP::MAVConnUDP(uint8_t system_id, uint8_t component_id,
 	io_service(),
 	io_work(new asio::io_service::work(io_service)),
 	socket(io_service),
-	sender_exists(false)
+	sender_exists(false),
+	tx_buf_size(0),
+	tx_buf_max_size(0),
+	tx_in_process(false)
 {
 	udp::resolver resolver(io_service);
 
@@ -66,6 +70,9 @@ MAVConnUDP::MAVConnUDP(uint8_t system_id, uint8_t component_id,
 	socket.open(udp::v4());
 	socket.bind(server_endpoint);
 
+	// reserve some space in tx queue
+	tx_q.reserve(TX_EXTENT * 2);
+
 	// give some work to io_service before start
 	io_service.post(boost::bind(&MAVConnUDP::do_read, this));
 
@@ -94,14 +101,23 @@ void MAVConnUDP::send_message(const mavlink_message_t *message, uint8_t sysid, u
 {
 	ROS_ASSERT(message != NULL);
 	uint8_t buffer[MAVLINK_MAX_PACKET_LEN + 2];
-	mavlink_message_t msg = *message;
+	size_t length;
+
+	/* if sysid/compid pair not match we need explicit finalize
+	 * else just copy to buffer */
+	if (message->sysid != sysid || message->compid != compid) {
+		mavlink_message_t msg = *message;
 
 #if MAVLINK_CRC_EXTRA
-	mavlink_finalize_message_chan(&msg, sysid, compid, channel, message->len, mavlink_crcs[msg.msgid]);
+		mavlink_finalize_message_chan(&msg, sysid, compid, channel, message->len, mavlink_crcs[msg.msgid]);
 #else
-	mavlink_finalize_message_chan(&msg, sysid, compid, channel, message->len);
+		mavlink_finalize_message_chan(&msg, sysid, compid, channel, message->len);
 #endif
-	size_t length = mavlink_msg_to_send_buffer(buffer, &msg);
+
+		length = mavlink_msg_to_send_buffer(buffer, &msg);
+	}
+	else
+		length = mavlink_msg_to_send_buffer(buffer, message);
 
 	ROS_DEBUG_NAMED("mavconn", "udp::send_message: Message-ID: %d [%zu bytes] Sys-Id: %d Comp-Id: %d",
 			message->msgid, length, sysid, compid);
@@ -150,28 +166,46 @@ void MAVConnUDP::async_read_end(boost::system::error_code error, size_t bytes_tr
 	}
 }
 
+void MAVConnUDP::copy_and_async_write(void)
+{
+	// should called with locked mutex from io_service thread
+
+	tx_buf_size = tx_q.size();
+	// mark transmission in progress
+	tx_in_process = true;
+
+	if (tx_buf_max_size > TX_DELSIZE ||
+			tx_buf_size >= tx_buf_max_size) {
+
+		// Set buff eq. or gt than tx_buf_size
+		tx_buf_max_size = (tx_buf_size % TX_EXTENT == 0)? tx_buf_size :
+			(tx_buf_size / TX_EXTENT + 1) * TX_EXTENT;
+
+		tx_buf.reset(new uint8_t[tx_buf_max_size]);
+	}
+
+	std::copy(tx_q.begin(), tx_q.end(), tx_buf.get());
+	tx_q.clear();
+
+	socket.async_send_to(
+			asio::buffer(tx_buf.get(), tx_buf_size),
+			sender_endpoint,
+			boost::bind(&MAVConnUDP::async_write_end,
+				this,
+				asio::placeholders::error));
+}
+
 void MAVConnUDP::do_write(void)
 {
 	if (!sender_exists) {
-		ROS_DEBUG_THROTTLE_NAMED(10, "mavconn", "udp::do_write: sender do not exists!");
+		ROS_DEBUG_THROTTLE_NAMED(30, "mavconn", "udp::do_write: sender do not exists!");
 		return;
 	}
 
 	// if write not in progress
-	if (tx_buf == 0) {
+	if (!tx_in_process) {
 		boost::recursive_mutex::scoped_lock lock(mutex);
-
-		tx_buf_size = tx_q.size();
-		tx_buf.reset(new uint8_t[tx_buf_size]);
-		std::copy(tx_q.begin(), tx_q.end(), tx_buf.get());
-		tx_q.clear();
-
-		socket.async_send_to(
-				asio::buffer(tx_buf.get(), tx_buf_size),
-				sender_endpoint,
-				boost::bind(&MAVConnUDP::async_write_end,
-					this,
-					asio::placeholders::error));
+		copy_and_async_write();
 	}
 }
 
@@ -181,22 +215,12 @@ void MAVConnUDP::async_write_end(boost::system::error_code error)
 		boost::recursive_mutex::scoped_lock lock(mutex);
 
 		if (tx_q.empty()) {
-			tx_buf.reset();
+			tx_in_process = false;
 			tx_buf_size = 0;
 			return;
 		}
 
-		tx_buf_size = tx_q.size();
-		tx_buf.reset(new uint8_t[tx_buf_size]);
-		std::copy(tx_q.begin(), tx_q.end(), tx_buf.get());
-		tx_q.clear();
-
-		socket.async_send_to(
-				asio::buffer(tx_buf.get(), tx_buf_size),
-				sender_endpoint,
-				boost::bind(&MAVConnUDP::async_write_end,
-					this,
-					asio::placeholders::error));
+		copy_and_async_write();
 	} else {
 		if (socket.is_open()) {
 			socket.close();
