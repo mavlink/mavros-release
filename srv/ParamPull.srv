@@ -1,7 +1,0 @@
-# Request parameters from device
-#
-# Returns success status and param_recived count
-
----
-bool success
-uint32 param_received
