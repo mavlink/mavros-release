@@ -19,7 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-find_package(Boost REQUIRED COMPONENTS system thread date_time filesystem)
+find_package(Boost REQUIRED COMPONENTS system)
 find_package(mavlink REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -61,6 +61,8 @@ add_message_files(
   State.msg
   RCIn.msg
   RCOut.msg
+  RadioStatus.msg
+  OverrideRCIn.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -75,11 +77,11 @@ add_service_files(
    WaypointPull.srv
    WaypointPush.srv
    WaypointGOTO.srv
-   OverrideRCIn.srv
    CommandLong.srv
    CommandBool.srv
    CommandMode.srv
    CommandHome.srv
+   CommandTOL.srv
    StreamRate.srv
 )
 
@@ -100,8 +102,7 @@ generate_messages(
 
 ## Select MAVLink dialect
 #
-# TODO: move dialect list to mavlink package
-
+# fallback for older mavlink package.
 if(NOT DEFINED mavlink_DIALECTS)
   list(APPEND mavlink_DIALECTS "ardupilotmega")
   list(APPEND mavlink_DIALECTS "pixhawk")
@@ -165,6 +166,7 @@ add_library(mavconn
    src/mavconn/mavconn_interface.cpp
    src/mavconn/mavconn_serial.cpp
    src/mavconn/mavconn_udp.cpp
+   src/mavconn/mavconn_tcp.cpp
 )
 add_dependencies(mavconn
   mavros_generate_messages_cpp
@@ -186,6 +188,12 @@ add_library(mavros_plugins
   src/plugins/local_position.cpp
   src/plugins/vision_position.cpp
   src/plugins/setpoint_position.cpp
+  src/plugins/safety_area.cpp
+  src/plugins/3dr_radio.cpp
+  src/plugins/setpoint_velocity.cpp
+  src/plugins/setpoint_accel.cpp
+  src/plugins/setpoint_attitude.cpp
+  src/plugins/vision_speed.cpp
 )
 add_dependencies(mavros_plugins
   mavros_generate_messages_cpp
@@ -213,13 +221,13 @@ target_link_libraries(mavros_node
   ${Boost_LIBRARIES}
 )
 
-add_executable(ros_udp
-	src/ros_udp.cpp
+add_executable(gcs_bridge
+	src/gcs_bridge.cpp
 )
-add_dependencies(ros_udp
+add_dependencies(gcs_bridge
   mavconn
 )
-target_link_libraries(ros_udp
+target_link_libraries(gcs_bridge
   mavconn
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
@@ -237,11 +245,13 @@ target_link_libraries(ros_udp
 install(PROGRAMS
   scripts/mavparam
   scripts/mavwp
+  scripts/mavsafety
+  scripts/mavcmd
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS mavconn mavros_plugins mavros_node ros_udp
+install(TARGETS mavconn mavros_plugins mavros_node gcs_bridge
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -256,7 +266,6 @@ install(DIRECTORY include/${PROJECT_NAME}/
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(FILES
   mavros_plugins.xml
-  launch/apm2.launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 

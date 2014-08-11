@@ -26,11 +26,12 @@
 
 #include <mavros/mavros_plugin.h>
 #include <pluginlib/class_list_macros.h>
-#include <boost/date_time/posix_time/posix_time.hpp>
 
 #include <mavros/State.h>
 #include <mavros/BatteryStatus.h>
 #include <mavros/StreamRate.h>
+
+#include "px4_custom_mode.h"
 
 namespace mavplugin {
 
@@ -49,13 +50,14 @@ public:
 		max_freq_(100),
 		tolerance_(0.1),
 		times_(win_size),
-		seq_nums_(win_size)
+		seq_nums_(win_size),
+		last_hb{}
 	{
 		clear();
 	}
 
 	void clear() {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		ros::Time curtime = ros::Time::now();
 		count_ = 0;
 
@@ -69,13 +71,13 @@ public:
 	}
 
 	void tick(mavlink_heartbeat_t &hb_struct) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		count_++;
 		last_hb = hb_struct;
 	}
 
 	void run(diagnostic_updater::DiagnosticStatusWrapper &stat) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		ros::Time curtime = ros::Time::now();
 		int curseq = count_;
 		int events = curseq - seq_nums_[hist_indx_];
@@ -114,7 +116,7 @@ private:
 	std::vector<ros::Time> times_;
 	std::vector<int> seq_nums_;
 	int hist_indx_;
-	boost::recursive_mutex mutex;
+	std::recursive_mutex mutex;
 	const size_t window_size_;
 	const double min_freq_;
 	const double max_freq_;
@@ -127,16 +129,17 @@ class SystemStatusDiag : public diagnostic_updater::DiagnosticTask
 {
 public:
 	SystemStatusDiag(const std::string name) :
-		diagnostic_updater::DiagnosticTask(name)
-	{};
+		diagnostic_updater::DiagnosticTask(name),
+		last_st{}
+	{ };
 
 	void set(mavlink_sys_status_t &st) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		last_st = st;
 	}
 
 	void run(diagnostic_updater::DiagnosticStatusWrapper &stat) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 
 		if ((last_st.onboard_control_sensors_health & last_st.onboard_control_sensors_enabled)
 				!= last_st.onboard_control_sensors_enabled)
@@ -147,6 +150,38 @@ public:
 		stat.addf("Sensor present", "0x%08X", last_st.onboard_control_sensors_present);
 		stat.addf("Sensor enabled", "0x%08X", last_st.onboard_control_sensors_enabled);
 		stat.addf("Sensor helth", "0x%08X", last_st.onboard_control_sensors_health);
+
+		// decode sensor health mask
+#define STAT_ADD_SENSOR(msg, sensor_mask)	\
+		if (last_st.onboard_control_sensors_enabled & sensor_mask)	\
+			stat.add(msg, (last_st.onboard_control_sensors_health & sensor_mask)? "Ok" : "Fail")
+
+		STAT_ADD_SENSOR("Sensor 3D Gyro", MAV_SYS_STATUS_SENSOR_3D_GYRO);
+		STAT_ADD_SENSOR("Sensor 3D Accel", MAV_SYS_STATUS_SENSOR_3D_ACCEL);
+		STAT_ADD_SENSOR("Sensor 3D Mag", MAV_SYS_STATUS_SENSOR_3D_MAG);
+		STAT_ADD_SENSOR("Sensor Abs Pressure", MAV_SYS_STATUS_SENSOR_ABSOLUTE_PRESSURE);
+		STAT_ADD_SENSOR("Sensor Diff Pressure", MAV_SYS_STATUS_SENSOR_DIFFERENTIAL_PRESSURE);
+		STAT_ADD_SENSOR("Sensor GPS", MAV_SYS_STATUS_SENSOR_GPS);
+		STAT_ADD_SENSOR("Sensor Optical Flow", MAV_SYS_STATUS_SENSOR_OPTICAL_FLOW);
+		STAT_ADD_SENSOR("Sensor Vision Position", MAV_SYS_STATUS_SENSOR_VISION_POSITION);
+		STAT_ADD_SENSOR("Sensor Laser Position", MAV_SYS_STATUS_SENSOR_LASER_POSITION);
+		STAT_ADD_SENSOR("Sensor Ext Grount Truth", MAV_SYS_STATUS_SENSOR_EXTERNAL_GROUND_TRUTH);
+		STAT_ADD_SENSOR("Sensor Ang Rate Control", MAV_SYS_STATUS_SENSOR_ANGULAR_RATE_CONTROL);
+		STAT_ADD_SENSOR("Sensor Attitude Stab", MAV_SYS_STATUS_SENSOR_ATTITUDE_STABILIZATION);
+		STAT_ADD_SENSOR("Sensor Yaw Position", MAV_SYS_STATUS_SENSOR_YAW_POSITION);
+		STAT_ADD_SENSOR("Sensor Z/Alt Control", MAV_SYS_STATUS_SENSOR_Z_ALTITUDE_CONTROL);
+		STAT_ADD_SENSOR("Sensor X/Y Pos Control", MAV_SYS_STATUS_SENSOR_XY_POSITION_CONTROL);
+		STAT_ADD_SENSOR("Sensor Motor Outputs", MAV_SYS_STATUS_SENSOR_MOTOR_OUTPUTS);
+		STAT_ADD_SENSOR("Sensor RC Receiver", MAV_SYS_STATUS_SENSOR_RC_RECEIVER);
+		STAT_ADD_SENSOR("Sensor 3D Gyro 2", MAV_SYS_STATUS_SENSOR_3D_GYRO2);
+		STAT_ADD_SENSOR("Sensor 3D Accel 2", MAV_SYS_STATUS_SENSOR_3D_ACCEL2);
+		STAT_ADD_SENSOR("Sensor 3D Mag 2", MAV_SYS_STATUS_SENSOR_3D_MAG2);
+		STAT_ADD_SENSOR("Geofence health", MAV_SYS_STATUS_GEOFENCE);
+		STAT_ADD_SENSOR("AHRS health", MAV_SYS_STATUS_AHRS);
+		//STAT_ADD_SENSOR("Terrain health", MAV_SYS_STATUS_TERRAIN);
+
+#undef STAT_ADD_SENSOR
+
 		stat.addf("CPU Load (%)", "%.1f", last_st.load / 10.0);
 		stat.addf("Drop rate (%)", "%.1f", last_st.drop_rate_comm / 10.0);
 		stat.addf("Errors comm", "%d", last_st.errors_comm);
@@ -157,7 +192,7 @@ public:
 	}
 
 private:
-	boost::recursive_mutex mutex;
+	std::recursive_mutex mutex;
 	mavlink_sys_status_t last_st;
 };
 
@@ -174,19 +209,19 @@ public:
 	{};
 
 	void set_min_voltage(float volt) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		min_voltage = volt;
 	}
 
 	void set(float volt, float curr, float rem) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		voltage = volt;
 		current = curr;
 		remaining = rem;
 	}
 
 	void run(diagnostic_updater::DiagnosticStatusWrapper &stat) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 
 		if (voltage < 0)
 			stat.summary(2, "No data");
@@ -201,7 +236,7 @@ public:
 	}
 
 private:
-	boost::recursive_mutex mutex;
+	std::recursive_mutex mutex;
 	float voltage;
 	float current;
 	float remaining;
@@ -219,13 +254,13 @@ public:
 	{};
 
 	void set(uint16_t f, uint16_t b) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		freemem = f;
 		brkval = b;
 	}
 
 	void run(diagnostic_updater::DiagnosticStatusWrapper &stat) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 
 		if (freemem < 0)
 			stat.summary(2, "No data");
@@ -239,7 +274,7 @@ public:
 	}
 
 private:
-	boost::recursive_mutex mutex;
+	std::recursive_mutex mutex;
 	ssize_t freemem;
 	uint16_t brkval;
 };
@@ -256,13 +291,13 @@ public:
 	{};
 
 	void set(uint16_t v, uint8_t e) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		vcc = v / 1000.0;
 		i2cerr = e;
 	}
 
 	void run(diagnostic_updater::DiagnosticStatusWrapper &stat) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 
 		if (vcc < 0)
 			stat.summary(2, "No data");
@@ -280,7 +315,7 @@ public:
 	}
 
 private:
-	boost::recursive_mutex mutex;
+	std::recursive_mutex mutex;
 	float vcc;
 	size_t i2cerr;
 	size_t i2cerr_last;
@@ -295,6 +330,7 @@ class SystemStatusPlugin : public MavRosPlugin
 {
 public:
 	SystemStatusPlugin() :
+		uas(nullptr),
 		hb_diag("Heartbeat", 10),
 		mem_diag("APM Memory"),
 		hwst_diag("APM Hardware"),
@@ -307,33 +343,50 @@ public:
 			diagnostic_updater::Updater &diag_updater)
 	{
 		uas = &uas_;
-		diag_updater.add(hb_diag);
-		diag_updater.add(sys_diag);
-		diag_updater.add(batt_diag);
-#ifdef MAVLINK_MSG_ID_MEMINFO
-		diag_updater.add(mem_diag);
-#endif
-#ifdef MAVLINK_MSG_ID_HWSTATUS
-		diag_updater.add(hwst_diag);
-#endif
 
 		double conn_timeout_d;
 		double conn_heartbeat_d;
+		double conn_system_time_d;
 		double min_voltage;
+		bool disable_diag;
 
 		nh.param("conn_timeout", conn_timeout_d, 30.0);
 		nh.param("conn_heartbeat", conn_heartbeat_d, 0.0);
+		nh.param("conn_system_time", conn_system_time_d, 0.0);
 		nh.param("sys/min_voltage", min_voltage, 6.0);
+		nh.param("sys/disable_diag", disable_diag, false);
 
-		batt_diag.set_min_voltage(min_voltage);
+		// heartbeat diag always enabled
+		diag_updater.add(hb_diag);
+		if (!disable_diag) {
+			diag_updater.add(sys_diag);
+			diag_updater.add(batt_diag);
+#ifdef MAVLINK_MSG_ID_MEMINFO
+			diag_updater.add(mem_diag);
+#endif
+#ifdef MAVLINK_MSG_ID_HWSTATUS
+			diag_updater.add(hwst_diag);
+#endif
 
-		conn_timeout = boost::posix_time::milliseconds(conn_timeout_d * 1000);
-		timeout_timer.reset(new boost::asio::deadline_timer(uas->timer_service, conn_timeout));
+			batt_diag.set_min_voltage(min_voltage);
+		}
+
+
+		// one-shot timeout timer
+		timeout_timer = nh.createTimer(ros::Duration(conn_timeout_d),
+				&SystemStatusPlugin::timeout_cb, this, true);
+		timeout_timer.start();
 
 		if (conn_heartbeat_d > 0.0) {
-			conn_heartbeat = boost::posix_time::milliseconds(conn_heartbeat_d * 1000);
-			heartbeat_timer.reset(new boost::asio::deadline_timer(uas->timer_service, conn_heartbeat));
-			heartbeat_timer->async_wait(boost::bind(&SystemStatusPlugin::heartbeat_cb, this, _1));
+			heartbeat_timer = nh.createTimer(ros::Duration(conn_heartbeat_d),
+					&SystemStatusPlugin::heartbeat_cb, this);
+			heartbeat_timer.start();
+		}
+
+		if (conn_system_time_d > 0.0) {
+			sys_time_timer = nh.createTimer(ros::Duration(conn_system_time_d),
+					&SystemStatusPlugin::sys_time_cb, this);
+			sys_time_timer.start();
 		}
 
 		state_pub = nh.advertise<mavros::State>("state", 10);
@@ -362,62 +415,15 @@ public:
 	void message_rx_cb(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
 		switch (msg->msgid) {
 		case MAVLINK_MSG_ID_HEARTBEAT:
-			{
-				mavlink_heartbeat_t hb;
-				mavlink_msg_heartbeat_decode(msg, &hb);
-				hb_diag.tick(hb);
-
-				// update context && setup connection timeout
-				uas->update_heartbeat(hb.type, hb.autopilot);
-				uas->update_connection_status(true);
-				timeout_timer->cancel();
-				timeout_timer->expires_from_now(conn_timeout);
-				timeout_timer->async_wait(boost::bind(&SystemStatusPlugin::timeout_cb, this, _1));
-
-				mavros::StatePtr state_msg = boost::make_shared<mavros::State>();
-				state_msg->header.stamp = ros::Time::now();
-				state_msg->armed = hb.base_mode & MAV_MODE_FLAG_SAFETY_ARMED;
-				state_msg->guided = hb.base_mode & MAV_MODE_FLAG_GUIDED_ENABLED;
-				state_msg->mode = str_mode_v10(hb.base_mode, hb.custom_mode);
-
-				state_pub.publish(state_msg);
-			}
+			handle_heartbeat(msg);
 			break;
 
 		case MAVLINK_MSG_ID_SYS_STATUS:
-			{
-				mavlink_sys_status_t stat;
-				mavlink_msg_sys_status_decode(msg, &stat);
-
-				float volt = stat.voltage_battery / 1000.0;	// mV
-				float curr = stat.current_battery / 100.0;	// 10 mA or -1
-				float rem = stat.battery_remaining / 100.0;	// or -1
-
-				mavros::BatteryStatusPtr batt_msg = boost::make_shared<mavros::BatteryStatus>();
-				batt_msg->header.stamp = ros::Time::now();
-				batt_msg->voltage = volt;
-				batt_msg->current = curr;
-				batt_msg->remaining = rem;
-
-				sys_diag.set(stat);
-				batt_diag.set(volt, curr, rem);
-				batt_pub.publish(batt_msg);
-			}
+			handle_sys_status(msg);
 			break;
 
 		case MAVLINK_MSG_ID_STATUSTEXT:
-			{
-				mavlink_statustext_t textm;
-				mavlink_msg_statustext_decode(msg, &textm);
-
-				std::string text(textm.text,
-						strnlen(textm.text, sizeof(textm.text)));
-
-				if (uas->is_ardupilotmega())
-					process_statustext_apm_quirk(textm.severity, text);
-				else
-					process_statustext_normal(textm.severity, text);
-			}
+			handle_statustext(msg);
 			break;
 
 		/* -*- APM additional messages -*- */
@@ -451,15 +457,21 @@ private:
 	SystemStatusDiag sys_diag;
 	BatteryStatusDiag batt_diag;
 	UAS *uas;
-	boost::posix_time::time_duration conn_timeout;
-	boost::posix_time::time_duration conn_heartbeat;
-	std::unique_ptr<boost::asio::deadline_timer> timeout_timer;
-	std::unique_ptr<boost::asio::deadline_timer> heartbeat_timer;
+	ros::Timer timeout_timer;
+	ros::Timer heartbeat_timer;
+	ros::Timer sys_time_timer;
 
 	ros::Publisher state_pub;
 	ros::Publisher batt_pub;
 	ros::ServiceServer rate_srv;
 
+	/* -*- mid-level helpers -*- */
+
+	/**
+	 * Sent STATUSTEXT message to rosout
+	 *
+	 * @param[in] severity  Levels defined in common.xml
+	 */
 	void process_statustext_normal(uint8_t severity, std::string &text) {
 		switch (severity) {
 		case MAV_SEVERITY_EMERGENCY:
@@ -486,6 +498,11 @@ private:
 
 	}
 
+	/**
+	 * Send STATUSTEXT messate to rosout with APM severity levels
+	 *
+	 * @param[in] severity  APM levels.
+	 */
 	void process_statustext_apm_quirk(uint8_t severity, std::string &text) {
 		switch (severity) {
 		case 1: // SEVERITY_LOW
@@ -544,7 +561,7 @@ private:
 			 return str_custom_mode(custom_mode);
 			 break;
 		}
-	};
+	}
 
 	//! APM:Copter custom mode -> string
 	static std::string str_mode_arducopter(int custom_mode) {
@@ -565,7 +582,37 @@ private:
 			 return str_custom_mode(custom_mode);
 			 break;
 		}
-	};
+	}
+
+	static std::string str_mode_px4(int custom_mode_int) {
+		px4::custom_mode custom_mode;
+		custom_mode.data = custom_mode_int;
+
+		switch (custom_mode.main_mode) {
+		case px4::custom_mode::MAIN_MODE_MANUAL:   return "MANUAL";	break;
+		case px4::custom_mode::MAIN_MODE_ACRO:     return "ACRO";	break;
+		case px4::custom_mode::MAIN_MODE_ALTCTL:   return "ALTCTL";	break;
+		case px4::custom_mode::MAIN_MODE_POSCTL:   return "POSCTL";	break;
+		case px4::custom_mode::MAIN_MODE_OFFBOARD: return "OFFBOARD";	break;
+		case px4::custom_mode::MAIN_MODE_AUTO:
+			switch (custom_mode.sub_mode) {
+			case px4::custom_mode::SUB_MODE_AUTO_MISSION: return "AUTO.MISSION";	break;
+			case px4::custom_mode::SUB_MODE_AUTO_LOITER:  return "AUTO.LOITER";	break;
+			case px4::custom_mode::SUB_MODE_AUTO_RTL:     return "AUTO.RTL";	break;
+			case px4::custom_mode::SUB_MODE_AUTO_LAND:    return "AUTO.LAND";	break;
+			case px4::custom_mode::SUB_MODE_AUTO_RTGS:    return "AUTO.RTGS";	break;
+			case px4::custom_mode::SUB_MODE_AUTO_READY:   return "AUTO.READY";	break;
+			case px4::custom_mode::SUB_MODE_AUTO_TAKEOFF: return "AUTO.TAKEOFF";	break;
+			default:
+				return str_custom_mode(custom_mode_int);
+				break;
+			}
+			break;
+		default:
+			return str_custom_mode(custom_mode_int);
+			break;
+		}
+	}
 
 	//! Port pymavlink mavutil.mode_string_v10
 	std::string str_mode_v10(int base_mode, int custom_mode) {
@@ -587,22 +634,74 @@ private:
 				/* TODO: APM:Rover */
 				return str_custom_mode(custom_mode);
 		}
+		else if (uas->is_px4())
+			return str_mode_px4(custom_mode);
 		else
 			/* TODO: other autopilot */
 			return str_custom_mode(custom_mode);
 	}
 
-	void timeout_cb(boost::system::error_code error) {
-		if (error)
-			return;
+	/* -*- message handlers -*- */
 
+	void handle_heartbeat(const mavlink_message_t *msg) {
+		mavlink_heartbeat_t hb;
+		mavlink_msg_heartbeat_decode(msg, &hb);
+		hb_diag.tick(hb);
+
+		// update context && setup connection timeout
+		uas->update_heartbeat(hb.type, hb.autopilot);
+		uas->update_connection_status(true);
+		timeout_timer.stop();
+		timeout_timer.start();
+
+		mavros::StatePtr state_msg = boost::make_shared<mavros::State>();
+		state_msg->header.stamp = ros::Time::now();
+		state_msg->armed = hb.base_mode & MAV_MODE_FLAG_SAFETY_ARMED;
+		state_msg->guided = hb.base_mode & MAV_MODE_FLAG_GUIDED_ENABLED;
+		state_msg->mode = str_mode_v10(hb.base_mode, hb.custom_mode);
+
+		state_pub.publish(state_msg);
+	}
+
+	void handle_sys_status(const mavlink_message_t *msg) {
+		mavlink_sys_status_t stat;
+		mavlink_msg_sys_status_decode(msg, &stat);
+
+		float volt = stat.voltage_battery / 1000.0;	// mV
+		float curr = stat.current_battery / 100.0;	// 10 mA or -1
+		float rem = stat.battery_remaining / 100.0;	// or -1
+
+		mavros::BatteryStatusPtr batt_msg = boost::make_shared<mavros::BatteryStatus>();
+		batt_msg->header.stamp = ros::Time::now();
+		batt_msg->voltage = volt;
+		batt_msg->current = curr;
+		batt_msg->remaining = rem;
+
+		sys_diag.set(stat);
+		batt_diag.set(volt, curr, rem);
+		batt_pub.publish(batt_msg);
+	}
+
+	void handle_statustext(const mavlink_message_t *msg) {
+		mavlink_statustext_t textm;
+		mavlink_msg_statustext_decode(msg, &textm);
+
+		std::string text(textm.text,
+				strnlen(textm.text, sizeof(textm.text)));
+
+		if (uas->is_ardupilotmega())
+			process_statustext_apm_quirk(textm.severity, text);
+		else
+			process_statustext_normal(textm.severity, text);
+	}
+
+	/* -*- timer callbacks -*- */
+
+	void timeout_cb(const ros::TimerEvent &event) {
 		uas->update_connection_status(false);
 	}
 
-	void heartbeat_cb(boost::system::error_code error) {
-		if (error)
-			return;
-
+	void heartbeat_cb(const ros::TimerEvent &event) {
 		mavlink_message_t msg;
 		mavlink_msg_heartbeat_pack_chan(UAS_PACK_CHAN(uas), &msg,
 				MAV_TYPE_ONBOARD_CONTROLLER,
@@ -613,11 +712,19 @@ private:
 				);
 
 		uas->mav_link->send_message(&msg);
-
-		/* restart timer */
-		heartbeat_timer->expires_from_now(conn_heartbeat);
-		heartbeat_timer->async_wait(boost::bind(&SystemStatusPlugin::heartbeat_cb, this, _1));
 	}
+
+	void sys_time_cb(const ros::TimerEvent &event) {
+		mavlink_message_t msg;
+		auto stamp = ros::Time::now();
+		mavlink_msg_system_time_pack_chan(UAS_PACK_CHAN(uas), &msg,
+			stamp.toNSec() / 1000, /* nano -> micro */
+			0
+			);
+		uas->mav_link->send_message(&msg);
+	}
+
+	/* -*- ros callbacks -*- */
 
 	bool set_rate_cb(mavros::StreamRate::Request &req,
 			mavros::StreamRate::Response &res) {
