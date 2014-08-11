@@ -30,7 +30,25 @@
 		<description>Send to FCU vision position estimates.</description>
 	</class>
 	<class name="setpoint_position" type="mavplugin::SetpointPositionPlugin" base_class_type="mavplugin::MavRosPlugin">
-		<description>Send to FCU external setpoint.</description>
+		<description>Send to FCU external position setpoint.</description>
+	</class>
+	<class name="safety_area" type="mavplugin::SafetyAreaPlugin" base_class_type="mavplugin::MavRosPlugin">
+		<description>Send to FCU safety allowed area.</description>
+	</class>
+	<class name="3dr_radio" type="mavplugin::TDRRadioPlugin" base_class_type="mavplugin::MavRosPlugin">
+		<description>Publish 3DR Radio modem status.</description>
+	</class>
+	<class name="setpoint_velocity" type="mavplugin::SetpointVelocityPlugin" base_class_type="mavplugin::MavRosPlugin">
+		<description>Send to FCU external velocity setpoint.</description>
+	</class>
+	<class name="setpoint_accel" type="mavplugin::SetpointAccelerationPlugin" base_class_type="mavplugin::MavRosPlugin">
+		<description>Send to FCU external acceleration/force setpoint.</description>
+	</class>
+	<class name="setpoint_attitude" type="mavplugin::SetpointAttitudePlugin" base_class_type="mavplugin::MavRosPlugin">
+		<description>Send to FCU external attitude setpoint.</description>
+	</class>
+	<class name="vision_speed" type="mavplugin::VisionSpeedPlugin" base_class_type="mavplugin::MavRosPlugin">
+		<description>Send vision speed estimate to FCU.</description>
 	</class>
 </library>
 

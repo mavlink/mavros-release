@@ -1,6 +1,9 @@
 /**
  * @file mavconn_serial.cpp
  * @author Vladimir Ermakov <vooon341@gmail.com>
+ *
+ * @addtogroup mavconn
+ * @{
  */
 /*
  * Copyright 2013 Vladimir Ermakov.
@@ -20,174 +23,185 @@
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#include <mavros/mavconn_serial.h>
 #include <mavros/utils.h>
+#include <mavros/mavconn_serial.h>
 #include <ros/console.h>
 #include <ros/assert.h>
-#include <algorithm>
 
-using namespace mavconn;
+namespace mavconn {
+using boost::system::error_code;
+using boost::asio::io_service;
+using boost::asio::serial_port_base;
+using boost::asio::buffer;
+typedef std::lock_guard<std::recursive_mutex> lock_guard;
+
 
 MAVConnSerial::MAVConnSerial(uint8_t system_id, uint8_t component_id,
 		std::string device, unsigned baudrate) :
 	MAVConnInterface(system_id, component_id),
+	tx_in_progress(false),
 	io_service(),
-	serial_dev(io_service, device),
-	tx_buf_size(0),
-	tx_buf_max_size(0),
-	tx_in_process(false)
+	serial_dev(io_service)
 {
-	serial_dev.set_option(asio::serial_port_base::baud_rate(baudrate));
-	serial_dev.set_option(asio::serial_port_base::character_size(8));
-	serial_dev.set_option(asio::serial_port_base::parity(asio::serial_port_base::parity::none));
-	serial_dev.set_option(asio::serial_port_base::stop_bits(asio::serial_port_base::stop_bits::one));
-	serial_dev.set_option(asio::serial_port_base::flow_control(asio::serial_port_base::flow_control::none));
+	ROS_INFO_STREAM_NAMED("mavconn", "serial" << channel << ": device: " << device << " @ " << baudrate << " bps");
 
-	ROS_INFO_STREAM_NAMED("mavconn", "serial: device: " << device << " @ " << baudrate << " bps");
+	try {
+		serial_dev.open(device);
 
-	// reserve some space in tx queue
-	tx_q.reserve(TX_EXTENT * 2);
+		// Sent baudrate, and 8N1 mode
+		serial_dev.set_option(serial_port_base::baud_rate(baudrate));
+		serial_dev.set_option(serial_port_base::character_size(8));
+		serial_dev.set_option(serial_port_base::parity(serial_port_base::parity::none));
+		serial_dev.set_option(serial_port_base::stop_bits(serial_port_base::stop_bits::one));
+		serial_dev.set_option(serial_port_base::flow_control(serial_port_base::flow_control::none));
+	}
+	catch (boost::system::system_error &err) {
+		throw DeviceError("serial", err);
+	}
 
 	// give some work to io_service before start
 	io_service.post(boost::bind(&MAVConnSerial::do_read, this));
 
 	// run io_service for async io
-	boost::thread t(boost::bind(&asio::io_service::run, &this->io_service));
+	std::thread t(boost::bind(&io_service::run, &this->io_service));
 	mavutils::set_thread_name(t, "MAVConnSerial%d", channel);
 	io_thread.swap(t);
 }
 
-MAVConnSerial::~MAVConnSerial()
-{
+MAVConnSerial::~MAVConnSerial() {
+	close();
+}
+
+void MAVConnSerial::close() {
+	lock_guard lock(mutex);
+	if (!is_open())
+		return;
+
 	serial_dev.close();
 	io_service.stop();
+
+	// clear tx queue
+	std::for_each(tx_q.begin(), tx_q.end(),
+			[](MsgBuffer *p) { delete p; });
+	tx_q.clear();
+
+	if (io_thread.joinable())
+		io_thread.join();
+
+	/* emit */ port_closed();
 }
 
 void MAVConnSerial::send_bytes(const uint8_t *bytes, size_t length)
 {
-	{
-		boost::recursive_mutex::scoped_lock lock(mutex);
-		tx_q.insert(tx_q.end(), bytes, bytes + length);
+	if (!is_open()) {
+		ROS_ERROR_THROTTLE_NAMED(10, "mavconn", "serial%d:send: channel closed!", channel);
+		return;
 	}
-	io_service.post(boost::bind(&MAVConnSerial::do_write, this));
+
+	MsgBuffer *buf = new MsgBuffer(bytes, length);
+	{
+		lock_guard lock(mutex);
+		tx_q.push_back(buf);
+	}
+	io_service.post(boost::bind(&MAVConnSerial::do_write, this, true));
 }
 
 void MAVConnSerial::send_message(const mavlink_message_t *message, uint8_t sysid, uint8_t compid)
 {
-	ROS_ASSERT(message != NULL);
-	uint8_t buffer[MAVLINK_MAX_PACKET_LEN + 2];
-	size_t length;
+	ROS_ASSERT(message != nullptr);
 
-	/* if sysid/compid pair not match we need explicit finalize
-	 * else just copy to buffer */
-	if (message->sysid != sysid || message->compid != compid) {
-		mavlink_message_t msg = *message;
-
-#if MAVLINK_CRC_EXTRA
-		mavlink_finalize_message_chan(&msg, sysid, compid, channel, message->len, mavlink_crcs[msg.msgid]);
-#else
-		mavlink_finalize_message_chan(&msg, sysid, compid, channel, message->len);
-#endif
-
-		length = mavlink_msg_to_send_buffer(buffer, &msg);
+	if (!is_open()) {
+		ROS_ERROR_THROTTLE_NAMED(10, "mavconn", "serial%d:send: channel closed!", channel);
+		return;
 	}
-	else
-		length = mavlink_msg_to_send_buffer(buffer, message);
 
-	ROS_DEBUG_NAMED("mavconn", "serial::send_message: Message-ID: %d [%zu bytes]", message->msgid, length);
-	send_bytes(buffer, length);
+	ROS_DEBUG_NAMED("mavconn", "serial%d:send: Message-Id: %d [%d bytes]", channel, message->msgid, message->len);
+
+	MsgBuffer *buf = new_msgbuffer(message, sysid, compid);
+	{
+		lock_guard lock(mutex);
+		tx_q.push_back(buf);
+	}
+	io_service.post(boost::bind(&MAVConnSerial::do_write, this, true));
 }
 
 void MAVConnSerial::do_read(void)
 {
 	serial_dev.async_read_some(
-			boost::asio::buffer(rx_buf, sizeof(rx_buf)),
+			buffer(rx_buf, sizeof(rx_buf)),
 			boost::bind(&MAVConnSerial::async_read_end,
 				this,
 				boost::asio::placeholders::error,
 				boost::asio::placeholders::bytes_transferred));
 }
 
-void MAVConnSerial::async_read_end(boost::system::error_code error, size_t bytes_transfered)
+void MAVConnSerial::async_read_end(error_code error, size_t bytes_transferred)
 {
+	mavlink_message_t message;
+	mavlink_status_t status;
+
 	if (error) {
-		if (serial_dev.is_open()) {
-			serial_dev.close();
-			port_closed();
-			ROS_ERROR_NAMED("mavconn", "serial::async_read_end: error! port closed.");
-		}
-	} else {
-		mavlink_message_t message;
-		mavlink_status_t status;
-
-		for (size_t i = 0; i < bytes_transfered; i++) {
-			if (mavlink_parse_char(channel, rx_buf[i], &message, &status)) {
-				ROS_DEBUG_NAMED("mavconn", "serial::async_read_end: recv Message-Id: %d [%d bytes] Sys-Id: %d Comp-Id: %d",
-						message.msgid, message.len, message.sysid, message.compid);
-
-				/* emit */ message_received(&message, message.sysid, message.compid);
-			}
-		}
-
-		do_read();
+		ROS_ERROR_STREAM_NAMED("mavconn", "serial" << channel << ":receive: " << error.message());
+		close();
+		return;
 	}
+
+	for (ssize_t i = 0; i < bytes_transferred; i++) {
+		if (mavlink_parse_char(channel, rx_buf[i], &message, &status)) {
+			ROS_DEBUG_NAMED("mavconn", "serial%d:recv: Message-Id: %d [%d bytes] Sys-Id: %d Comp-Id: %d",
+					channel, message.msgid, message.len, message.sysid, message.compid);
+
+			/* emit */ message_received(&message, message.sysid, message.compid);
+		}
+	}
+
+	do_read();
 }
 
-void MAVConnSerial::copy_and_async_write(void)
+void MAVConnSerial::do_write(bool check_tx_state)
 {
-	// should called with locked mutex from io_service thread
+	if (check_tx_state && tx_in_progress)
+		return;
 
-	tx_buf_size = tx_q.size();
-	// mark transmission in progress
-	tx_in_process = true;
+	lock_guard lock(mutex);
+	if (tx_q.empty())
+		return;
 
-	if (tx_buf_max_size > TX_DELSIZE ||
-			tx_buf_size >= tx_buf_max_size) {
-
-		// Set buff eq. or gt than tx_buf_size
-		tx_buf_max_size = (tx_buf_size % TX_EXTENT == 0)? tx_buf_size :
-			(tx_buf_size / TX_EXTENT + 1) * TX_EXTENT;
-
-		tx_buf.reset(new uint8_t[tx_buf_max_size]);
-	}
-
-	std::copy(tx_q.begin(), tx_q.end(), tx_buf.get());
-	tx_q.clear();
-
-	boost::asio::async_write(serial_dev,
-			boost::asio::buffer(tx_buf.get(), tx_buf_size),
+	tx_in_progress = true;
+	MsgBuffer *buf = tx_q.front();
+	serial_dev.async_write_some(
+			buffer(buf->dpos(), buf->nbytes()),
 			boost::bind(&MAVConnSerial::async_write_end,
 				this,
-				boost::asio::placeholders::error));
+				boost::asio::placeholders::error,
+				boost::asio::placeholders::bytes_transferred));
 }
 
-void MAVConnSerial::do_write(void)
+void MAVConnSerial::async_write_end(error_code error, size_t bytes_transferred)
 {
-	// if write not in progress
-	if (!tx_in_process) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
-		copy_and_async_write();
+	if (error) {
+		ROS_ERROR_STREAM_NAMED("mavconn", "serial" << channel << ":write: " << error.message());
+		close();
+		return;
 	}
+
+	lock_guard lock(mutex);
+	if (tx_q.empty()) {
+		tx_in_progress = false;
+		return;
+	}
+
+	MsgBuffer *buf = tx_q.front();
+	buf->pos += bytes_transferred;
+	if (buf->nbytes() == 0) {
+		tx_q.pop_front();
+		delete buf;
+	}
+
+	if (!tx_q.empty())
+		do_write(false);
+	else
+		tx_in_progress = false;
 }
 
-void MAVConnSerial::async_write_end(boost::system::error_code error)
-{
-	if (!error) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
-
-		if (tx_q.empty()) {
-			tx_in_process = false;
-			tx_buf_size = 0;
-			return;
-		}
-
-		copy_and_async_write();
-	} else {
-		if (serial_dev.is_open()) {
-			serial_dev.close();
-			port_closed();
-			ROS_ERROR_NAMED("mavconn", "serial::async_write_end: error! port closed.");
-		}
-	}
-}
-
+}; // namespace mavconn

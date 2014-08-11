@@ -26,27 +26,33 @@
 
 #pragma once
 
+#include <list>
+#include <atomic>
+#include <boost/asio.hpp>
 #include <mavros/mavconn_interface.h>
-#include <boost/asio/serial_port.hpp>
-#include <boost/shared_array.hpp>
+#include <mavros/mavconn_msgbuffer.h>
 
 namespace mavconn {
 
 /**
  * @brief UDP interface
+ *
+ * @note IPv4 only
  */
 class MAVConnUDP : public MAVConnInterface {
 public:
 	/**
-	 * @param[id] server_addr    bind host
-	 * @param[id] server_port    bind port
-	 * @param[id] listener_addr  remote host (optional)
-	 * @param[id] listener_port  remote port (optional)
+	 * @param[id] bind_host    bind host
+	 * @param[id] bind_port    bind port
+	 * @param[id] remote_host  remote host (optional)
+	 * @param[id] remote_port  remote port (optional)
 	 */
 	MAVConnUDP(uint8_t system_id = 1, uint8_t component_id = MAV_COMP_ID_UDP_BRIDGE,
-			std::string server_addr = "localhost", unsigned short server_port = 14555,
-			std::string listner_addr = "", unsigned short listner_port = 14550);
+			std::string bind_host = "localhost", unsigned short bind_port = 14555,
+			std::string remote_host = "", unsigned short remote_port = 14550);
 	~MAVConnUDP();
+
+	void close();
 
 	using MAVConnInterface::send_message;
 	void send_message(const mavlink_message_t *message, uint8_t sysid, uint8_t compid);
@@ -56,31 +62,25 @@ public:
 	inline bool is_open() { return socket.is_open(); };
 
 private:
-	asio::io_service io_service;
-	std::unique_ptr<asio::io_service::work> io_work;
-	boost::thread io_thread;
-	asio::ip::udp::socket socket;
-	asio::ip::udp::endpoint server_endpoint;
-	asio::ip::udp::endpoint sender_endpoint;
-	asio::ip::udp::endpoint prev_sender_endpoint;
+	boost::asio::io_service io_service;
+	std::unique_ptr<boost::asio::io_service::work> io_work;
+	std::thread io_thread;
 
-	static constexpr size_t RX_BUFSIZE = MAVLINK_MAX_PACKET_LEN;
-	uint8_t rx_buf[RX_BUFSIZE];
-	std::vector<uint8_t> tx_q;
-	static constexpr size_t TX_EXTENT = 256;	//!< extent size for tx buffer
-	static constexpr size_t TX_DELSIZE = 4096;	//!< buffer delete condition
-	boost::shared_array<uint8_t> tx_buf;
-	size_t tx_buf_size;				//!< size of current buffer()
-	size_t tx_buf_max_size;				//!< allocated buffer size
-	bool tx_in_process;				//!< tx status
-	boost::recursive_mutex mutex;
-	bool sender_exists;
+	std::atomic<bool> remote_exists;
+	boost::asio::ip::udp::socket socket;
+	boost::asio::ip::udp::endpoint remote_ep;
+	boost::asio::ip::udp::endpoint last_remote_ep;
+	boost::asio::ip::udp::endpoint bind_ep;
 
-	void do_read(void);
-	void async_read_end(boost::system::error_code ec, size_t bytes_transfered);
-	void copy_and_async_write(void);
-	void do_write(void);
-	void async_write_end(boost::system::error_code ec);
+	std::atomic<bool> tx_in_progress;
+	std::list<MsgBuffer*> tx_q;
+	uint8_t rx_buf[MsgBuffer::MAX_SIZE];
+	std::recursive_mutex mutex;
+
+	void do_recvfrom();
+	void async_receive_end(boost::system::error_code, size_t bytes_transferred);
+	void do_sendto(bool check_tx_state);
+	void async_sendto_end(boost::system::error_code, size_t bytes_transferred);
 };
 
 }; // namespace mavconn
