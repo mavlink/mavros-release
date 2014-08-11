@@ -1,0 +1,12 @@
+Source: ros-hydro-mavros-extras
+Section: misc
+Priority: extra
+Maintainer: Vladimir Ermakov <vooon341@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), ros-hydro-catkin, ros-hydro-cv-bridge, ros-hydro-image-transport, ros-hydro-mavlink, ros-hydro-mavros, ros-hydro-roscpp, ros-hydro-sensor-msgs
+Homepage: 
+Standards-Version: 3.9.2
+
+Package: ros-hydro-mavros-extras
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-hydro-cv-bridge, ros-hydro-image-transport, ros-hydro-mavlink, ros-hydro-mavros, ros-hydro-roscpp, ros-hydro-sensor-msgs
+Description: Extra nodes and plugins for mavros
