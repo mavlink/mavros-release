@@ -40,6 +40,7 @@ namespace mavplugin {
 class RCIOPlugin : public MavRosPlugin {
 public:
 	RCIOPlugin() :
+		uas(nullptr),
 		raw_rc_in(0),
 		raw_rc_out(0),
 		has_rc_channels_msg(false)
@@ -54,7 +55,7 @@ public:
 		rc_nh = ros::NodeHandle(nh, "rc");
 		rc_in_pub = rc_nh.advertise<mavros::RCIn>("in", 10);
 		rc_out_pub = rc_nh.advertise<mavros::RCOut>("out", 10);
-		override_srv = rc_nh.advertiseService("override", &RCIOPlugin::override_cb, this);
+		override_sub = rc_nh.subscribe("override", 10, &RCIOPlugin::override_cb, this);
 
 		uas->sig_connection_changed.connect(boost::bind(&RCIOPlugin::connection_cb, this, _1));
 	};
@@ -94,7 +95,7 @@ public:
 	};
 
 private:
-	boost::recursive_mutex mutex;
+	std::recursive_mutex mutex;
 	UAS *uas;
 
 	std::vector<uint16_t> raw_rc_in;
@@ -104,13 +105,13 @@ private:
 	ros::NodeHandle rc_nh;
 	ros::Publisher rc_in_pub;
 	ros::Publisher rc_out_pub;
-	ros::ServiceServer override_srv;
+	ros::Subscriber override_sub;
 
 	/* -*- rx handlers -*- */
 
 	void handle_rc_channels_raw(const mavlink_message_t *msg,
 			mavlink_rc_channels_raw_t &port) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 
 		/* if we receive RC_CHANNELS, drop RC_CHANNELS_RAW */
 		if (has_rc_channels_msg)
@@ -143,8 +144,9 @@ private:
 
 	void handle_rc_channels(const mavlink_message_t *msg,
 			mavlink_rc_channels_t &channels) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 
+		ROS_INFO_COND_NAMED(!has_rc_channels_msg, "rc", "RC_CHANNELS message detected!");
 		has_rc_channels_msg = true;
 
 		if (channels.chancount > 18) {
@@ -190,7 +192,7 @@ private:
 
 	void handle_servo_output_raw(const mavlink_message_t *msg,
 			mavlink_servo_output_raw_t &port) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 
 		size_t offset = port.port * 8;
 		if (raw_rc_out.size() < offset + 8)
@@ -218,7 +220,7 @@ private:
 
 	/* -*- low-level send functions -*- */
 
-	void rc_channels_override(boost::array<uint16_t, 8> &channels) {
+	void rc_channels_override(const boost::array<uint16_t, 8> &channels) {
 		mavlink_message_t msg;
 
 		mavlink_msg_rc_channels_override_pack_chan(UAS_PACK_CHAN(uas), &msg,
@@ -238,18 +240,15 @@ private:
 	/* -*- callbacks -*- */
 
 	void connection_cb(bool connected) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		raw_rc_in.clear();
 		raw_rc_out.clear();
 		has_rc_channels_msg = false;
 	}
 
-	bool override_cb(mavros::OverrideRCIn::Request &req,
-			mavros::OverrideRCIn::Response &res) {
+	void override_cb(const mavros::OverrideRCIn::ConstPtr req) {
 
-		rc_channels_override(req.channels);
-		res.success = true;
-		return true;
+		rc_channels_override(req->channels);
 	}
 };
 
