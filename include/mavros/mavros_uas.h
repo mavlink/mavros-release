@@ -26,10 +26,14 @@
 
 #pragma once
 
+#include <mutex>
+#include <atomic>
 #include <tf/transform_datatypes.h>
 #include <mavros/mavconn_interface.h>
 
 namespace mavplugin {
+typedef std::lock_guard<std::recursive_mutex> lock_guard;
+typedef std::unique_lock<std::recursive_mutex> unique_lock;
 
 /**
  * @brief helper for mavlink_msg_*_pack_chan()
@@ -67,21 +71,31 @@ public:
 	/**
 	 * Update autopilot type on every HEARTBEAT
 	 */
-	void update_heartbeat(uint8_t type_, uint8_t autopilot_);
+	void update_heartbeat(uint8_t type_, uint8_t autopilot_) {
+		type = type_;
+		autopilot = autopilot_;
+	}
 
 	/**
 	 * Update autopilot connection status (every HEARTBEAT/conn_timeout)
 	 */
-	void update_connection_status(bool conn_);
+	void update_connection_status(bool conn_) {
+		lock_guard lock(mutex);
+
+		if (conn_ != connected) {
+			connected = conn_;
+			sig_connection_changed(connected);
+		}
+	}
 
 	inline enum MAV_TYPE get_type() {
-		boost::recursive_mutex::scoped_lock lock(mutex);
-		return type;
+		uint8_t type_ = type;
+		return static_cast<enum MAV_TYPE>(type_);
 	};
 
 	inline enum MAV_AUTOPILOT get_autopilot() {
-		boost::recursive_mutex::scoped_lock lock(mutex);
-		return autopilot;
+		uint8_t autopilot_ = autopilot;
+		return static_cast<enum MAV_AUTOPILOT>(autopilot_);
 	};
 
 	/**
@@ -108,7 +122,7 @@ public:
 	 * @return angilar velocity [ENU, body-fixed]
 	 */
 	inline tf::Vector3 get_attitude_angular_velocity() {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		return angular_velocity;
 	}
 
@@ -117,7 +131,7 @@ public:
 	 * @param[in] vec angular velocity [ENU, body-fixed]
 	 */
 	inline void set_attitude_angular_velocity(tf::Vector3 &vec) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		angular_velocity = vec;
 	}
 
@@ -126,7 +140,7 @@ public:
 	 * @return linear acceleration [ENU, body-fixed]
 	 */
 	inline tf::Vector3 get_attitude_linear_acceleration() {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		return linear_acceleration;
 	}
 
@@ -135,7 +149,7 @@ public:
 	 * @param[in] vec linear acceleration [ENU, body-fixed]
 	 */
 	inline void set_attitude_linear_acceleration(tf::Vector3 &vec) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		linear_acceleration = vec;
 	}
 
@@ -144,7 +158,7 @@ public:
 	 * @return orientation quaternion [ENU, body-fixed]
 	 */
 	inline tf::Quaternion get_attitude_orientation() {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		return orientation;
 	}
 
@@ -153,7 +167,7 @@ public:
 	 * @param[in] quat orientation [ENU, body-fixed]
 	 */
 	inline void set_attitude_orientation(tf::Quaternion &quat) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		orientation = quat;
 	}
 
@@ -165,6 +179,13 @@ public:
 	};
 
 	/**
+	 * For PX4 quirks
+	 */
+	inline bool is_px4() {
+		return MAV_AUTOPILOT_PX4 == get_autopilot();
+	}
+
+	/**
 	 * This signal emith when status was changes
 	 *
 	 * @param bool connection status
@@ -172,7 +193,7 @@ public:
 	boost::signals2::signal<void(bool)> sig_connection_changed;
 
 	inline bool get_connection_status() {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		return connected;
 	};
 
@@ -185,23 +206,16 @@ public:
 		mav_link = link_;
 	};
 
-	/**
-	 * for plugin timers
-	 */
-	boost::asio::io_service timer_service;
-
 private:
-	boost::recursive_mutex mutex;
-	enum MAV_TYPE type;
-	enum MAV_AUTOPILOT autopilot;
+	std::recursive_mutex mutex;
+	std::atomic<uint8_t> type;
+	std::atomic<uint8_t> autopilot;
 	uint8_t target_system;
 	uint8_t target_component;
 	bool connected;
 	tf::Vector3 angular_velocity;
 	tf::Vector3 linear_acceleration;
 	tf::Quaternion orientation;
-	std::unique_ptr<boost::asio::io_service::work> timer_work;
-	boost::thread timer_thread;
 };
 
 }; // namespace mavplugin
