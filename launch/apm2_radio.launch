@@ -1,8 +1,9 @@
 <launch>
 	<!-- vim: ft=roslaunch -->
-	<!-- example launch script for PX4 based FCU's -->
+	<!-- example launch script for ArduPilotMega based FCU's -->
+	<!-- This file almost same as apm2.launch but defaults set for connections via 3DR Radio modem -->
 
-	<arg name="fcu_url" default="serial:///dev/ttyACM0:57600" />
+	<arg name="fcu_url" default="/dev/ttyUSB0:57600" />
 	<arg name="gcs_url" default="" />
 	<arg name="tgt_system" default="1" />
 	<arg name="tgt_component" default="50" />
@@ -13,13 +14,11 @@
 		<param name="target_system_id" value="$(arg tgt_system)" />
 		<param name="target_component_id" value="$(arg tgt_component)" />
 
-		<!-- bugs in command and waypoint plugins -->
-		<rosparam command="load" file="$(find mavros)/launch/px4_blacklist.yaml" />
+		<!-- position plugins supported only by PX4 experimental branch -->
+		<rosparam command="load" file="$(find mavros)/launch/apm2_radio_blacklist.yaml" />
 
 		<!-- enable heartbeat send and reduce timeout -->
 		<param name="conn_heartbeat" value="5.0" />
 		<param name="conn_timeout" value="10.0" />
-		<!-- enable mavlink autostart on USB port -->
-		<param name="startup_px4_usb_quirk" value="true" />
 	</node>
 </launch>

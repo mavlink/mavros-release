@@ -1,6 +1,9 @@
 /**
  * @file mavconn_udp.cpp
  * @author Vladimir Ermakov <vooon341@gmail.com>
+ *
+ * @addtogroup mavconn
+ * @{
  */
 /*
  * Copyright 2013 Vladimir Ermakov.
@@ -20,213 +23,238 @@
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#include <mavros/mavconn_udp.h>
 #include <mavros/utils.h>
+#include <mavros/mavconn_udp.h>
 #include <ros/console.h>
 #include <ros/assert.h>
-#include <algorithm>
 
-using namespace mavconn;
-using namespace boost::asio::ip;
+namespace mavconn {
+using boost::system::error_code;
+using boost::asio::io_service;
+using boost::asio::ip::udp;
+using boost::asio::buffer;
+typedef std::lock_guard<std::recursive_mutex> lock_guard;
+
+
+static bool resolve_address_udp(io_service &io, std::string host, unsigned short port, udp::endpoint &ep)
+{
+	bool result = false;
+	udp::resolver resolver(io);
+	error_code ec;
+
+	udp::resolver::query query(host, "");
+	std::for_each(resolver.resolve(query, ec), udp::resolver::iterator(),
+		[&](const udp::endpoint &q_ep) {
+			ep = q_ep;
+			ep.port(port);
+			result = true;
+			ROS_DEBUG_STREAM_NAMED("mavconn", "udp: host " << host << " resolved as " << ep);
+		});
+
+	if (ec) {
+		ROS_WARN_STREAM_NAMED("mavconn", "udp: resolve error: " << ec.message());
+		result = false;
+	}
+
+	return result;
+}
+
 
 MAVConnUDP::MAVConnUDP(uint8_t system_id, uint8_t component_id,
-		std::string server_addr, unsigned short server_port,
-		std::string listner_addr, unsigned short listner_port) :
+		std::string bind_host, unsigned short bind_port,
+		std::string remote_host, unsigned short remote_port) :
 	MAVConnInterface(system_id, component_id),
+	remote_exists(false),
+	tx_in_progress(false),
 	io_service(),
-	io_work(new asio::io_service::work(io_service)),
-	socket(io_service),
-	sender_exists(false),
-	tx_buf_size(0),
-	tx_buf_max_size(0),
-	tx_in_process(false)
+	io_work(new io_service::work(io_service)),
+	socket(io_service)
 {
-	udp::resolver resolver(io_service);
+	if (!resolve_address_udp(io_service, bind_host, bind_port, bind_ep))
+		throw DeviceError("udp: resolve", "Bind address resolve failed");
 
-	udp::resolver::query server_query(server_addr, "");
-	for(udp::resolver::iterator i = resolver.resolve(server_query);
-			i != udp::resolver::iterator();
-			++i) {
+	ROS_INFO_STREAM_NAMED("mavconn", "udp" << channel << ": Bind address: " << bind_ep);
 
-		server_endpoint = *i;
-		server_endpoint.port(server_port);
-		ROS_INFO_STREAM_NAMED("mavconn", "udp: Bind address: " << server_endpoint);
+	if (remote_host != "") {
+		remote_exists = resolve_address_udp(io_service, remote_host, remote_port, remote_ep);
+
+		if (remote_exists)
+			ROS_INFO_STREAM_NAMED("mavconn", "udp" << channel << ": Remote address: " << remote_ep);
+		else
+			ROS_WARN_NAMED("mavconn", "udp%d: Remote address resolve failed.", channel);
 	}
 
-	if (listner_addr != "") {
-		udp::resolver::query listner_query(listner_addr, "");
-		for(udp::resolver::iterator i = resolver.resolve(listner_query);
-				i != udp::resolver::iterator();
-				++i) {
-
-			sender_endpoint = *i;
-			sender_endpoint.port(listner_port);
-			prev_sender_endpoint = sender_endpoint;
-			sender_exists = true;
-			ROS_INFO_STREAM_NAMED("mavconn", "udp: GCS address: " << sender_endpoint);
-		}
+	try {
+		socket.open(udp::v4());
+		socket.bind(bind_ep);
 	}
-
-	socket.open(udp::v4());
-	socket.bind(server_endpoint);
-
-	// reserve some space in tx queue
-	tx_q.reserve(TX_EXTENT * 2);
+	catch (boost::system::system_error &err) {
+		throw DeviceError("udp", err);
+	}
 
 	// give some work to io_service before start
-	io_service.post(boost::bind(&MAVConnUDP::do_read, this));
+	io_service.post(boost::bind(&MAVConnUDP::do_recvfrom, this));
 
 	// run io_service for async io
-	boost::thread t(boost::bind(&boost::asio::io_service::run, &this->io_service));
+	std::thread t(boost::bind(&io_service::run, &this->io_service));
 	mavutils::set_thread_name(t, "MAVConnUDP%d", channel);
 	io_thread.swap(t);
 }
 
-MAVConnUDP::~MAVConnUDP()
-{
+MAVConnUDP::~MAVConnUDP() {
+	close();
+}
+
+void MAVConnUDP::close() {
+	lock_guard lock(mutex);
+	if (!is_open())
+		return;
+
 	io_work.reset();
 	io_service.stop();
+	socket.close();
+
+	// clear tx queue
+	std::for_each(tx_q.begin(), tx_q.end(),
+			[](MsgBuffer *p) { delete p; });
+	tx_q.clear();
+
+	if (io_thread.joinable())
+		io_thread.join();
+
+	/* emit */ port_closed();
 }
 
 void MAVConnUDP::send_bytes(const uint8_t *bytes, size_t length)
 {
-	{
-		boost::recursive_mutex::scoped_lock lock(mutex);
-		tx_q.insert(tx_q.end(), bytes, bytes + length);
+	if (!is_open()) {
+		ROS_ERROR_THROTTLE_NAMED(10, "mavconn", "udp%d:send: channel closed!", channel);
+		return;
 	}
-	io_service.post(boost::bind(&MAVConnUDP::do_write, this));
+
+	if (!remote_exists) {
+		ROS_DEBUG_NAMED("mavconn", "udp%d:send:: Remote not known, message dropped.", channel);
+		return;
+	}
+
+	MsgBuffer *buf = new MsgBuffer(bytes, length);
+	{
+		lock_guard lock(mutex);
+		tx_q.push_back(buf);
+	}
+	io_service.post(boost::bind(&MAVConnUDP::do_sendto, this, true));
 }
 
 void MAVConnUDP::send_message(const mavlink_message_t *message, uint8_t sysid, uint8_t compid)
 {
-	ROS_ASSERT(message != NULL);
-	uint8_t buffer[MAVLINK_MAX_PACKET_LEN + 2];
-	size_t length;
+	ROS_ASSERT(message != nullptr);
 
-	/* if sysid/compid pair not match we need explicit finalize
-	 * else just copy to buffer */
-	if (message->sysid != sysid || message->compid != compid) {
-		mavlink_message_t msg = *message;
-
-#if MAVLINK_CRC_EXTRA
-		mavlink_finalize_message_chan(&msg, sysid, compid, channel, message->len, mavlink_crcs[msg.msgid]);
-#else
-		mavlink_finalize_message_chan(&msg, sysid, compid, channel, message->len);
-#endif
-
-		length = mavlink_msg_to_send_buffer(buffer, &msg);
-	}
-	else
-		length = mavlink_msg_to_send_buffer(buffer, message);
-
-	ROS_DEBUG_NAMED("mavconn", "udp::send_message: Message-ID: %d [%zu bytes] Sys-Id: %d Comp-Id: %d",
-			message->msgid, length, sysid, compid);
-	send_bytes(buffer, length);
-}
-
-void MAVConnUDP::do_read(void)
-{
-	socket.async_receive_from(
-			asio::buffer(rx_buf, sizeof(rx_buf)),
-			sender_endpoint,
-			boost::bind(&MAVConnUDP::async_read_end,
-				this,
-				asio::placeholders::error,
-				asio::placeholders::bytes_transferred));
-}
-
-void MAVConnUDP::async_read_end(boost::system::error_code error, size_t bytes_transfered)
-{
-	if (error) {
-		if (socket.is_open()) {
-			socket.close();
-			port_closed();
-			ROS_ERROR_NAMED("mavconn", "udp::async_read_end: error! port closed.");
-		}
-	} else {
-		mavlink_message_t message;
-		mavlink_status_t status;
-
-		if (sender_endpoint != prev_sender_endpoint) {
-			ROS_INFO_STREAM_NAMED("mavconn", "udp: GCS address: " << sender_endpoint);
-			prev_sender_endpoint = sender_endpoint;
-			sender_exists = true;
-		}
-
-		for (size_t i = 0; i < bytes_transfered; i++) {
-			if (mavlink_parse_char(channel, rx_buf[i], &message, &status)) {
-				ROS_DEBUG_NAMED("mavconn", "udp::async_read_end: recv Message-Id: %d [%d bytes] Sys-Id: %d Comp-Id: %d",
-						message.msgid, message.len, message.sysid, message.compid);
-
-				/* emit */ message_received(&message, message.sysid, message.compid);
-			}
-		}
-
-		do_read();
-	}
-}
-
-void MAVConnUDP::copy_and_async_write(void)
-{
-	// should called with locked mutex from io_service thread
-
-	tx_buf_size = tx_q.size();
-	// mark transmission in progress
-	tx_in_process = true;
-
-	if (tx_buf_max_size > TX_DELSIZE ||
-			tx_buf_size >= tx_buf_max_size) {
-
-		// Set buff eq. or gt than tx_buf_size
-		tx_buf_max_size = (tx_buf_size % TX_EXTENT == 0)? tx_buf_size :
-			(tx_buf_size / TX_EXTENT + 1) * TX_EXTENT;
-
-		tx_buf.reset(new uint8_t[tx_buf_max_size]);
-	}
-
-	std::copy(tx_q.begin(), tx_q.end(), tx_buf.get());
-	tx_q.clear();
-
-	socket.async_send_to(
-			asio::buffer(tx_buf.get(), tx_buf_size),
-			sender_endpoint,
-			boost::bind(&MAVConnUDP::async_write_end,
-				this,
-				asio::placeholders::error));
-}
-
-void MAVConnUDP::do_write(void)
-{
-	if (!sender_exists) {
-		ROS_DEBUG_THROTTLE_NAMED(30, "mavconn", "udp::do_write: sender do not exists!");
+	if (!is_open()) {
+		ROS_ERROR_THROTTLE_NAMED(10, "mavconn", "udp%d:send: channel closed!", channel);
 		return;
 	}
 
-	// if write not in progress
-	if (!tx_in_process) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
-		copy_and_async_write();
+	if (!remote_exists) {
+		ROS_DEBUG_NAMED("mavconn", "udp%d:send: Remote not known, message dropped.", channel);
+		return;
 	}
+
+	ROS_DEBUG_NAMED("mavconn", "udp%d:send: Message-Id: %d [%d bytes] Sys-Id: %d Comp-Id: %d",
+			channel, message->msgid, message->len, sysid, compid);
+
+	MsgBuffer *buf = new_msgbuffer(message, sysid, compid);
+	{
+		lock_guard lock(mutex);
+		tx_q.push_back(buf);
+	}
+	io_service.post(boost::bind(&MAVConnUDP::do_sendto, this, true));
 }
 
-void MAVConnUDP::async_write_end(boost::system::error_code error)
+void MAVConnUDP::do_recvfrom()
 {
-	if (!error) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
-
-		if (tx_q.empty()) {
-			tx_in_process = false;
-			tx_buf_size = 0;
-			return;
-		}
-
-		copy_and_async_write();
-	} else {
-		if (socket.is_open()) {
-			socket.close();
-			port_closed();
-			ROS_ERROR_NAMED("mavconn", "udp::async_write_end: error! port closed.");
-		}
-	}
+	socket.async_receive_from(
+			buffer(rx_buf, sizeof(rx_buf)),
+			remote_ep,
+			boost::bind(&MAVConnUDP::async_receive_end,
+				this,
+				boost::asio::placeholders::error,
+				boost::asio::placeholders::bytes_transferred));
 }
 
+void MAVConnUDP::async_receive_end(error_code error, size_t bytes_transferred)
+{
+	mavlink_message_t message;
+	mavlink_status_t status;
+
+	if (error) {
+		ROS_ERROR_STREAM_NAMED("mavconn", "udp" << channel << ":receive: " << error.message());
+		close();
+		return;
+	}
+
+	if (remote_ep != last_remote_ep) {
+		ROS_INFO_STREAM_NAMED("mavconn", "udp" << channel << ": Remote address: " << remote_ep);
+		remote_exists = true;
+		last_remote_ep = remote_ep;
+	}
+
+	for (ssize_t i = 0; i < bytes_transferred; i++) {
+		if (mavlink_parse_char(channel, rx_buf[i], &message, &status)) {
+			ROS_DEBUG_NAMED("mavconn", "udp%d:recv: Message-Id: %d [%d bytes] Sys-Id: %d Comp-Id: %d",
+					channel, message.msgid, message.len, message.sysid, message.compid);
+
+			/* emit */ message_received(&message, message.sysid, message.compid);
+		}
+	}
+
+	do_recvfrom();
+}
+
+void MAVConnUDP::do_sendto(bool check_tx_state)
+{
+	if (check_tx_state && tx_in_progress)
+		return;
+
+	lock_guard lock(mutex);
+	if (tx_q.empty())
+		return;
+
+	tx_in_progress = true;
+	MsgBuffer *buf = tx_q.front();
+	socket.async_send_to(
+			buffer(buf->dpos(), buf->nbytes()),
+			remote_ep,
+			boost::bind(&MAVConnUDP::async_sendto_end,
+				this,
+				boost::asio::placeholders::error,
+				boost::asio::placeholders::bytes_transferred));
+}
+
+void MAVConnUDP::async_sendto_end(error_code error, size_t bytes_transferred)
+{
+	if (error) {
+		ROS_ERROR_STREAM_NAMED("mavconn", "udp" << channel << ":sendto: " << error.message());
+		close();
+		return;
+	}
+
+	lock_guard lock(mutex);
+	if (tx_q.empty()) {
+		tx_in_progress = false;
+		return;
+	}
+
+	MsgBuffer *buf = tx_q.front();
+	buf->pos += bytes_transferred;
+	if (buf->nbytes() == 0) {
+		tx_q.pop_front();
+		delete buf;
+	}
+
+	if (!tx_q.empty())
+		do_sendto(false);
+	else
+		tx_in_progress = false;
+}
+
+}; // namespace mavconn
