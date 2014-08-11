@@ -24,20 +24,23 @@
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
+#include <chrono>
+#include <condition_variable>
 #include <mavros/mavros_plugin.h>
 #include <pluginlib/class_list_macros.h>
-#include <boost/date_time/posix_time/posix_time.hpp>
 
 #include <mavros/CommandLong.h>
 #include <mavros/CommandBool.h>
 #include <mavros/CommandMode.h>
 #include <mavros/CommandHome.h>
+#include <mavros/CommandTOL.h>
 
 namespace mavplugin {
 
 class CommandTransaction {
 public:
-	boost::condition_variable ack;
+	std::mutex cond_mutex;
+	std::condition_variable ack;
 	uint16_t expected_command;
 	uint8_t result;
 
@@ -55,7 +58,9 @@ public:
  */
 class CommandPlugin : public MavRosPlugin {
 public:
-	CommandPlugin()
+	CommandPlugin() :
+		uas(nullptr),
+		ACK_TIMEOUT_DT(ACK_TIMEOUT_MS / 1000.0)
 	{ };
 
 	void initialize(UAS &uas_,
@@ -69,6 +74,8 @@ public:
 		arming_srv = cmd_nh.advertiseService("arming", &CommandPlugin::arming_cb, this);
 		set_mode_srv = cmd_nh.advertiseService("set_mode", &CommandPlugin::set_mode_cb, this);
 		set_home_srv = cmd_nh.advertiseService("set_home", &CommandPlugin::set_home_cb, this);
+		takeoff_srv = cmd_nh.advertiseService("takeoff", &CommandPlugin::takeoff_cb, this);
+		land_srv = cmd_nh.advertiseService("land", &CommandPlugin::land_cb, this);
 	}
 
 	std::string const get_name() const {
@@ -85,7 +92,7 @@ public:
 		mavlink_command_ack_t ack;
 		mavlink_msg_command_ack_decode(msg, &ack);
 
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		lock_guard lock(mutex);
 		for (auto it = ack_waiting_list.cbegin();
 				it != ack_waiting_list.cend(); it++)
 			if ((*it)->expected_command == ack.command) {
@@ -99,7 +106,7 @@ public:
 	}
 
 private:
-	boost::recursive_mutex mutex;
+	std::recursive_mutex mutex;
 	UAS *uas;
 
 	ros::NodeHandle cmd_nh;
@@ -107,17 +114,21 @@ private:
 	ros::ServiceServer arming_srv;
 	ros::ServiceServer set_mode_srv;
 	ros::ServiceServer set_home_srv;
+	ros::ServiceServer takeoff_srv;
+	ros::ServiceServer land_srv;
 
 	std::list<CommandTransaction *> ack_waiting_list;
 	static constexpr int ACK_TIMEOUT_MS = 5000;
 
+	const ros::Duration ACK_TIMEOUT_DT;
+
 	/* -*- mid-level functions -*- */
 
 	bool wait_ack_for(CommandTransaction *tr) {
-		boost::mutex cond_mutex;
-		boost::unique_lock<boost::mutex> lock(cond_mutex);
+		std::unique_lock<std::mutex> lock(tr->cond_mutex);
 
-		return tr->ack.timed_wait(lock, boost::posix_time::milliseconds(ACK_TIMEOUT_MS));
+		return tr->ack.wait_for(lock, std::chrono::nanoseconds(ACK_TIMEOUT_DT.toNSec()))
+			== std::cv_status::no_timeout;
 	}
 
 	/**
@@ -131,7 +142,7 @@ private:
 			float param5, float param6,
 			float param7,
 			unsigned char &success, uint8_t &result) {
-		boost::recursive_mutex::scoped_lock lock(mutex);
+		unique_lock lock(mutex);
 
 		/* check transactions */
 		for (auto it = ack_waiting_list.cbegin();
@@ -141,7 +152,8 @@ private:
 				return false;
 			}
 
-		bool is_ack_required = confirmation != 0 || uas->is_ardupilotmega();
+		//! @note APM always send COMMAND_ACK, while PX4 never.
+		bool is_ack_required = (confirmation != 0 || uas->is_ardupilotmega()) && !uas->is_px4();
 		if (is_ack_required)
 			ack_waiting_list.push_back(new CommandTransaction(command));
 
@@ -249,6 +261,27 @@ private:
 		return send_command_long_and_wait(MAV_CMD_DO_SET_HOME, 1,
 				(req.current_gps)? 1.0 : 0.0,
 				0, 0, 0, req.latitude, req.longitude, req.altitude,
+				res.success, res.result);
+	}
+
+	bool takeoff_cb(mavros::CommandTOL::Request &req,
+			mavros::CommandTOL::Response &res) {
+
+		return send_command_long_and_wait(MAV_CMD_NAV_TAKEOFF, 1,
+				req.min_pitch,
+				0, 0,
+				req.yaw,
+				req.latitude, req.longitude, req.altitude,
+				res.success, res.result);
+	}
+
+	bool land_cb(mavros::CommandTOL::Request &req,
+			mavros::CommandTOL::Response &res) {
+
+		return send_command_long_and_wait(MAV_CMD_NAV_LAND, 1,
+				0, 0, 0,
+				req.yaw,
+				req.latitude, req.longitude, req.altitude,
 				res.success, res.result);
 	}
 };

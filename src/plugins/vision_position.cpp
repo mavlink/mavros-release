@@ -25,13 +25,13 @@
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#include <mavros/utils.h>
 #include <mavros/mavros_plugin.h>
 #include <pluginlib/class_list_macros.h>
 
-#include <tf/transform_listener.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+
+#include "setpoint_mixin.h"
 
 namespace mavplugin {
 
@@ -41,9 +41,12 @@ namespace mavplugin {
  * Send position estimation from various vision estimators
  * to FCU position controller.
  */
-class VisionPositionPlugin : public MavRosPlugin {
+class VisionPositionPlugin : public MavRosPlugin,
+	private TFListenerMixin<VisionPositionPlugin> {
 public:
-	VisionPositionPlugin()
+	VisionPositionPlugin() :
+		uas(nullptr),
+		tf_rate(10.0)
 	{ };
 
 	void initialize(UAS &uas_,
@@ -54,27 +57,26 @@ public:
 		bool listen_tf;
 
 		uas = &uas_;
-		pos_nh = ros::NodeHandle(nh, "position");
+		sp_nh = ros::NodeHandle(nh, "position");
 
-		pos_nh.param("vision/pose_with_covariance", pose_with_covariance, false);
-		pos_nh.param("vision/listen_tf", listen_tf, false);
-		pos_nh.param<std::string>("vision/frame_id", frame_id, "local_origin");
-		pos_nh.param<std::string>("vision/child_frame_id", child_frame_id, "vision");
+		sp_nh.param("vision/pose_with_covariance", pose_with_covariance, false);
+		sp_nh.param("vision/listen_tf", listen_tf, false);
+		sp_nh.param<std::string>("vision/frame_id", frame_id, "local_origin");
+		sp_nh.param<std::string>("vision/child_frame_id", child_frame_id, "vision");
+		sp_nh.param("vision/tf_rate_limit", tf_rate, 50.0);
 
 		ROS_DEBUG_STREAM_NAMED("position", "Vision position topic type: " <<
-				(pose_with_covariance)? "PoseWithCovarianceStamped" : "PoseStamped");
+				((pose_with_covariance)? "PoseWithCovarianceStamped" : "PoseStamped"));
 
 		if (listen_tf) {
 			ROS_INFO_STREAM_NAMED("position", "Listen to vision transform " << frame_id
 					<< " -> " << child_frame_id);
-			boost::thread t(boost::bind(&VisionPositionPlugin::tf_listener, this));
-			mavutils::set_thread_name(t, "VisionTF");
-			tf_thread.swap(t);
+			tf_start("VisionTF", &VisionPositionPlugin::send_vision_transform);
 		}
 		else if (pose_with_covariance)
-			vision_sub = pos_nh.subscribe("vision", 10, &VisionPositionPlugin::vision_cov_cb, this);
+			vision_sub = sp_nh.subscribe("vision", 10, &VisionPositionPlugin::vision_cov_cb, this);
 		else
-			vision_sub = pos_nh.subscribe("vision", 10, &VisionPositionPlugin::vision_cb, this);
+			vision_sub = sp_nh.subscribe("vision", 10, &VisionPositionPlugin::vision_cb, this);
 	}
 
 	const std::string get_name() const {
@@ -89,15 +91,17 @@ public:
 	}
 
 private:
+	friend class TFListenerMixin;
 	UAS *uas;
 
-	ros::NodeHandle pos_nh;
+	ros::NodeHandle sp_nh;
 	ros::Subscriber vision_sub;
 
 	std::string frame_id;
 	std::string child_frame_id;
 
-	boost::thread tf_thread;
+	double tf_rate;
+	ros::Time last_transform_stamp;
 
 	/* -*- low-level send -*- */
 
@@ -128,6 +132,15 @@ private:
 		tf::Matrix3x3 orientation(transform.getBasis());
 		orientation.getRPY(roll, pitch, yaw);
 
+		/* Issue #60.
+		 * Note: this now affects pose callbacks too, but i think its not big deal.
+		 */
+		if (last_transform_stamp == stamp) {
+			ROS_DEBUG_THROTTLE_NAMED(10, "position", "Vision: Same transform as last one, dropped.");
+			return;
+		}
+		last_transform_stamp = stamp;
+
 		// TODO: check conversion. Issue #49.
 		vision_position_estimate(stamp.toNSec() / 1000,
 				position.y(), position.x(), -position.z(),
@@ -136,21 +149,7 @@ private:
 
 	/* -*- callbacks -*- */
 
-	void tf_listener(void) {
-		tf::TransformListener listener(pos_nh);
-		tf::StampedTransform transform;
-		while (pos_nh.ok()) {
-			// Wait up to 3s for transform
-			listener.waitForTransform(frame_id, child_frame_id, ros::Time(0), ros::Duration(3.0));
-			try{
-				listener.lookupTransform(frame_id, child_frame_id, ros::Time(0), transform);
-				send_vision_transform(static_cast<tf::Transform>(transform), transform.stamp_);
-			}
-			catch (tf::TransformException ex){
-				ROS_ERROR_NAMED("position", "VisionTF: %s", ex.what());
-			}
-		}
-	}
+	/* common TF listener moved to mixin */
 
 	void vision_cov_cb(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &req) {
 		tf::Transform transform;
