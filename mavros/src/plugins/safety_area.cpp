@@ -1,7 +1,7 @@
 /**
  * @brief SafetyArea plugin
  * @file safety_area.cpp
- * @author Nuno Marques
+ * @author Nuno Marques <n.marques21@hotmail.com>
  * @author Vladimir Ermakov <vooon341@gmail.com>
  *
  * @addtogroup plugin
@@ -85,14 +85,11 @@ public:
 		return "SafetyArea";
 	}
 
-	const std::vector<uint8_t> get_supported_messages() const {
+	const message_map get_rx_handlers() {
 		return { /* Rx disabled */ };
 		/**
 		 * @todo Publish SAFETY_ALLOWED_AREA message
 		 */
-	}
-
-	void message_rx_cb(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
 	}
 
 private:
@@ -113,7 +110,7 @@ private:
 				coordinate_frame,
 				p1x, p1y, p1z,
 				p2x, p2y, p2z);
-		uas->mav_link->send_message(&msg);
+		UAS_FCU(uas)->send_message(&msg);
 	}
 
 	/* -*- mid-level helpers -*- */
