@@ -61,9 +61,9 @@ public:
 		ret.is_current = !!wp.current;
 		ret.autocontinue = wp.autocontinue;
 		ret.param1 = wp.param1;
-		ret.param2 = wp.param1;
-		ret.param3 = wp.param1;
-		ret.param4 = wp.param1;
+		ret.param2 = wp.param2;
+		ret.param3 = wp.param3;
+		ret.param4 = wp.param4;
 		ret.x_lat = wp.x_lat;
 		ret.y_long = wp.y_long;
 		ret.z_alt = wp.z_alt;
@@ -80,9 +80,9 @@ public:
 		ret.current = wp.is_current;
 		ret.autocontinue = wp.autocontinue;
 		ret.param1 = wp.param1;
-		ret.param2 = wp.param1;
-		ret.param3 = wp.param1;
-		ret.param4 = wp.param1;
+		ret.param2 = wp.param2;
+		ret.param3 = wp.param3;
+		ret.param4 = wp.param4;
 		ret.x_lat = wp.x_lat;
 		ret.y_long = wp.y_long;
 		ret.z_alt = wp.z_alt;
@@ -99,9 +99,9 @@ public:
 		ret.current = mit.current;
 		ret.autocontinue = mit.autocontinue;
 		ret.param1 = mit.param1;
-		ret.param2 = mit.param1;
-		ret.param3 = mit.param1;
-		ret.param4 = mit.param1;
+		ret.param2 = mit.param2;
+		ret.param3 = mit.param3;
+		ret.param4 = mit.param4;
 		ret.x_lat = mit.x;
 		ret.y_long = mit.y;
 		ret.z_alt = mit.z;
@@ -194,55 +194,15 @@ public:
 		return "Waypoint";
 	};
 
-	std::vector<uint8_t> const get_supported_messages() const {
+	const message_map get_rx_handlers() {
 		return {
-			MAVLINK_MSG_ID_MISSION_ITEM,
-			MAVLINK_MSG_ID_MISSION_REQUEST,
-			MAVLINK_MSG_ID_MISSION_CURRENT,
-			MAVLINK_MSG_ID_MISSION_COUNT,
-			MAVLINK_MSG_ID_MISSION_ITEM_REACHED,
-			MAVLINK_MSG_ID_MISSION_ACK
+			MESSAGE_HANDLER(MAVLINK_MSG_ID_MISSION_ITEM, &WaypointPlugin::handle_mission_item),
+			MESSAGE_HANDLER(MAVLINK_MSG_ID_MISSION_REQUEST, &WaypointPlugin::handle_mission_request),
+			MESSAGE_HANDLER(MAVLINK_MSG_ID_MISSION_CURRENT, &WaypointPlugin::handle_mission_current),
+			MESSAGE_HANDLER(MAVLINK_MSG_ID_MISSION_COUNT, &WaypointPlugin::handle_mission_count),
+			MESSAGE_HANDLER(MAVLINK_MSG_ID_MISSION_ITEM_REACHED, &WaypointPlugin::handle_mission_item_reached),
+			MESSAGE_HANDLER(MAVLINK_MSG_ID_MISSION_ACK, &WaypointPlugin::handle_mission_ack),
 		};
-	};
-
-	void message_rx_cb(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
-		switch (msg->msgid) {
-		case MAVLINK_MSG_ID_MISSION_ITEM:
-			mavlink_mission_item_t mit;
-			mavlink_msg_mission_item_decode(msg, &mit);
-			handle_mission_item(mit);
-			break;
-
-		case MAVLINK_MSG_ID_MISSION_REQUEST:
-			mavlink_mission_request_t mreq;
-			mavlink_msg_mission_request_decode(msg, &mreq);
-			handle_mission_request(mreq);
-			break;
-
-		case MAVLINK_MSG_ID_MISSION_CURRENT:
-			mavlink_mission_current_t mcur;
-			mavlink_msg_mission_current_decode(msg, &mcur);
-			handle_mission_current(mcur);
-			break;
-
-		case MAVLINK_MSG_ID_MISSION_COUNT:
-			mavlink_mission_count_t mcnt;
-			mavlink_msg_mission_count_decode(msg, &mcnt);
-			handle_mission_count(mcnt);
-			break;
-
-		case MAVLINK_MSG_ID_MISSION_ITEM_REACHED:
-			mavlink_mission_item_reached_t mitr;
-			mavlink_msg_mission_item_reached_decode(msg, &mitr);
-			handle_mission_item_reached(mitr);
-			break;
-
-		case MAVLINK_MSG_ID_MISSION_ACK:
-			mavlink_mission_ack_t mack;
-			mavlink_msg_mission_ack_decode(msg, &mack);
-			handle_mission_ack(mack);
-			break;
-		}
 	}
 
 private:
@@ -298,7 +258,9 @@ private:
 
 	/* -*- rx handlers -*- */
 
-	void handle_mission_item(mavlink_mission_item_t &mit) {
+	void handle_mission_item(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+		mavlink_mission_item_t mit;
+		mavlink_msg_mission_item_decode(msg, &mit);
 		WaypointItem wpi = WaypointItem::from_mission_item(mit);
 		unique_lock lock(mutex);
 
@@ -342,8 +304,11 @@ private:
 		}
 	}
 
-	void handle_mission_request(mavlink_mission_request_t &mreq) {
+	void handle_mission_request(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+		mavlink_mission_request_t mreq;
+		mavlink_msg_mission_request_decode(msg, &mreq);
 		lock_guard lock(mutex);
+
 		if ((wp_state == WP_TXLIST && mreq.seq == 0) || (wp_state == WP_TXWP)) {
 			if (mreq.seq != wp_cur_id && mreq.seq != wp_cur_id + 1) {
 				ROS_WARN_NAMED("wp", "WP: Seq mismatch, dropping request (%d != %zu)",
@@ -364,7 +329,9 @@ private:
 			ROS_DEBUG_NAMED("wp", "WP: rejecting request, wrong state %d", wp_state);
 	}
 
-	void handle_mission_current(mavlink_mission_current_t &mcur) {
+	void handle_mission_current(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+		mavlink_mission_current_t mcur;
+		mavlink_msg_mission_current_decode(msg, &mcur);
 		unique_lock lock(mutex);
 
 		if (wp_state == WP_SET_CUR) {
@@ -389,7 +356,9 @@ private:
 		}
 	}
 
-	void handle_mission_count(mavlink_mission_count_t &mcnt) {
+	void handle_mission_count(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+		mavlink_mission_count_t mcnt;
+		mavlink_msg_mission_count_decode(msg, &mcnt);
 		unique_lock lock(mutex);
 
 		if (wp_state == WP_RXLIST) {
@@ -424,12 +393,17 @@ private:
 		}
 	}
 
-	void handle_mission_item_reached(mavlink_mission_item_reached_t &mitr) {
+	void handle_mission_item_reached(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+		mavlink_mission_item_reached_t mitr;
+		mavlink_msg_mission_item_reached_decode(msg, &mitr);
+
 		/* in QGC used as informational message */
 		ROS_INFO_NAMED("wp", "WP: reached #%d", mitr.seq);
 	}
 
-	void handle_mission_ack(mavlink_mission_ack_t &mack) {
+	void handle_mission_ack(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+		mavlink_mission_ack_t mack;
+		mavlink_msg_mission_ack_decode(msg, &mack);
 		unique_lock lock(mutex);
 
 		if ((wp_state == WP_TXLIST || wp_state == WP_TXWP)
@@ -677,7 +651,7 @@ private:
 				wp.y_long,
 				wp.z_alt
 				);
-		uas->mav_link->send_message(&msg);
+		UAS_FCU(uas)->send_message(&msg);
 	}
 
 	void mission_request(uint16_t seq) {
@@ -688,7 +662,7 @@ private:
 				UAS_PACK_TGT(uas),
 				seq
 				);
-		uas->mav_link->send_message(&msg);
+		UAS_FCU(uas)->send_message(&msg);
 	}
 
 	void mission_set_current(uint16_t seq) {
@@ -699,7 +673,7 @@ private:
 				UAS_PACK_TGT(uas),
 				seq
 				);
-		uas->mav_link->send_message(&msg);
+		UAS_FCU(uas)->send_message(&msg);
 	}
 
 	void mission_request_list() {
@@ -709,7 +683,7 @@ private:
 		mavlink_msg_mission_request_list_pack_chan(UAS_PACK_CHAN(uas), &msg,
 				UAS_PACK_TGT(uas)
 				);
-		uas->mav_link->send_message(&msg);
+		UAS_FCU(uas)->send_message(&msg);
 	}
 
 	void mission_count(uint16_t cnt) {
@@ -720,7 +694,7 @@ private:
 				UAS_PACK_TGT(uas),
 				cnt
 				);
-		uas->mav_link->send_message(&msg);
+		UAS_FCU(uas)->send_message(&msg);
 	}
 
 	void mission_clear_all() {
@@ -730,7 +704,7 @@ private:
 		mavlink_msg_mission_clear_all_pack_chan(UAS_PACK_CHAN(uas), &msg,
 				UAS_PACK_TGT(uas)
 				);
-		uas->mav_link->send_message(&msg);
+		UAS_FCU(uas)->send_message(&msg);
 	}
 
 	void mission_ack(enum MAV_MISSION_RESULT type) {
@@ -741,7 +715,7 @@ private:
 				UAS_PACK_TGT(uas),
 				type
 				);
-		uas->mav_link->send_message(&msg);
+		UAS_FCU(uas)->send_message(&msg);
 	}
 
 	/* -*- ROS callbacks -*- */
