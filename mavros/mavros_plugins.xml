@@ -26,8 +26,8 @@
 	<class name="local_position" type="mavplugin::LocalPositionPlugin" base_class_type="mavplugin::MavRosPlugin">
 		<description>Publish FCU local position.</description>
 	</class>
-	<class name="vision_position" type="mavplugin::VisionPositionPlugin" base_class_type="mavplugin::MavRosPlugin">
-		<description>Send to FCU vision position estimates.</description>
+	<class name="global_position" type="mavplugin::GlobalPositionPlugin" base_class_type="mavplugin::MavRosPlugin">
+		<description>Publish FCU global position.</description>
 	</class>
 	<class name="setpoint_position" type="mavplugin::SetpointPositionPlugin" base_class_type="mavplugin::MavRosPlugin">
 		<description>Send to FCU external position setpoint.</description>
@@ -46,9 +46,6 @@
 	</class>
 	<class name="setpoint_attitude" type="mavplugin::SetpointAttitudePlugin" base_class_type="mavplugin::MavRosPlugin">
 		<description>Send to FCU external attitude setpoint.</description>
-	</class>
-	<class name="vision_speed" type="mavplugin::VisionSpeedPlugin" base_class_type="mavplugin::MavRosPlugin">
-		<description>Send vision speed estimate to FCU.</description>
 	</class>
 </library>
 
