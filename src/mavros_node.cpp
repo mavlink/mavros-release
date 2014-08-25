@@ -105,19 +105,16 @@ public:
 		int system_id, component_id;
 		int tgt_system_id, tgt_component_id;
 		bool px4_usb_quirk;
+		boost::shared_ptr<MAVConnInterface> fcu_link;
 
+		node_handle.param<std::string>("fcu_url", fcu_url, "serial:///dev/ttyACM0");
+		node_handle.param<std::string>("gcs_url", gcs_url, "udp://@");
 		node_handle.param("system_id", system_id, 1);
 		node_handle.param<int>("component_id", component_id, MAV_COMP_ID_UDP_BRIDGE);
 		node_handle.param("target_system_id", tgt_system_id, 1);
 		node_handle.param("target_component_id", tgt_component_id, 1);
 		node_handle.param("startup_px4_usb_quirk", px4_usb_quirk, false);
 		node_handle.getParam("plugin_blacklist", plugin_blacklist);
-
-		if (!node_handle.getParam("fcu_url", fcu_url))
-			fcu_url = get_default_fcu_url();
-
-		if (!node_handle.getParam("gcs_url", gcs_url))
-			gcs_url = get_default_gcs_url();
 
 		diag_updater.setHardwareID("Mavlink");
 		diag_updater.add(fcu_link_diag);
@@ -160,7 +157,7 @@ public:
 		}
 
 		mav_uas.set_tgt(tgt_system_id, tgt_component_id);
-		mav_uas.set_mav_link(fcu_link);
+		UAS_FCU(&mav_uas) = fcu_link;
 		mav_uas.sig_connection_changed.connect(boost::bind(&MavlinkDiag::set_connection_status, &fcu_link_diag, _1));
 		mav_uas.sig_connection_changed.connect(boost::bind(&MavRos::log_connect_change, this, _1));
 
@@ -190,13 +187,14 @@ public:
 			loop_rate.sleep();
 		}
 
+		ROS_INFO("Stopping mavros...");
 		mav_uas.stop();
 	}
 
 private:
 	ros::NodeHandle node_handle;
 	ros::NodeHandle mavlink_node_handle;
-	boost::shared_ptr<MAVConnInterface> fcu_link;
+	// fcu_link stored in mav_uas
 	boost::shared_ptr<MAVConnInterface> gcs_link;
 
 	ros::Publisher mavlink_pub;
@@ -228,7 +226,7 @@ private:
 		mavlink_message_t mmsg;
 
 		if (mavutils::copy_ros_to_mavlink(rmsg, mmsg))
-			fcu_link->send_message(&mmsg, rmsg->sysid, rmsg->compid);
+			UAS_FCU(&mav_uas)->send_message(&mmsg, rmsg->sysid, rmsg->compid);
 		else
 			ROS_ERROR("Drop mavlink packet: illegal payload64 size");
 	}
@@ -269,13 +267,12 @@ private:
 			ROS_INFO_STREAM("Plugin " << repr_name <<
 					" [alias " << pl_name << "] loaded and initialized");
 
-			std::vector<uint8_t> sup_msgs = plugin->get_supported_messages();
-			for (auto it = sup_msgs.begin();
-					it != sup_msgs.end();
+			auto sub_map = plugin->get_rx_handlers();
+			for (auto it = sub_map.begin();
+					it != sub_map.end();
 					++it) {
-				ROS_DEBUG("Route msgid %d to %s", *it, repr_name.c_str());
-				message_route_table[*it].connect(
-						boost::bind(&MavRosPlugin::message_rx_cb, plugin, _1, _2, _3));
+				ROS_DEBUG("Route msgid %d to %s", it->first, repr_name.c_str());
+				message_route_table[it->first].connect(it->second);
 			}
 
 		} catch (pluginlib::PluginlibException& ex) {
@@ -294,9 +291,9 @@ private:
 		const uint8_t nsh[] = "sh /etc/init.d/rc.usb\n";
 
 		ROS_INFO("Autostarting mavlink via USB on PX4");
-		fcu_link->send_bytes(init, 3);
-		fcu_link->send_bytes(nsh, sizeof(nsh) - 1);
-		fcu_link->send_bytes(init, 4);	/* NOTE in original init[3] */
+		UAS_FCU(&mav_uas)->send_bytes(init, 3);
+		UAS_FCU(&mav_uas)->send_bytes(nsh, sizeof(nsh) - 1);
+		UAS_FCU(&mav_uas)->send_bytes(init, 4);	/* NOTE in original init[3] */
 	}
 
 	void log_connect_change(bool connected) {
@@ -305,60 +302,6 @@ private:
 			ROS_INFO("CON: Got HEARTBEAT, connected.");
 		else
 			ROS_WARN("CON: Lost connection, HEARTBEAT timed out.");
-	}
-
-	std::string get_default_fcu_url() {
-		std::ostringstream os_url;
-		std::string serial_port;
-		int serial_baud;
-
-		os_url << "serial://";
-
-		if (node_handle.getParam("serial_port", serial_port)) {
-			ROS_WARN("Parameter ~serial_port deprecated, use ~fcu_url instead!");
-			os_url << serial_port;
-		}
-		else
-			os_url << "/dev/ttyACM0";
-
-		if (node_handle.getParam("serial_baud", serial_baud)) {
-			ROS_WARN("Parameter ~serial_baud deprecated, use ~fcu_url instead!");
-			os_url << ":" << serial_baud;
-		}
-
-		return os_url.str();
-	}
-
-	std::string get_default_gcs_url() {
-		std::ostringstream os_url;
-		std::string bind_host, gcs_host;
-		int bind_port, gcs_port;
-
-		os_url << "udp://";
-
-		// construct bind address
-		if (node_handle.getParam("bind_host", bind_host)) {
-			ROS_WARN("Parameter ~bind_host deprecated, use ~gcs_url instead!");
-			os_url << bind_host;
-		}
-		if (node_handle.getParam("bind_port", bind_port)) {
-			ROS_WARN("Parameter ~bind_port deprecated, use ~gcs_url instead!");
-			os_url << ":" << bind_port;
-		}
-
-		os_url << "@";
-
-		// construct gcs address
-		if (node_handle.getParam("gcs_host", gcs_host)) {
-			ROS_WARN("Parameter ~gcs_host deprecated, use ~gcs_url instead!");
-			os_url << gcs_host;
-		}
-		if (node_handle.getParam("gcs_port", gcs_port)) {
-			ROS_WARN("Parameter ~gcs_port deprecated, use ~gcs_url instead!");
-			os_url << ":" << gcs_port;
-		}
-
-		return os_url.str();
 	}
 };
 

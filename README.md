@@ -121,7 +121,7 @@ Use `wstool` utility for installation. In your workspace do:
     rosdep install --from-paths src --ignore-src --rosdistro hydro -y
 
 Then use regular `catkin_make` for build and install.
-Notes: since v0.5 (and [#35][iss35]) mavlink submodule moved to special ROS 3rd party package [ros-\*-mavlink][mlgbp].
+Notes: since v0.5 (and [#35][iss35]) mavlink submodule moved to special ROS 3rd party package [ros-\*-mavlink][mlwiki].
 
 *Important*. The current implementation of mavlink does not allow to select dialect in run-time,
 so mavros package (and all plugin packages) have compile-time option `MAVLINK_DIALECT`, default is 'aurdupilotmega'.
@@ -150,14 +150,6 @@ Or you could build debian package by pulling right bloom branch from [mavlink-gb
 (common naming: `debian/<rosdistro>/<osdistro>/<package>`) using `dh binary`.
 
 
-CI Statuses
------------
-
-  - ROS Hydro: [![Hydro build status](http://jenkins.ros.org/buildStatus/icon?job=devel-hydro-mavros)](http://jenkins.ros.org/job/devel-hydro-mavros/)
-  - ROS Indigo: [![Indigo build status](http://jenkins.ros.org/buildStatus/icon?job=devel-indigo-mavros)](http://jenkins.ros.org/job/devel-indigo-mavros/)
-  - Travis Hydro (Coverity Scan): [![Hydro scan status](https://travis-ci.org/vooon/mavros.svg?branch=coverity_scan)](https://travis-ci.org/vooon/mavros)
-
-
 Links
 -----
 
@@ -178,5 +170,5 @@ Links
 [mlgbp]: https://github.com/vooon/mavlink-gbp-release
 [iss35]: https://github.com/vooon/mavros/issues/35
 [wiki]: http://wiki.ros.org/mavros
-[mrext]: https://github.com/vooon/tree/master/mavros_extras
+[mrext]: https://github.com/vooon/mavros/tree/master/mavros_extras
 [mlwiki]: http://wiki.ros.org/mavlink
