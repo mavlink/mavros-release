@@ -1,8 +1,0 @@
-ros-hydro-mavros-extras (0.7.0-0quantal) quantal; urgency=high
-
-  * move exras to subdirectory, #101 <https://github.com/vooon/mavros/issues/101>
-  * Contributors: Vladimir Ermakov, M.H.Kabir
-
- -- Vladimir Ermakov <vooon341@gmail.com>  Mon, 11 Aug 2014 20:00:00 -0000
-
-
