@@ -1,31 +1,22 @@
-mavros extras
-=============
+MAVROS
+======
 
-Some extra plugins and nodes for [mavros][mr].
+MAVLink extendable communication node for ROS.
 
-
-px4flow
--------
-
-Plugin for mavros. Publicate `OPTICAL_FLOW` data.
+Since 2014-08-11 this repository contains several packages.
 
 
-image\_pub
-----------
+mavros package
+--------------
 
-Plugin for mavros, publicate images from mavlink device.
-
-
-gcs\_image\_bridge
-------------------
-
-Variation of `gcs_bridge` that additionally sends image stream to GCS.
+It is the main package, please see it's [README][mrrm].
 
 
-px-ros-pkg replacement
+mavros\_extras package
 ----------------------
 
-Use `roslaunch mavros_extras px4flow.launch` for that.
+This package contain some extra nodes and plugins for mavros, please see it's [README][exrm].
 
 
-[mr]: https://github.com/vooon/mavros
+[mrrm]: https://github.com/vooon/mavros/blob/master/mavros/README.md
+[exrm]: https://github.com/vooon/mavros/blob/master/mavros_extras/README.md
