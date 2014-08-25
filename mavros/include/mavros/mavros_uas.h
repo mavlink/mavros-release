@@ -36,14 +36,20 @@ typedef std::lock_guard<std::recursive_mutex> lock_guard;
 typedef std::unique_lock<std::recursive_mutex> unique_lock;
 
 /**
+ * @brief helper accessor to FCU link interface
+ */
+#define UAS_FCU(uasobjptr)				\
+	((uasobjptr)->fcu_link)
+
+/**
  * @brief helper for mavlink_msg_*_pack_chan()
  *
  * Filler for first arguments of *_pack_chan functions.
  */
 #define UAS_PACK_CHAN(uasobjptr)			\
-	(uasobjptr)->mav_link->get_system_id(), 	\
-	(uasobjptr)->mav_link->get_component_id(), 	\
-	(uasobjptr)->mav_link->get_channel()
+	UAS_FCU(uasobjptr)->get_system_id(), 		\
+	UAS_FCU(uasobjptr)->get_component_id(), 	\
+	UAS_FCU(uasobjptr)->get_channel()
 
 /**
  * @brief helper for pack messages with target fields
@@ -53,7 +59,6 @@ typedef std::unique_lock<std::recursive_mutex> unique_lock;
 #define UAS_PACK_TGT(uasobjptr)				\
 	(uasobjptr)->get_tgt_system(), 			\
 	(uasobjptr)->get_tgt_component()
-
 
 /**
  * @brief UAS handler for plugins
@@ -172,6 +177,58 @@ public:
 	}
 
 	/**
+	 * @brief Store GPS Lat/Long/Alt and EPH/EPV data
+	 *
+	 * @param[in] latitude  in deg
+	 * @param[in] longitude in deg
+	 * @param[in] altitude  in m
+	 * @param[in] eph       in m
+	 * @param[in] epv       in m
+	 */
+	inline void set_gps_llae(double latitude, double longitude, double altitude,
+			double eph, double epv) {
+		lock_guard lock(mutex);
+		gps_latitude = latitude;
+		gps_longitude = longitude;
+		gps_altitude = altitude;
+		gps_eph = eph;
+		gps_epv = epv;
+	}
+
+	inline double get_gps_latitude() {
+		lock_guard lock(mutex);
+		return gps_latitude;
+	}
+
+	inline double get_gps_longitude() {
+		lock_guard lock(mutex);
+		return gps_longitude;
+	}
+
+	inline double get_gps_altitude() {
+		lock_guard lock(mutex);
+		return gps_altitude;
+	}
+
+	inline double get_gps_eph() {
+		lock_guard lock(mutex);
+		return gps_eph;
+	}
+
+	inline double get_gps_epv() {
+		lock_guard lock(mutex);
+		return gps_epv;
+	}
+
+	inline void set_gps_status(bool fix_status_) {
+		fix_status = fix_status_;
+	}
+
+	inline bool get_gps_status() {
+		return fix_status;
+	}
+
+	/**
 	 * For APM quirks
 	 */
 	inline bool is_ardupilotmega() {
@@ -198,13 +255,9 @@ public:
 	};
 
 	/**
-	 * MAVLink device conection
+	 * MAVLink FCU device conection
 	 */
-	boost::shared_ptr<mavconn::MAVConnInterface> mav_link;
-
-	inline void set_mav_link(const boost::shared_ptr<mavconn::MAVConnInterface> &link_) {
-		mav_link = link_;
-	};
+	boost::shared_ptr<mavconn::MAVConnInterface> fcu_link;
 
 private:
 	std::recursive_mutex mutex;
@@ -216,6 +269,12 @@ private:
 	tf::Vector3 angular_velocity;
 	tf::Vector3 linear_acceleration;
 	tf::Quaternion orientation;
+	double gps_latitude;
+	double gps_longitude;
+	double gps_altitude;
+	double gps_eph;
+	double gps_epv;
+	std::atomic<bool> fix_status;
 };
 
 }; // namespace mavplugin
