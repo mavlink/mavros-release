@@ -126,6 +126,9 @@ endif()
 add_library(mavros_extras
   src/plugins/px4flow.cpp
   src/plugins/image_pub.cpp
+  src/plugins/mocap_pose_estimate.cpp
+  src/plugins/vision_pose_estimate.cpp
+  src/plugins/vision_speed_estimate.cpp
 )
 add_dependencies(mavros_extras
   mavros_extras_generate_messages_cpp
@@ -157,7 +160,7 @@ target_link_libraries(gcs_image_bridge
 # )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS mavros_extras gcs_image_bridge
+install(TARGETS #mavros_extras gcs_image_bridge
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
