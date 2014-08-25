@@ -1,7 +1,7 @@
 /**
  * @brief SetpointAttitude plugin
  * @file setpoint_attitude.cpp
- * @author Nuno Marques
+ * @author Nuno Marques <n.marques21@hotmail.com>
  * @author Vladimir Ermakov <vooon341@gmail.com>
  *
  * @addtogroup plugin
@@ -26,13 +26,13 @@
  */
 
 #include <mavros/mavros_plugin.h>
+#include <mavros/setpoint_mixin.h>
 #include <pluginlib/class_list_macros.h>
 
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <geometry_msgs/Twist.h>
-
-#include "setpoint_mixin.h"
+#include <geometry_msgs/TwistStamped.h>
+#include <std_msgs/Float64.h>
 
 namespace mavplugin {
 
@@ -56,6 +56,7 @@ public:
 		bool pose_with_covariance;
 		bool listen_tf;
 		bool listen_twist;
+		bool reverse_throttle;
 
 		uas = &uas_;
 		sp_nh = ros::NodeHandle(nh, "setpoint");
@@ -67,6 +68,7 @@ public:
 		sp_nh.param<std::string>("attitude/frame_id", frame_id, "local_origin");
 		sp_nh.param<std::string>("attitude/child_frame_id", child_frame_id, "attitude");
 		sp_nh.param("attitude/tf_rate_limit", tf_rate, 10.0);
+		sp_nh.param("attitude/reverse_throttle", reverse_throttle, false);
 
 		if (listen_tf) {
 			ROS_INFO_STREAM_NAMED("attitude", "Listen to desired attitude transform " << frame_id
@@ -75,7 +77,7 @@ public:
 		}
 		else if (listen_twist) {
 			ROS_DEBUG_NAMED("attitude", "Setpoint attitude topic type: Twist");
-			att_sub = sp_nh.subscribe("att_vel", 10, &SetpointAttitudePlugin::twist_cb, this);
+			att_sub = sp_nh.subscribe("cmd_vel", 10, &SetpointAttitudePlugin::twist_cb, this);
 		}
 		else if (pose_with_covariance) {
 			ROS_DEBUG_NAMED("attitude", "Setpoint attitude topic type: PoseWithCovarianceStamped");
@@ -85,17 +87,16 @@ public:
 			ROS_DEBUG_NAMED("attitude", "Setpoint attitude topic type: PoseStamped");
 			att_sub = sp_nh.subscribe("attitude", 10, &SetpointAttitudePlugin::pose_cb, this);
 		}
+
+		throttle_sub = sp_nh.subscribe("att_throttle", 10, &SetpointAttitudePlugin::throttle_cb, this);
 	}
 
 	const std::string get_name() const {
 		return "SetpointAttitude";
 	}
 
-	const std::vector<uint8_t> get_supported_messages() const {
+	const message_map get_rx_handlers() {
 		return { /* Rx disabled */ };
-	}
-
-	void message_rx_cb(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
 	}
 
 private:
@@ -104,11 +105,13 @@ private:
 
 	ros::NodeHandle sp_nh;
 	ros::Subscriber att_sub;
+	ros::Subscriber throttle_sub;
 
 	std::string frame_id;
 	std::string child_frame_id;
 
 	double tf_rate;
+	bool reverse_throttle;
 
 	/* -*- low-level send -*- */
 
@@ -125,7 +128,7 @@ private:
 				q,
 				roll_rate, pitch_rate, yaw_rate,
 				thrust);
-		uas->mav_link->send_message(&msg);
+		UAS_FCU(uas)->send_message(&msg);
 	}
 
 	/* -*- mid-level helpers -*- */
@@ -159,12 +162,12 @@ private:
 	 *
 	 * ENU frame.
 	 */
-	void send_attitude_ang_velocity(const float vx, const float vy, const float vz) {
+	void send_attitude_ang_velocity(const ros::Time &stamp, const float vx, const float vy, const float vz) {
 		// Q + Thrust, also bits noumbering started from 1 in docs
 		const uint8_t ignore_all_except_rpy = (1<<7)|(1<<6);
 		float q[4] = { 1.0, 0.0, 0.0, 0.0 };
 
-		set_attitude_target(ros::Time::now().toNSec() / 1000000,
+		set_attitude_target(stamp.toNSec() / 1000000,
 				ignore_all_except_rpy,
 				q,
 				vy, vx, -vz,
@@ -172,8 +175,19 @@ private:
 	}
 
 	/**
-	 * TODO: Thrust control message reception
+	 * Send throttle to FCU attitude controller
 	 */
+	void send_attitude_throttle(const float throttle) {
+		// Q + RPY
+		const uint8_t ignore_all_except_throttle = (1<<7)|(7<<0);
+		float q[4] = { 1.0, 0.0, 0.0, 0.0 };
+
+		set_attitude_target(ros::Time::now().toNSec() / 1000000,
+				ignore_all_except_throttle,
+				q,
+				0.0, 0.0, 0.0,
+				throttle);
+	}
 
 	/* -*- callbacks -*- */
 
@@ -189,11 +203,31 @@ private:
 		send_attitude_transform(transform, req->header.stamp);
 	}
 
-	void twist_cb(const geometry_msgs::Twist::ConstPtr &req) {
+	void twist_cb(const geometry_msgs::TwistStamped::ConstPtr &req) {
 		send_attitude_ang_velocity(
-				req->angular.x,
-				req->angular.y,
-				req->angular.z);
+				req->header.stamp,
+				req->twist.angular.x,
+				req->twist.angular.y,
+				req->twist.angular.z);
+	}
+
+	void throttle_cb(const std_msgs::Float64::ConstPtr &req) {
+		float throttle_normalized = req->data;
+
+		if (reverse_throttle)
+			if ( throttle_normalized < -1.0 || throttle_normalized > 1.0 ) {
+				ROS_WARN_NAMED("attitude_throttle","Not normalized values of throttle! Values should be between -1.0 and 1.0");
+				return;
+			}
+			else
+				send_attitude_throttle(throttle_normalized);
+		else
+			if ( throttle_normalized < 0.0 || throttle_normalized > 1.0 ) {
+				ROS_WARN_NAMED("attitude_throttle","Not normalized values of throttle! Values should be between 0.0 and 1.0");
+				return;
+			}
+			else
+				send_attitude_throttle(throttle_normalized);
 	}
 };
 
