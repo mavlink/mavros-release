@@ -76,19 +76,40 @@ public:
 		set_home_srv = cmd_nh.advertiseService("set_home", &CommandPlugin::set_home_cb, this);
 		takeoff_srv = cmd_nh.advertiseService("takeoff", &CommandPlugin::takeoff_cb, this);
 		land_srv = cmd_nh.advertiseService("land", &CommandPlugin::land_cb, this);
+		guided_srv = cmd_nh.advertiseService("guided_enable", &CommandPlugin::guided_cb, this);
 	}
 
 	std::string const get_name() const {
 		return "Command";
 	}
 
-	std::vector<uint8_t> const get_supported_messages() const {
+	const message_map get_rx_handlers() {
 		return {
-			MAVLINK_MSG_ID_COMMAND_ACK
+			MESSAGE_HANDLER(MAVLINK_MSG_ID_COMMAND_ACK, &CommandPlugin::handle_command_ack)
 		};
 	}
 
-	void message_rx_cb(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+private:
+	std::recursive_mutex mutex;
+	UAS *uas;
+
+	ros::NodeHandle cmd_nh;
+	ros::ServiceServer command_long_srv;
+	ros::ServiceServer arming_srv;
+	ros::ServiceServer set_mode_srv;
+	ros::ServiceServer set_home_srv;
+	ros::ServiceServer takeoff_srv;
+	ros::ServiceServer land_srv;
+	ros::ServiceServer guided_srv;
+
+	std::list<CommandTransaction *> ack_waiting_list;
+	static constexpr int ACK_TIMEOUT_MS = 5000;
+
+	const ros::Duration ACK_TIMEOUT_DT;
+
+	/* -*- message handlers -*- */
+
+	void handle_command_ack(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
 		mavlink_command_ack_t ack;
 		mavlink_msg_command_ack_decode(msg, &ack);
 
@@ -104,23 +125,6 @@ public:
 		ROS_WARN_THROTTLE_NAMED(10, "cmd", "Unexpected command %u, result %u",
 			ack.command, ack.result);
 	}
-
-private:
-	std::recursive_mutex mutex;
-	UAS *uas;
-
-	ros::NodeHandle cmd_nh;
-	ros::ServiceServer command_long_srv;
-	ros::ServiceServer arming_srv;
-	ros::ServiceServer set_mode_srv;
-	ros::ServiceServer set_home_srv;
-	ros::ServiceServer takeoff_srv;
-	ros::ServiceServer land_srv;
-
-	std::list<CommandTransaction *> ack_waiting_list;
-	static constexpr int ACK_TIMEOUT_MS = 5000;
-
-	const ros::Duration ACK_TIMEOUT_DT;
 
 	/* -*- mid-level functions -*- */
 
@@ -212,7 +216,7 @@ private:
 				param5,
 				param6,
 				param7);
-		uas->mav_link->send_message(&msg);
+		UAS_FCU(uas)->send_message(&msg);
 	}
 
 	/* -*- callbacks -*- */
@@ -282,6 +286,15 @@ private:
 				0, 0, 0,
 				req.yaw,
 				req.latitude, req.longitude, req.altitude,
+				res.success, res.result);
+	}
+
+	bool guided_cb(mavros::CommandBool::Request &req,
+			mavros::CommandBool::Response &res) {
+
+		return send_command_long_and_wait(MAV_CMD_NAV_GUIDED_ENABLE, 1,
+				(req.value)? 1.0 : 0.0,
+				0, 0, 0, 0, 0, 0,
 				res.success, res.result);
 	}
 };

@@ -186,14 +186,13 @@ add_library(mavros_plugins
   src/plugins/rc_io.cpp
   src/plugins/command.cpp
   src/plugins/local_position.cpp
-  src/plugins/vision_position.cpp
+  src/plugins/global_position.cpp
   src/plugins/setpoint_position.cpp
   src/plugins/safety_area.cpp
   src/plugins/3dr_radio.cpp
   src/plugins/setpoint_velocity.cpp
   src/plugins/setpoint_accel.cpp
   src/plugins/setpoint_attitude.cpp
-  src/plugins/vision_speed.cpp
 )
 add_dependencies(mavros_plugins
   mavros_generate_messages_cpp
@@ -242,11 +241,9 @@ target_link_libraries(gcs_bridge
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
+file(GLOB SCRIPTS ${PROJECT_SOURCE_DIR}/scripts/*)
 install(PROGRAMS
-  scripts/mavparam
-  scripts/mavwp
-  scripts/mavsafety
-  scripts/mavcmd
+  ${SCRIPTS}
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

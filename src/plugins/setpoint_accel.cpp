@@ -1,7 +1,7 @@
 /**
  * @brief SetpointAcceleration plugin
  * @file setpoint_accel.cpp
- * @author Nuno Marques
+ * @author Nuno Marques <n.marques21@hotmail.com>
  * @author Vladimir Ermakov <vooon341@gmail.com>
  *
  * @addtogroup plugin
@@ -27,11 +27,10 @@
 
 #include <mavros/utils.h>
 #include <mavros/mavros_plugin.h>
+#include <mavros/setpoint_mixin.h>
 #include <pluginlib/class_list_macros.h>
 
-#include <geometry_msgs/Vector3.h>
-
-#include "setpoint_mixin.h"
+#include <geometry_msgs/Vector3Stamped.h>
 
 namespace mavplugin {
 
@@ -64,11 +63,8 @@ public:
 		return "SetpointAcceleration";
 	}
 
-	const std::vector<uint8_t> get_supported_messages() const {
+	const message_map get_rx_handlers() {
 		return { /* Rx disabled */ };
-	}
-
-	void message_rx_cb(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
 	}
 
 private:
@@ -87,29 +83,33 @@ private:
 	 *
 	 * Note: send only AFX AFY AFZ. ENU frame.
 	 */
-	void send_setpoint_acceleration(float afx, float afy, float afz) {
+	void send_setpoint_acceleration(const ros::Time &stamp, float afx, float afy, float afz) {
 
-		/* Documentation start from bit 1 instead 0,
-		 * but implementation PX4 Firmware #1151 starts from 0
+		/* Documentation start from bit 1 instead 0.
+		 * Ignore position and velocity vectors, yaw and yaw rate
 		 */
-		uint16_t ignore_all_except_a_xyz = (7<<3)|(7<<0);
+		uint16_t ignore_all_except_a_xyz = (3<<10)|(7<<3)|(7<<0);
 
 		if (send_force)
 			ignore_all_except_a_xyz |= (1<<9);
 
 		// ENU->NED. Issue #49.
-		set_position_target_local_ned(ros::Time::now().toNSec() / 1000000,
+		set_position_target_local_ned(stamp.toNSec() / 1000000,
 				MAV_FRAME_LOCAL_NED,
 				ignore_all_except_a_xyz,
 				0.0, 0.0, 0.0,
 				0.0, 0.0, 0.0,
-				afy, afx, -afz);
+				afy, afx, -afz,
+				0.0, 0.0);
 	}
 
 	/* -*- callbacks -*- */
 
-	void accel_cb(const geometry_msgs::Vector3::ConstPtr &req) {
-		send_setpoint_acceleration(req->x, req->y, req->z);
+	void accel_cb(const geometry_msgs::Vector3Stamped::ConstPtr &req) {
+		send_setpoint_acceleration(req->header.stamp,
+					    req->vector.x,
+					    req->vector.y,
+					    req->vector.z);
 	}
 };
 
