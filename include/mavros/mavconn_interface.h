@@ -96,6 +96,11 @@ private:
 	MAVConnInterface(const MAVConnInterface&) = delete;
 
 public:
+	typedef sig2::signal<void(const mavlink_message_t *message, uint8_t system_id, uint8_t component_id)> MessageSig;
+	typedef boost::shared_ptr<MAVConnInterface> Ptr;
+	typedef boost::shared_ptr<MAVConnInterface const> ConstPtr;
+	typedef boost::weak_ptr<MAVConnInterface> WeakPtr;
+
 	/**
 	 * @param[in] system_id     sysid for send_message
 	 * @param[in] component_id  compid for send_message
@@ -105,8 +110,14 @@ public:
 		delete_channel(channel);
 	};
 
+	/**
+	 * @brief Close connection.
+	 */
 	virtual void close() = 0;
 
+	/**
+	 * @brief Send message with default link system/component id
+	 */
 	inline void send_message(const mavlink_message_t *message) {
 		send_message(message, sys_id, comp_id);
 	};
@@ -129,7 +140,7 @@ public:
 	/**
 	 * @brief Message receive signal
 	 */
-	sig2::signal<void(const mavlink_message_t *message, uint8_t system_id, uint8_t component_id)> message_received;
+	MessageSig message_received;
 	sig2::signal<void()> port_closed;
 
 	virtual mavlink_status_t get_status() = 0;
@@ -143,14 +154,22 @@ public:
 
 	/**
 	 * @brief Construct connection from URL
+	 *
+	 * Supported URL schemas:
+	 * - serial://
+	 * - udp://
+	 * - tcp://
+	 * - tcp-l://
+	 *
+	 * Please see user's documentation for details.
+	 *
 	 * @param[in] url           resource locator
 	 * @param[in] system_id     optional system id
 	 * @param[in] component_id  optional component id
-	 *
-	 * @todo Implementation
-	 * @todo Documentation
+	 * @return @a Ptr to constructed interface class,
+	 *         or throw @a DeviceError if error occured.
 	 */
-	static boost::shared_ptr<MAVConnInterface> open_url(std::string url,
+	static Ptr open_url(std::string url,
 			uint8_t system_id = 1, uint8_t component_id = MAV_COMP_ID_UDP_BRIDGE);
 
 protected:

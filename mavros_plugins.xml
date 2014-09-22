@@ -47,5 +47,11 @@
 	<class name="setpoint_attitude" type="mavplugin::SetpointAttitudePlugin" base_class_type="mavplugin::MavRosPlugin">
 		<description>Send to FCU external attitude setpoint.</description>
 	</class>
+	<class name="vfr_hud" type="mavplugin::VfrHudPlugin" base_class_type="mavplugin::MavRosPlugin">
+		<description>Publish VFR HUD data and WIND estimations.</description>
+	</class>
+	<class name="ftp" type="mavplugin::FTPPlugin" base_class_type="mavplugin::MavRosPlugin">
+		<description>Access to files on FCU via MAVLink-FTP.</description>
+	</class>
 </library>
 
