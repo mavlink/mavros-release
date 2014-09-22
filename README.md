@@ -1,3 +1,26 @@
+## mavros (indigo) - 0.8.0-0
+
+The packages in the `mavros` repository were released into the `indigo` distro by running `/usr/bin/bloom-release --rosdistro indigo --track indigo mavros` on `Mon, 22 Sep 2014 14:40:02 -0000`
+
+These packages were released:
+- `mavros`
+- `mavros_extras`
+
+Version of package(s) in repository `mavros`:
+- upstream repository: https://github.com/vooon/mavros.git
+- release repository: https://github.com/vooon/mavros-release.git
+- rosdistro version: `0.7.1-0`
+- old version: `0.7.1-0`
+- new version: `0.8.0-0`
+
+Versions of tools used:
+- bloom version: `0.5.11`
+- catkin_pkg version: `0.2.4`
+- rosdep version: `0.10.30`
+- rosdistro version: `0.3.5`
+- vcstools version: `0.1.35`
+
+
 ## mavros (hydro) - 0.8.0-0
 
 The packages in the `mavros` repository were released into the `hydro` distro by running `/usr/bin/bloom-release --rosdistro hydro --track hydro mavros` on `Mon, 22 Sep 2014 14:36:25 -0000`
