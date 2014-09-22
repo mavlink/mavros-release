@@ -19,131 +19,24 @@
 
 from __future__ import print_function
 
-import sys
-import csv
-import time
 import argparse
 import threading
 
-import roslib; roslib.load_manifest("mavros")
 import rospy
-from mavros.msg import Waypoint, WaypointList
-from mavros.srv import WaypointPull, WaypointPush, WaypointClear, \
-        WaypointSetCurrent, WaypointGOTO
+from mavros.utils import *
+from mavros.mission import *
 
 no_prettytable = False
 try:
     from prettytable import PrettyTable
 except ImportError:
-    print("Waring: 'show' action disabled. install python-prettytable", file=sys.stderr);
+    print("Waring: 'show' action disabled. install python-prettytable", file=sys.stderr)
     no_prettytable = True
 
-
-FRAMES = {
-    Waypoint.FRAME_GLOBAL: 'GAA',
-    Waypoint.FRAME_GLOBAL_REL_ALT: 'GRA',
-    Waypoint.FRAME_LOCAL_ENU: 'LOC-ENU',
-    Waypoint.FRAME_LOCAL_NED: 'LOC-NED',
-    Waypoint.FRAME_MISSION: 'MIS'
-}
-
-NAV_CMDS = {
-    Waypoint.NAV_LAND: 'LAND',
-    Waypoint.NAV_LOITER_TIME: 'LOITER-TIME',
-    Waypoint.NAV_LOITER_TURNS: 'LOITER-TURNS',
-    Waypoint.NAV_LOITER_UNLIM: 'LOITER-UNLIM',
-    Waypoint.NAV_RETURN_TO_LAUNCH: 'RTL',
-    Waypoint.NAV_TAKEOFF: 'TAKEOFF',
-    Waypoint.NAV_WAYPOINT: 'WAYPOINT'
-}
-
-
-
-class WaypointFile(object):
-    """Base class for waypoint file parsers"""
-    def read(self, file_):
-        """Returns a iterable of waypoints"""
-        raise NotImplementedError
-
-    def write(self, file_, waypoints):
-        """Writes waypoints to file"""
-        raise NotImplementedError
-
-
-class QGroundControlWP(WaypointFile):
-    """Parse QGC waypoint file"""
-
-    file_header = 'QGC WPL 120'
-    known_versions = (110, 120)
-
-    class CSVDialect(csv.Dialect):
-        delimiter = '\t'
-        doublequote = False
-        skipinitialspace = True
-        lineterminator = '\r\n'
-        quoting = csv.QUOTE_NONE
-
-    def read(self, file_):
-        got_header = False
-        for data in csv.reader(file_, self.CSVDialect):
-            if data[0].startswith('#'):
-                continue; # skip comments (i think in next format version they add this)
-
-            if not got_header:
-                qgc, wpl, ver = data[0].split(' ', 3)
-                ver = int(ver)
-                if qgc == 'QGC' and wpl == 'WPL' and ver in self.known_versions:
-                    got_header = True
-
-            else:
-                yield Waypoint(
-                    is_current = bool(int(data[1])),
-                    frame = int(data[2]),
-                    command = int(data[3]),
-                    param1 = float(data[4]),
-                    param2 = float(data[5]),
-                    param3 = float(data[6]),
-                    param4 = float(data[7]),
-                    x_lat = float(data[8]),
-                    y_long = float(data[9]),
-                    z_alt = float(data[10]),
-                    autocontinue = bool(int(data[11]))
-                )
-
-    def write(self, file_, waypoints):
-        writer = csv.writer(file_, self.CSVDialect)
-        writer.writerow((self.file_header ,))
-        for seq, w in enumerate(waypoints):
-            writer.writerow((
-                seq,
-                int(w.is_current),
-                w.frame,
-                w.command,
-                w.param1,
-                w.param2,
-                w.param3,
-                w.param4,
-                w.x_lat,
-                w.y_long,
-                w.z_alt,
-                int(w.autocontinue)
-            ))
-
-
-
-def print_if(cond, *args, **kvargs):
-    if cond:
-        print(*args, **kvargs)
 
 
 def get_wp_file_io(args):
     return QGroundControlWP()
-
-
-def fault(*args, **kvargs):
-    kvargs['file'] = sys.stderr
-    print(*args, **kvargs)
-    sys.exit(1)
 
 
 def _pull(args):
@@ -207,16 +100,16 @@ def do_show(args):
 
         print(pt, file=sys.stdout)
         sys.stdout.flush()
-
-        if not args.follow:
-            done_evt.set()
+        done_evt.set()
 
     if args.pull:
         _pull(args)
 
     # Waypoints topic is latched type, and it updates after pull
     sub = rospy.Subscriber(args.mavros_ns + "/mission/waypoints", WaypointList, _show_table)
-    if not done_evt.wait(30.0):
+    if args.follow:
+        rospy.spin()
+    elif not done_evt.wait(30.0):
         fault("Something went wrong. Topic timed out.")
 
 
@@ -228,16 +121,40 @@ def do_load(args):
     with args.file:
         wps = [w for w in wps_file.read(args.file)]
 
-    try:
-        push_cl = rospy.ServiceProxy(args.mavros_ns + "/mission/push", WaypointPush)
-        ret = push_cl(waypoints=wps)
-    except rospy.ServiceException as ex:
-        fault(ex)
+    def _load_call(waypoint_list):
+        try:
+            push_cl = rospy.ServiceProxy(args.mavros_ns + "/mission/push", WaypointPush)
+            ret = push_cl(waypoints=waypoint_list)
+        except rospy.ServiceException as ex:
+            fault(ex)
 
-    if not ret.success:
-        fault("Request failed. Check mavros logs")
+        if not ret.success:
+            fault("Request failed. Check mavros logs")
 
-    print_if(args.verbose, "Waypoints transfered:", ret.wp_transfered)
+        print_if(args.verbose, "Waypoints transfered:", ret.wp_transfered)
+
+    done_evt = threading.Event()
+    def _fix_wp0(topic):
+        if len(topic.waypoints) > 0:
+            wps[0] = topic.waypoints[0]
+            print_if(args.verbose, "HOME location: latitude:", wps[0].x_lat,
+                     "longitude:", wps[0].y_long, "altitude:", wps[0].z_alt)
+        else:
+            print("Failed to get WP0! WP0 will be loaded from file.", file=sys.stderr)
+
+        done_evt.set()
+
+    if not args.preserve_home:
+        _load_call(wps)
+    else:
+        # Note: _load_call() emit publish on this topic, so callback only changes
+        # waypoint 0, and signal done event.
+        sub = rospy.Subscriber(args.mavros_ns + "/mission/waypoints", WaypointList, _fix_wp0)
+        if not done_evt.wait(30.0):
+            fault("Something went wrong. Topic timed out.")
+        else:
+            sub.unregister()
+            _load_call(wps)
 
 
 def do_dump(args):
@@ -328,6 +245,7 @@ def main():
 
     load_args = subarg.add_parser('load', help="load waypoints from file")
     load_args.set_defaults(func=do_load)
+    load_args.add_argument('-p', '--preserve-home', action='store_true', help="Preserve home location (WP 0)")
     load_args.add_argument('file', type=argparse.FileType('rb'), help="input file (QGC/MP format)")
 
     pull_args = subarg.add_parser('pull', help="pull waypoints from FCU")
@@ -362,4 +280,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
