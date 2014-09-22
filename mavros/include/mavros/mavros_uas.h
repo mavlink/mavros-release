@@ -1,9 +1,9 @@
 /**
  * @brief MAVROS Plugin context
- * @file mavros_plugin.h
+ * @file mavros_uas.h
  * @author Vladimir Ermakov <vooon341@gmail.com>
  *
- * @addtogroup plugin
+ * @addtogroup nodelib
  * @{
  */
 /*
@@ -31,9 +31,7 @@
 #include <tf/transform_datatypes.h>
 #include <mavros/mavconn_interface.h>
 
-namespace mavplugin {
-typedef std::lock_guard<std::recursive_mutex> lock_guard;
-typedef std::unique_lock<std::recursive_mutex> unique_lock;
+namespace mavros {
 
 /**
  * @brief helper accessor to FCU link interface
@@ -61,10 +59,25 @@ typedef std::unique_lock<std::recursive_mutex> unique_lock;
 	(uasobjptr)->get_tgt_component()
 
 /**
- * @brief UAS handler for plugins
+ * @brief UAS for plugins
+ *
+ * This class stores some useful data and
+ * provides fcu connection, mode stringify utilities.
+ *
+ * Currently it stores:
+ * - FCU link interface
+ * - FCU System & Component ID pair
+ * - Connection status (@a mavplugin::SystemStatusPlugin)
+ * - Autopilot type (@a mavplugin::SystemStatusPlugin)
+ * - Vehicle type (@a mavplugin::SystemStatusPlugin)
+ * - IMU data (@a mavplugin::IMUPubPlugin)
+ * - GPS data (@a mavplugin::GPSPlugin)
  */
 class UAS {
 public:
+	typedef std::lock_guard<std::recursive_mutex> lock_guard;
+	typedef std::unique_lock<std::recursive_mutex> unique_lock;
+
 	UAS();
 	~UAS() {};
 
@@ -72,6 +85,13 @@ public:
 	 * Stop UAS
 	 */
 	void stop(void);
+
+	/**
+	 * @brief MAVLink FCU device conection
+	 */
+	mavconn::MAVConnInterface::Ptr fcu_link;
+
+	/* -*- HEARTBEAT data -*- */
 
 	/**
 	 * Update autopilot type on every HEARTBEAT
@@ -85,42 +105,64 @@ public:
 	 * Update autopilot connection status (every HEARTBEAT/conn_timeout)
 	 */
 	void update_connection_status(bool conn_) {
-		lock_guard lock(mutex);
-
 		if (conn_ != connected) {
 			connected = conn_;
 			sig_connection_changed(connected);
 		}
 	}
 
+	/**
+	 * @brief This signal emit when status was changed
+	 *
+	 * @param bool connection status
+	 */
+	boost::signals2::signal<void(bool)> sig_connection_changed;
+
+	/**
+	 * @brief Returns connection status
+	 */
+	inline bool get_connection_status() {
+		return connected;
+	}
+
+	/**
+	 * @brief Returns vehicle type
+	 */
 	inline enum MAV_TYPE get_type() {
 		uint8_t type_ = type;
 		return static_cast<enum MAV_TYPE>(type_);
-	};
+	}
 
+	/**
+	 * @brief Returns autopilot type
+	 */
 	inline enum MAV_AUTOPILOT get_autopilot() {
 		uint8_t autopilot_ = autopilot;
 		return static_cast<enum MAV_AUTOPILOT>(autopilot_);
-	};
+	}
+
+	/* -*- FCU target id pair -*- */
 
 	/**
 	 * @brief Return communication target system
 	 */
 	inline uint8_t get_tgt_system() {
 		return target_system; // not changed after configuration
-	};
+	}
 
 	/**
 	 * @brief Return communication target component
 	 */
 	inline uint8_t get_tgt_component() {
 		return target_component; // not changed after configuration
-	};
+	}
 
 	inline void set_tgt(uint8_t sys, uint8_t comp) {
 		target_system = sys;
 		target_component = comp;
-	};
+	}
+
+	/* -*- IMU data -*- */
 
 	/**
 	 * @brief Get Attitude angular velocity vector
@@ -176,6 +218,8 @@ public:
 		orientation = quat;
 	}
 
+	/* -*- GPS data -*- */
+
 	/**
 	 * @brief Store GPS Lat/Long/Alt and EPH/EPV data
 	 *
@@ -228,36 +272,47 @@ public:
 		return fix_status;
 	}
 
+	/* -*- utils -*- */
+
 	/**
-	 * For APM quirks
+	 * @brief Check that FCU is APM
 	 */
 	inline bool is_ardupilotmega() {
 		return MAV_AUTOPILOT_ARDUPILOTMEGA == get_autopilot();
-	};
+	}
 
 	/**
-	 * For PX4 quirks
+	 * @brief Check that FCU is PX4
 	 */
 	inline bool is_px4() {
 		return MAV_AUTOPILOT_PX4 == get_autopilot();
 	}
 
 	/**
-	 * This signal emith when status was changes
+	 * @brief Represent FCU mode as string
 	 *
-	 * @param bool connection status
+	 * Port pymavlink mavutil.mode_string_v10
+	 *
+	 * Supported FCU's:
+	 * - APM:Plane
+	 * - APM:Copter
+	 * - PX4
+	 *
+	 * @param[in] base_mode    base mode
+	 * @param[in] custom_mode  custom mode data
 	 */
-	boost::signals2::signal<void(bool)> sig_connection_changed;
-
-	inline bool get_connection_status() {
-		lock_guard lock(mutex);
-		return connected;
-	};
+	std::string str_mode_v10(uint8_t base_mode, uint32_t custom_mode);
 
 	/**
-	 * MAVLink FCU device conection
+	 * @brief Lookup custom mode for given string
+	 *
+	 * Complimentary to @a str_mode_v10()
+	 *
+	 * @param[in]  cmode_str   string representation of mode
+	 * @param[out] custom_mode decoded value
+	 * @return true if success
 	 */
-	boost::shared_ptr<mavconn::MAVConnInterface> fcu_link;
+	bool cmode_from_str(std::string cmode_str, uint32_t &custom_mode);
 
 private:
 	std::recursive_mutex mutex;
@@ -265,7 +320,7 @@ private:
 	std::atomic<uint8_t> autopilot;
 	uint8_t target_system;
 	uint8_t target_component;
-	bool connected;
+	std::atomic<bool> connected;
 	tf::Vector3 angular_velocity;
 	tf::Vector3 linear_acceleration;
 	tf::Quaternion orientation;
@@ -277,4 +332,4 @@ private:
 	std::atomic<bool> fix_status;
 };
 
-}; // namespace mavplugin
+}; // namespace mavros
