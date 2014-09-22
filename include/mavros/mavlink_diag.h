@@ -1,9 +1,9 @@
 /**
- * @brief MAVROS UAS manager
- * @file uas.cpp
+ * @brief Mavlink diag class
+ * @file mavlink_diag.h
  * @author Vladimir Ermakov <vooon341@gmail.com>
  *
- * @addtogroup plugin
+ * @addtogroup nodelib
  * @{
  */
 /*
@@ -24,21 +24,33 @@
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#include <mavros/mavros_uas.h>
-#include <mavros/utils.h>
+#pragma once
 
-using namespace mavplugin;
+#include <diagnostic_updater/diagnostic_updater.h>
+#include <mavros/mavconn_interface.h>
 
-UAS::UAS() :
-	type(MAV_TYPE_GENERIC),
-	autopilot(MAV_AUTOPILOT_GENERIC),
-	target_system(1),
-	target_component(1),
-	connected(false)
+namespace mavros {
+
+class MavlinkDiag : public diagnostic_updater::DiagnosticTask
 {
-}
+public:
+	explicit MavlinkDiag(std::string name);
 
-void UAS::stop(void)
-{
-}
+	void run(diagnostic_updater::DiagnosticStatusWrapper &stat);
+
+	void set_mavconn(const mavconn::MAVConnInterface::Ptr &link) {
+		weak_link = link;
+	}
+
+	void set_connection_status(bool connected) {
+		is_connected = connected;
+	}
+
+private:
+	mavconn::MAVConnInterface::WeakPtr weak_link;
+	unsigned int last_drop_count;
+	bool is_connected;
+};
+
+}; // namespace mavros
 
