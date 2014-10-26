@@ -15,11 +15,11 @@ tracks:
     name: upstream
     patches: null
     release_inc: '0'
-    release_repo_url: git@github.com:vooon/mavros-release.git
+    release_repo_url: git@github.com:mavlink/mavros-release.git
     release_tag: :{version}
     ros_distro: hydro
     vcs_type: git
-    vcs_uri: https://github.com/vooon/mavros.git
+    vcs_uri: https://github.com/mavlink/mavros.git
     version: :{auto}
   indigo:
     actions:
@@ -37,9 +37,9 @@ tracks:
     name: upstream
     patches: null
     release_inc: '0'
-    release_repo_url: git@github.com:vooon/mavros-release.git
+    release_repo_url: git@github.com:mavlink/mavros-release.git
     release_tag: :{version}
     ros_distro: indigo
     vcs_type: git
-    vcs_uri: https://github.com/vooon/mavros.git
+    vcs_uri: https://github.com/mavlink/mavros.git
     version: :{auto}
