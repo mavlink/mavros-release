@@ -11,7 +11,7 @@ tracks:
     - git-bloom-generate -y rosrpm --prefix release/:{ros_distro} :{ros_distro} -i
       :{release_inc}
     devel_branch: hydro-devel
-    last_version: 0.8.1
+    last_version: 0.8.2
     name: upstream
     patches: null
     release_inc: '0'
