@@ -16,14 +16,14 @@ find_package(catkin REQUIRED COMPONENTS
   std_srvs
   tf
   angles
+  libmavconn
+  rosconsole_bridge
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 find_package(Boost REQUIRED COMPONENTS system)
 
-# add package modules path, not needed in dependend packages
-list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 include(EnableCXX11)
 include(MavrosMavlink)
 
@@ -131,10 +131,9 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES mavconn mavros
-  CATKIN_DEPENDS diagnostic_msgs diagnostic_updater pluginlib roscpp sensor_msgs std_msgs tf geometry_msgs
+  LIBRARIES mavros
+  CATKIN_DEPENDS diagnostic_msgs diagnostic_updater pluginlib roscpp sensor_msgs std_msgs tf geometry_msgs libmavconn
   DEPENDS Boost mavlink
-  CFG_EXTRAS mavros-extras.cmake
 )
 
 ###########
@@ -152,32 +151,17 @@ include_directories(
   ${mavlink_INCLUDE_DIRS}
 )
 
-## Declare a cpp library
-add_library(mavconn
-  src/mavconn/mavconn_interface.cpp
-  src/mavconn/mavconn_serial.cpp
-  src/mavconn/mavconn_udp.cpp
-  src/mavconn/mavconn_tcp.cpp
-)
-add_dependencies(mavconn
-  mavros_generate_messages_cpp
-)
-target_link_libraries(mavconn
-  ${catkin_LIBRARIES}
-  ${Boost_LIBRARIES}
-)
 
 add_library(mavros
   src/lib/uas.cpp
   src/lib/mavros.cpp
   src/lib/mavlink_diag.cpp
+  src/lib/rosconsole_bridge.cpp
 )
 add_dependencies(mavros
   mavros_generate_messages_cpp
-  mavconn
 )
 target_link_libraries(mavros
-  mavconn
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
 )
@@ -185,6 +169,7 @@ target_link_libraries(mavros
 add_library(mavros_plugins
   src/plugins/dummy.cpp
   src/plugins/sys_status.cpp
+  src/plugins/sys_time.cpp
   src/plugins/imu_pub.cpp
   src/plugins/gps.cpp
   src/plugins/param.cpp
@@ -206,7 +191,6 @@ add_dependencies(mavros_plugins
   mavros
 )
 target_link_libraries(mavros_plugins
-  mavconn
   mavros
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
@@ -229,10 +213,9 @@ add_executable(gcs_bridge
   src/gcs_bridge.cpp
 )
 add_dependencies(gcs_bridge
-  mavconn
+  mavros_generate_messages_cpp
 )
 target_link_libraries(gcs_bridge
-  mavconn
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
 )
@@ -253,7 +236,7 @@ catkin_install_python(PROGRAMS
 )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS mavconn mavros mavros_plugins mavros_node gcs_bridge
+install(TARGETS mavros mavros_plugins mavros_node gcs_bridge
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -275,20 +258,15 @@ install(DIRECTORY launch/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )
 
-## Install cmake files (thanks to cmake_modules package)
-install(DIRECTORY cmake/Modules
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/cmake
-)
-
 #############
 ## Testing ##
 #############
 
 ## Add gtest based cpp test target and link libraries
-catkin_add_gtest(mavconn-test test/test_mavconn.cpp)
-if(TARGET mavconn-test)
-  target_link_libraries(mavconn-test mavconn)
-endif()
+#catkin_add_gtest(mavconn-test test/test_mavconn.cpp)
+#if(TARGET mavconn-test)
+#  target_link_libraries(mavconn-test mavconn)
+#endif()
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
