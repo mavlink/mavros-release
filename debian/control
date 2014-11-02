@@ -1,0 +1,12 @@
+Source: ros-indigo-mavros-extras
+Section: misc
+Priority: extra
+Maintainer: Vladimir Ermakov <vooon341@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), ros-indigo-catkin, ros-indigo-cv-bridge, ros-indigo-image-transport, ros-indigo-mavlink, ros-indigo-mavros, ros-indigo-roscpp, ros-indigo-sensor-msgs
+Homepage: http://wiki.ros.org/mavros_extras
+Standards-Version: 3.9.2
+
+Package: ros-indigo-mavros-extras
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-indigo-cv-bridge, ros-indigo-image-transport, ros-indigo-mavlink, ros-indigo-mavros, ros-indigo-roscpp, ros-indigo-sensor-msgs
+Description: Extra nodes and plugins for mavros
