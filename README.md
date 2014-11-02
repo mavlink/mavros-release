@@ -1,31 +1,39 @@
-mavros extras
-=============
+MAVROS
+======
 
-Some extra plugins and nodes for [mavros][mr].
+MAVLink extendable communication node for ROS.
 
-
-px4flow
--------
-
-Plugin for mavros. Publish `OPTICAL_FLOW` data.
+Since 2014-08-11 this repository contains several packages.
 
 
-image\_pub
-----------
+mavros package
+--------------
 
-Plugin for mavros, publish images from mavlink device.
-
-
-gcs\_image\_bridge
-------------------
-
-Variation of `gcs_bridge` that additionally sends image stream to GCS.
+It is the main package, please see it's [README][mrrm].
 
 
-px-ros-pkg replacement
+mavros\_extras package
 ----------------------
 
-Use `roslaunch mavros_extras px4flow.launch` for that.
+This package contain some extra nodes and plugins for mavros, please see it's [README][exrm].
 
 
-[mr]: https://github.com/mavlink/mavros
+libmavconn package
+------------------
+
+This package contain mavconn library, see it's [README][libmc].
+MAVConn may be used outside of ROS environment.
+
+
+CI Statuses
+-----------
+
+  - ROS Hydro: [![Hydro build status](http://jenkins.ros.org/buildStatus/icon?job=devel-hydro-mavros)](http://jenkins.ros.org/job/devel-hydro-mavros/)
+  - ROS Indigo: [![Indigo build status](http://jenkins.ros.org/buildStatus/icon?job=devel-indigo-mavros)](http://jenkins.ros.org/job/devel-indigo-mavros/)
+  - Travis Hydro (PX4): [![Hydro px4 status](https://travis-ci.org/mavlink/mavros.svg?branch=master)](https://travis-ci.org/mavlink/mavros)
+  - Travis Hydro (Coverity Scan): [![Hydro scan status](https://travis-ci.org/mavlink/mavros.svg?branch=coverity_scan)](https://travis-ci.org/mavlink/mavros)
+
+
+[mrrm]: https://github.com/mavlink/mavros/blob/master/mavros/README.md
+[exrm]: https://github.com/mavlink/mavros/blob/master/mavros_extras/README.md
+[libmc]: https://github.com/mavlink/mavros/blob/master/libmavconn/README.md
