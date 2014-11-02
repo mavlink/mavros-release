@@ -1,6 +1,6 @@
 /**
  * @brief MAVConn class interface
- * @file mavconn_interface.h
+ * @file interface.h
  * @author Vladimir Ermakov <vooon341@gmail.com>
  *
  * @addtogroup mavconn
@@ -11,7 +11,7 @@
  *  such as autopilots.
  */
 /*
- * Copyright 2013 Vladimir Ermakov.
+ * Copyright 2013,2014 Vladimir Ermakov.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,6 +32,8 @@
 
 #include <boost/bind.hpp>
 #include <boost/signals2.hpp>
+#include <boost/smart_ptr.hpp>
+#include <boost/make_shared.hpp>
 #include <boost/system/system_error.hpp>
 
 #include <set>
@@ -39,7 +41,7 @@
 #include <thread>
 #include <memory>
 #include <sstream>
-#include <mavros/mavconn_mavlink.h>
+#include <mavconn/mavlink_dialect.h>
 
 namespace mavconn {
 namespace sig2 = boost::signals2;
