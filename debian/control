@@ -1,0 +1,12 @@
+Source: ros-hydro-mavros
+Section: misc
+Priority: extra
+Maintainer: Vladimir Ermakov <vooon341@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), libboost-all-dev, libgtest-dev, ros-hydro-angles, ros-hydro-catkin, ros-hydro-diagnostic-msgs, ros-hydro-diagnostic-updater, ros-hydro-geometry-msgs, ros-hydro-libmavconn, ros-hydro-mavlink, ros-hydro-message-generation, ros-hydro-pluginlib, ros-hydro-rosconsole-bridge, ros-hydro-roscpp, ros-hydro-rospy, ros-hydro-sensor-msgs, ros-hydro-std-msgs, ros-hydro-std-srvs, ros-hydro-tf
+Homepage: http://wiki.ros.org/mavros
+Standards-Version: 3.9.2
+
+Package: ros-hydro-mavros
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libboost-all-dev, ros-hydro-angles, ros-hydro-diagnostic-msgs, ros-hydro-diagnostic-updater, ros-hydro-geometry-msgs, ros-hydro-libmavconn, ros-hydro-mavlink, ros-hydro-message-runtime, ros-hydro-pluginlib, ros-hydro-rosconsole-bridge, ros-hydro-roscpp, ros-hydro-rospy, ros-hydro-sensor-msgs, ros-hydro-std-msgs, ros-hydro-std-srvs, ros-hydro-tf
+Description: MAVROS -- MAVLink extendable communication node for ROS with UDP proxy for Ground Control Station.
