@@ -1,0 +1,12 @@
+Source: ros-hydro-libmavconn
+Section: misc
+Priority: extra
+Maintainer: Vladimir Ermakov <vooon341@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), libboost-all-dev, ros-hydro-catkin, ros-hydro-console-bridge
+Homepage: http://wiki.ros.org/mavros
+Standards-Version: 3.9.2
+
+Package: ros-hydro-libmavconn
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libboost-all-dev, ros-hydro-console-bridge
+Description: MAVLink communication library. This library provide unified connection handling classes and URL to connection object mapper. This library can be used in standalone programs.
