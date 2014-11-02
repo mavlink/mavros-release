@@ -4,8 +4,9 @@ Changelog for package libmavconn
 
 0.8.2 (2014-11-03)
 ------------------
-* mavconn `#162 <https://github.com/vooon/mavros/issues/162>`_: fix console_bridge package name.
-  In Hydro console bridge not released as system dependency.
+* REP140: update package.xml format.
+  Hydro don't accept this format correctly,
+  but after split i can update.
 * Contributors: Vladimir Ermakov
 
 0.8.1 (2014-11-02)
