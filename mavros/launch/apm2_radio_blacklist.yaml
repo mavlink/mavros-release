@@ -1,0 +1,10 @@
+plugin_blacklist:
+- '*_position'
+- 'safety_area'
+- 'setpoint_*'
+- 'px4flow'
+- 'image_pub'
+- 'vision_*'
+- 'mocap_*'
+- 'global_*'
+- 'ftp'
