@@ -2,17 +2,18 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.8.4 (2014-11-03)
+0.9.1 (2014-11-03)
 ------------------
 
-0.8.3 (2014-11-03)
+0.9.0 (2014-11-03)
 ------------------
-* 0.8.2
-* prepare minor release 0.8.2 for hydro
-* Contributors: Vladimir Ermakov
 
 0.8.2 (2014-11-03)
 ------------------
+* REP140: update package.xml format.
+  Hydro don't accept this format correctly,
+  but after split i can update.
+* Contributors: Vladimir Ermakov
 
 0.8.1 (2014-11-02)
 ------------------
