@@ -2,14 +2,24 @@
 Changelog for package libmavconn
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.9.0 (2014-11-03)
+0.8.4 (2014-11-03)
 ------------------
+* Fix libmavconn deps.
+  Releases 0.9 and 0.8.3 ar broken because i forgot to add mavlink dep.
+* Contributors: Vladimir Ermakov
+
+0.8.3 (2014-11-03)
+------------------
+* 0.8.2
+* prepare minor release 0.8.2 for hydro
+* mavconn `#162 <https://github.com/vooon/mavros/issues/162>`_: fix console_bridge package name.
+  In Hydro console bridge not released as system dependency.
+* Contributors: Vladimir Ermakov
 
 0.8.2 (2014-11-03)
 ------------------
-* REP140: update package.xml format.
-  Hydro don't accept this format correctly,
-  but after split i can update.
+* mavconn `#162 <https://github.com/vooon/mavros/issues/162>`_: fix console_bridge package name.
+  In Hydro console bridge not released as system dependency.
 * Contributors: Vladimir Ermakov
 
 0.8.1 (2014-11-02)
