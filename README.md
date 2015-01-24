@@ -1,41 +1,31 @@
-MAVROS
-======
+mavros extras
+=============
 
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/mavlink/mavros?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
-MAVLink extendable communication node for ROS.
-
-Since 2014-08-11 this repository contains several packages.
-Since 2014-11-02 hydro support splited from master to hydro-devel branch.
-
-mavros package
---------------
-
-It is the main package, please see it's [README][mrrm].
+Some extra plugins and nodes for [mavros][mr].
 
 
-mavros\_extras package
-----------------------
+px4flow
+-------
 
-This package contain some extra nodes and plugins for mavros, please see it's [README][exrm].
+Plugin for mavros. Publish `OPTICAL_FLOW` data.
 
 
-libmavconn package
+image\_pub
+----------
+
+Plugin for mavros, publish images from mavlink device.
+
+
+gcs\_image\_bridge
 ------------------
 
-This package contain mavconn library, see it's [README][libmc].
-MAVConn may be used outside of ROS environment.
+Variation of `gcs_bridge` that additionally sends image stream to GCS.
 
 
-CI Statuses
------------
+px-ros-pkg replacement
+----------------------
 
-  - ROS Hydro: [![Hydro build status](http://jenkins.ros.org/buildStatus/icon?job=devel-hydro-mavros)](http://jenkins.ros.org/job/devel-hydro-mavros/)
-  - ROS Indigo: [![Indigo build status](http://jenkins.ros.org/buildStatus/icon?job=devel-indigo-mavros)](http://jenkins.ros.org/job/devel-indigo-mavros/)
-  - Travis Hydro (PX4): [![Hydro px4 status](https://travis-ci.org/mavlink/mavros.svg?branch=master)](https://travis-ci.org/mavlink/mavros)
-  - Travis Hydro (Coverity Scan): [![Hydro scan status](https://travis-ci.org/mavlink/mavros.svg?branch=coverity_scan)](https://travis-ci.org/mavlink/mavros)
+Use `roslaunch mavros_extras px4flow.launch` for that.
 
 
-[mrrm]: https://github.com/mavlink/mavros/blob/master/mavros/README.md
-[exrm]: https://github.com/mavlink/mavros/blob/master/mavros_extras/README.md
-[libmc]: https://github.com/mavlink/mavros/blob/master/libmavconn/README.md
+[mr]: https://github.com/mavlink/mavros
