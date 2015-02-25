@@ -1,0 +1,149 @@
+ros-jade-mavros-extras (0.10.2-0utopic) utopic; urgency=high
+
+  * launch: Fix vim modelines #213 <https://github.com/vooon/mavros/issues/213>
+  * Contributors: Vladimir Ermakov
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Tue, 24 Feb 2015 21:00:00 -0000
+
+ros-jade-mavros-extras (0.10.1-0utopic) utopic; urgency=high
+
+  * Fix @mhkabir name in contributors.
+  * Updated mavros_extra README to explain the vision_estimate plugin should be used for the mocap data currently.
+  * Update px4flow.cpp
+  * plguin: px4flow: Remove all ref to old message
+  * Merge remote-tracking branch 'upstream/master' into optflow_rad
+    Conflicts:
+    mavros_extras/CMakeLists.txt
+  * Update
+  * Clean up
+  * New interface commit
+  * Add new interface. Raw message only for now. Removed the tx functionality as it doesn't make much sense.
+  * Contributors: Mohammed Kabir, Tony Baltovski, Vladimir Ermakov
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Sun, 01 Feb 2015 21:00:00 -0000
+
+ros-jade-mavros-extras (0.10.0-0utopic) utopic; urgency=high
+
+  * mocap_pose_estimate: Switched from pose to poseStamped.
+  * Contributors: Tony Baltovski
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Fri, 23 Jan 2015 21:00:00 -0000
+
+ros-jade-mavros-extras (0.9.4-0utopic) utopic; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Mon, 05 Jan 2015 21:00:00 -0000
+
+ros-jade-mavros-extras (0.9.3-0utopic) utopic; urgency=high
+
+  * Initiliser fix
+  * plugin: visualisation - Fixes CI build
+  * plugin: visualisation
+  * plugin: visualization minor patch
+  * plugin: visualization finshed
+  * Contributors: Mohammed Kabir
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Mon, 29 Dec 2014 21:00:00 -0000
+
+ros-jade-mavros-extras (0.9.2-0utopic) utopic; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Mon, 03 Nov 2014 21:00:00 -0000
+
+ros-jade-mavros-extras (0.9.1-0utopic) utopic; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Sun, 02 Nov 2014 21:00:00 -0000
+
+ros-jade-mavros-extras (0.9.0-0utopic) utopic; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Sun, 02 Nov 2014 21:00:00 -0000
+
+ros-jade-mavros-extras (0.8.2-0utopic) utopic; urgency=high
+
+  * REP140: update package.xml format.
+    Hydro don't accept this format correctly,
+    but after split i can update.
+  * Contributors: Vladimir Ermakov
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Sun, 02 Nov 2014 21:00:00 -0000
+
+ros-jade-mavros-extras (0.8.1-0utopic) utopic; urgency=high
+
+  * mavconn #161 <https://github.com/vooon/mavros/issues/161>: Fix headers used in mavros. Add readme.
+  * Update repo links.
+    Package moved to mavlink organization.
+  * Contributors: Vladimir Ermakov
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Sat, 01 Nov 2014 21:00:00 -0000
+
+ros-jade-mavros-extras (0.8.0-0utopic) utopic; urgency=high
+
+  * Revert "Update package.xml format to REP140 (2)."
+    This reverts commit 81286eb84090a95759591cfab89dd9718ff35b7e.
+    ROS Hydro don't fully support REP140: rospack can't find plugin
+    descriptions.
+    Fix #151 <https://github.com/vooon/mavros/issues/151>.
+  * Added arming/disarming for att mode.
+  * Added arming and disarming via mavteleop.
+  * extras: mocap: Fix param/topic namespace.
+    Fix #150 <https://github.com/vooon/mavros/issues/150>.
+  * extras: launch: Use includes.
+    Fix #144 <https://github.com/vooon/mavros/issues/144>.
+  * Update package.xml format to REP140 (2).
+    Fix #104 <https://github.com/vooon/mavros/issues/104>.
+  * extras: launch: Fix typos.
+  * extras: launch: Add teleop launch script.
+  * extras: mavteleop: Dirty implementation of position control mode.
+    Issue #133 <https://github.com/vooon/mavros/issues/133>.
+  * extras: mavteleop: Implement velocity setpoint control.
+    Issue #133 <https://github.com/vooon/mavros/issues/133>.
+  * extras: mavteleop: Implement attitude control mode.
+    Issue #133 <https://github.com/vooon/mavros/issues/133>.
+  * extras: Use cmake modules.
+    Issue #139 <https://github.com/vooon/mavros/issues/139>.
+  * Update doxygen documentation.
+    Add split lines in UAS, and make UAS.connection atomic.
+    Add rosdoc configuration for mavros_extras.
+  * scripts: mavsetp: corrected msg API; mavteleop: added prefix to rc override
+  * scripts: Initial import mavteleop
+    Now it's just proof of concept.
+    Implemented only RC override of RPYT channels.
+    Issue #133 <https://github.com/vooon/mavros/issues/133>.
+  * node: Catch URL open exception.
+    Also update connection pointer type.
+  * Contributors: Nuno Marques, Tony Baltovski, Vladimir Ermakov
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Sun, 21 Sep 2014 20:00:00 -0000
+
+ros-jade-mavros-extras (0.7.1-0utopic) utopic; urgency=high
+
+  * plugins: Change UAS FCU link name.
+    Reduce smart pointer count, that hold fcu link object.
+  * Plugins: finish moving plugins
+  * Closes #122 <https://github.com/vooon/mavros/issues/122>, closes #123 <https://github.com/vooon/mavros/issues/123>; plugins: move mocap & vision plugins to extras, change vision plugins name
+  * launch: Add example launch for #103 <https://github.com/vooon/mavros/issues/103>.
+  * extras: image_pub: Update plugin API.
+  * extras: px4flow: Update plugin API.
+  * plugins: disable most of plugins
+  * extras: init ctor
+  * extras: Fix package URLs
+  * test: temporary travis hack (manually download latest mavlink deb)
+  * Update readme
+  * Contributors: Nuno Marques, Vladimir Ermakov
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Sun, 24 Aug 2014 20:00:00 -0000
+
+ros-jade-mavros-extras (0.7.0-0utopic) utopic; urgency=high
+
+  * move exras to subdirectory, #101 <https://github.com/vooon/mavros/issues/101>
+  * Contributors: Vladimir Ermakov, Mohammed Kabir
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Mon, 11 Aug 2014 20:00:00 -0000
+
+
