@@ -1,3 +1,27 @@
+## mavros (indigo) - 0.10.2-0
+
+The packages in the `mavros` repository were released into the `indigo` distro by running `/usr/bin/bloom-release --rosdistro indigo --track indigo mavros` on `Wed, 25 Feb 2015 16:20:04 -0000`
+
+These packages were released:
+- `libmavconn`
+- `mavros`
+- `mavros_extras`
+
+Version of package(s) in repository `mavros`:
+- upstream repository: https://github.com/mavlink/mavros.git
+- release repository: https://github.com/mavlink/mavros-release.git
+- rosdistro version: `0.10.1-0`
+- old version: `0.10.1-0`
+- new version: `0.10.2-0`
+
+Versions of tools used:
+- bloom version: `0.5.19`
+- catkin_pkg version: `0.2.7`
+- rosdep version: `0.11.2`
+- rosdistro version: `0.4.1`
+- vcstools version: `0.1.36`
+
+
 ## mavros (indigo) - 0.10.1-0
 
 The packages in the `mavros` repository were released into the `indigo` distro by running `/usr/bin/bloom-release --rosdistro indigo --track indigo mavros` on `Sun, 01 Feb 2015 22:00:05 -0000`
