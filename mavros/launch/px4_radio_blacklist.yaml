@@ -1,2 +1,1 @@
-plugin_blacklist:
-- 'image_pub'
+plugin_blacklist: []

@@ -113,7 +113,7 @@ private:
 
 		mavros::RCInPtr rcin_msg = boost::make_shared<mavros::RCIn>();
 
-		rcin_msg->header.stamp = uas->synchronise_stamp(port.time_boot_ms);
+		rcin_msg->header.stamp = ros::Time::now();
 		rcin_msg->rssi = port.rssi;
 		rcin_msg->channels = raw_rc_in;
 
@@ -162,7 +162,7 @@ private:
 
 		mavros::RCInPtr rcin_msg = boost::make_shared<mavros::RCIn>();
 
-		rcin_msg->header.stamp = uas->synchronise_stamp(channels.time_boot_ms);
+		rcin_msg->header.stamp = ros::Time::now();
 		rcin_msg->rssi = channels.rssi;
 		rcin_msg->channels = raw_rc_in;
 
@@ -192,10 +192,7 @@ private:
 
 		mavros::RCOutPtr rcout_msg = boost::make_shared<mavros::RCOut>();
 
-		// XXX: Why time_usec id 32 bit? We should test that.
-		uint64_t time_usec = port.time_usec;
-
-		rcout_msg->header.stamp = uas->synchronise_stamp(time_usec);
+		rcout_msg->header.stamp = ros::Time::now();
 		rcout_msg->channels = raw_rc_out;
 
 		rc_out_pub.publish(rcout_msg);

@@ -2,36 +2,10 @@
 Changelog for package libmavconn
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.10.2 (2015-02-25)
--------------------
-* mavconn: fix readme link
-* mavconn: Licensed under BSD 3-clause too, update headers for LGPLv3.
-  PX4 team asked me to support BSD license.
-* Contributors: Vladimir Ermakov
-
-0.10.1 (2015-02-02)
--------------------
-* libmavconn: Workaround for gcc 4.6 <chrono>.
-* libmavconn: Use C++11 for lists for_each
-* Contributors: Vladimir Ermakov
-
-0.10.0 (2015-01-24)
--------------------
-* libmavconn `#154 <https://github.com/vooon/mavros/issues/154>`_: Stat sum for tcp server mode.
-* libmavconn `#154 <https://github.com/vooon/mavros/issues/154>`_: Add IO usage statistics.
-  TODO: tcp-l.
-* libmavconn: Fix coverity CID 85784 (use of freed object)
-* Contributors: Vladimir Ermakov
-
-0.9.4 (2015-01-06)
+0.8.6 (2015-03-04)
 ------------------
 
-0.9.3 (2014-12-30)
-------------------
-* mavconn: Add ASLUAV dialect selection.
-* Contributors: Vladimir Ermakov
-
-0.9.2 (2014-11-04)
+0.8.5 (2014-11-04)
 ------------------
 * Fix libmavconn include destination.
   Before that change headers installed in include/libmavconn (package name)
@@ -40,20 +14,24 @@ Changelog for package libmavconn
   Issue `#162 <https://github.com/vooon/mavros/issues/162>`_.
 * Contributors: Vladimir Ermakov
 
-0.9.1 (2014-11-03)
+0.8.4 (2014-11-03)
 ------------------
 * Fix libmavconn deps.
   Releases 0.9 and 0.8.3 ar broken because i forgot to add mavlink dep.
 * Contributors: Vladimir Ermakov
 
-0.9.0 (2014-11-03)
+0.8.3 (2014-11-03)
 ------------------
+* 0.8.2
+* prepare minor release 0.8.2 for hydro
+* mavconn `#162 <https://github.com/vooon/mavros/issues/162>`_: fix console_bridge package name.
+  In Hydro console bridge not released as system dependency.
+* Contributors: Vladimir Ermakov
 
 0.8.2 (2014-11-03)
 ------------------
-* REP140: update package.xml format.
-  Hydro don't accept this format correctly,
-  but after split i can update.
+* mavconn `#162 <https://github.com/vooon/mavros/issues/162>`_: fix console_bridge package name.
+  In Hydro console bridge not released as system dependency.
 * Contributors: Vladimir Ermakov
 
 0.8.1 (2014-11-02)

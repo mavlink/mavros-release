@@ -50,45 +50,11 @@ void UAS::stop(void)
 {
 }
 
-/* -*- time syncronise functions -*- */
-
-static inline ros::Time ros_time_from_ns(uint64_t &stamp_ns) {
-	return ros::Time(
-			stamp_ns / 1000000000UL,	// t_sec
-			stamp_ns % 1000000000UL);	// t_nsec
-}
-
-ros::Time UAS::synchronise_stamp(uint32_t time_boot_ms) {
-	// copy offset from atomic var
-	uint64_t offset_ns = time_offset;
-
-	if (offset_ns > 0) {
-		uint64_t stamp_ns = static_cast<uint64_t>(time_boot_ms) * 1000000UL + offset_ns;
-		return ros_time_from_ns(stamp_ns);
-	}
-	else
-		return ros::Time::now();
-}
-
-ros::Time UAS::synchronise_stamp(uint64_t time_usec) {
-	uint64_t offset_ns = time_offset;
-
-	if (offset_ns > 0) {
-		uint64_t stamp_ns = time_usec * 1000UL + offset_ns;
-		return ros_time_from_ns(stamp_ns);
-	}
-	else
-		return ros::Time::now();
-}
-
 /* -*- mode stringify functions -*- */
 
 typedef std::map<uint32_t, std::string> cmode_map;
 
-/** APM:Plane custom mode -> string
- *
- * ArduPlane/defines.h
- */
+//! APM:Plane custom mode -> string
 static const cmode_map arduplane_cmode_map = {
 	{ 0, "MANUAL" },
 	{ 1, "CIRCLE" },
@@ -102,15 +68,12 @@ static const cmode_map arduplane_cmode_map = {
 	{ 10, "AUTO" },
 	{ 11, "RTL" },
 	{ 12, "LOITER" },
-	{ 14, "LAND" },		// not in list
+	{ 14, "LAND" },
 	{ 15, "GUIDED" },
 	{ 16, "INITIALISING" }
 };
 
-/** APM:Copter custom mode -> string
- *
- * ArduCopter/defines.h
- */
+//! APM:Copter custom mode -> string
 static const cmode_map arducopter_cmode_map = {
 	{ 0, "STABILIZE" },
 	{ 1, "ACRO" },
@@ -120,29 +83,10 @@ static const cmode_map arducopter_cmode_map = {
 	{ 5, "LOITER" },
 	{ 6, "RTL" },
 	{ 7, "CIRCLE" },
-	{ 8, "POSITION" },	// not in list
+	{ 8, "POSITION" },
 	{ 9, "LAND" },
 	{ 10, "OF_LOITER" },
-	{ 11, "DRIFT" },	// renamed, prev name: APPROACH
-	{ 13, "SPORT" },
-	{ 14, "FLIP" },
-	{ 15, "AUTOTUNE" },
-	{ 16, "POSHOLD" }
-};
-
-/** APM:Rover custom mode -> string
- *
- * APMrover2/defines.h
- */
-static const cmode_map apmrover2_cmode_map = {
-	{ 0, "MANUAL" },
-	{ 2, "LEARNING" },
-	{ 3, "STEERING" },
-	{ 4, "HOLD" },
-	{ 10, "AUTO" },
-	{ 11, "RTL" },
-	{ 15, "GUIDED" },
-	{ 16, "INITIALISING" }
+	{ 11, "APPROACH" }
 };
 
 //! PX4 custom mode -> string
@@ -213,12 +157,9 @@ std::string UAS::str_mode_v10(uint8_t base_mode, uint32_t custom_mode) {
 			return str_mode_cmap(arducopter_cmode_map, custom_mode);
 		else if (type == MAV_TYPE_FIXED_WING)
 			return str_mode_cmap(arduplane_cmode_map, custom_mode);
-		else if (type == MAV_TYPE_GROUND_ROVER)
-			return str_mode_cmap(apmrover2_cmode_map, custom_mode);
-		else {
-			ROS_WARN_THROTTLE_NAMED(30, "uas", "MODE: Unknown APM based FCU! Type: %d", type);
+		else
+			/* TODO: APM:Rover */
 			return str_custom_mode(custom_mode);
-		}
 	}
 	else if (MAV_AUTOPILOT_PX4 == ap)
 		return str_mode_px4(custom_mode);
@@ -268,8 +209,6 @@ bool UAS::cmode_from_str(std::string cmode_str, uint32_t &custom_mode) {
 			return cmode_find_cmap(arducopter_cmode_map, cmode_str, custom_mode);
 		else if (type == MAV_TYPE_FIXED_WING)
 			return cmode_find_cmap(arduplane_cmode_map, cmode_str, custom_mode);
-		else if (type == MAV_TYPE_GROUND_ROVER)
-			return cmode_find_cmap(apmrover2_cmode_map, cmode_str, custom_mode);
 	}
 	else if (MAV_AUTOPILOT_PX4 == ap)
 		return cmode_find_cmap(px4_cmode_map, cmode_str, custom_mode);

@@ -211,14 +211,11 @@ public:
 		last_send_seqnr(0),
 		active_session(0),
 		is_error(false),
-		r_errno(0),
 		list_offset(0),
 		read_offset(0),
-		write_offset(0),
 		open_size(0),
 		read_size(0),
-		read_buffer{},
-		checksum_crc32(0)
+		read_buffer{}
 	{ }
 
 	void initialize(UAS &uas_,

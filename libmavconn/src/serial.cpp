@@ -7,21 +7,21 @@
  * @{
  */
 /*
- * libmavconn
- * Copyright 2013,2014,2015 Vladimir Ermakov, All rights reserved.
+ * Copyright 2013,2014 Vladimir Ermakov.
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3.0 of the License, or (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details.
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include <cassert>
@@ -83,8 +83,8 @@ void MAVConnSerial::close() {
 	io_service.stop();
 
 	// clear tx queue
-	for (auto &p : tx_q)
-		delete p;
+	std::for_each(tx_q.begin(), tx_q.end(),
+			[](MsgBuffer *p) { delete p; });
 	tx_q.clear();
 
 	if (io_thread.joinable())
@@ -148,7 +148,6 @@ void MAVConnSerial::async_read_end(error_code error, size_t bytes_transferred)
 		return;
 	}
 
-	iostat_rx_add(bytes_transferred);
 	for (ssize_t i = 0; i < bytes_transferred; i++) {
 		if (mavlink_parse_char(channel, rx_buf[i], &message, &status)) {
 			logDebug("serial%d:recv: Message-Id: %d [%d bytes] Sys-Id: %d Comp-Id: %d",
@@ -188,7 +187,6 @@ void MAVConnSerial::async_write_end(error_code error, size_t bytes_transferred)
 		return;
 	}
 
-	iostat_tx_add(bytes_transferred);
 	lock_guard lock(mutex);
 	if (tx_q.empty()) {
 		tx_in_progress = false;

@@ -7,21 +7,21 @@
  * @{
  */
 /*
- * libmavconn
- * Copyright 2014,2015 Vladimir Ermakov, All rights reserved.
+ * Copyright 2014 Vladimir Ermakov.
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3.0 of the License, or (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details.
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include <cassert>
@@ -35,7 +35,7 @@ using boost::system::error_code;
 using boost::asio::io_service;
 using boost::asio::ip::tcp;
 using boost::asio::buffer;
-using mavutils::to_string_ss;
+using mavutils::to_string_cs;
 typedef std::lock_guard<std::recursive_mutex> lock_guard;
 
 
@@ -51,7 +51,7 @@ static bool resolve_address_tcp(io_service &io, std::string host, unsigned short
 			ep = q_ep;
 			ep.port(port);
 			result = true;
-			logDebug("tcp: host %s resolved as %s", host.c_str(), to_string_ss(ep).c_str());
+			logDebug("tcp: host %s resolved as %s", host.c_str(), to_string_cs(ep));
 		});
 
 	if (ec) {
@@ -76,7 +76,7 @@ MAVConnTCPClient::MAVConnTCPClient(uint8_t system_id, uint8_t component_id,
 	if (!resolve_address_tcp(io_service, server_host, server_port, server_ep))
 		throw DeviceError("tcp: resolve", "Bind address resolve failed");
 
-	logInform("tcp%d: Server address: %s", channel, to_string_ss(server_ep).c_str());
+	logInform("tcp%d: Server address: %s", channel, to_string_cs(server_ep));
 
 	try {
 		socket.open(tcp::v4());
@@ -105,7 +105,7 @@ MAVConnTCPClient::MAVConnTCPClient(uint8_t system_id, uint8_t component_id,
 
 void MAVConnTCPClient::client_connected(int server_channel) {
 	logInform("tcp-l%d: Got client, channel: %d, address: %s",
-			server_channel, channel, to_string_ss(server_ep).c_str());
+			server_channel, channel, to_string_cs(server_ep));
 
 	// start recv
 	socket.get_io_service().post(boost::bind(&MAVConnTCPClient::do_recv, this));
@@ -125,8 +125,8 @@ void MAVConnTCPClient::close() {
 	socket.close();
 
 	// clear tx queue
-	for (auto &p : tx_q)
-		delete p;
+	std::for_each(tx_q.begin(), tx_q.end(),
+			[](MsgBuffer *p) { delete p; });
 	tx_q.clear();
 
 	if (io_thread.joinable())
@@ -191,7 +191,6 @@ void MAVConnTCPClient::async_receive_end(error_code error, size_t bytes_transfer
 		return;
 	}
 
-	iostat_rx_add(bytes_transferred);
 	for (ssize_t i = 0; i < bytes_transferred; i++) {
 		if (mavlink_parse_char(channel, rx_buf[i], &message, &status)) {
 			logDebug("tcp%d:recv: Message-Id: %d [%d bytes] Sys-Id: %d Comp-Id: %d",
@@ -231,7 +230,6 @@ void MAVConnTCPClient::async_send_end(error_code error, size_t bytes_transferred
 		return;
 	}
 
-	iostat_tx_add(bytes_transferred);
 	lock_guard lock(mutex);
 	if (tx_q.empty()) {
 		tx_in_progress = false;
@@ -263,7 +261,7 @@ MAVConnTCPServer::MAVConnTCPServer(uint8_t system_id, uint8_t component_id,
 	if (!resolve_address_tcp(io_service, server_host, server_port, bind_ep))
 		throw DeviceError("tcp-l: resolve", "Bind address resolve failed");
 
-	logInform("tcp-l%d: Bind address: %s", channel, to_string_ss(bind_ep).c_str());
+	logInform("tcp-l%d: Bind address: %s", channel, to_string_cs(bind_ep));
 
 	try {
 		acceptor.open(tcp::v4());
@@ -305,65 +303,22 @@ void MAVConnTCPServer::close() {
 	/* emit */ port_closed();
 }
 
-mavlink_status_t MAVConnTCPServer::get_status()
-{
-	mavlink_status_t status{};
-
-	lock_guard lock(mutex);
-	for (auto &instp : client_list) {
-		auto inst_status = instp->get_status();
-
-#define ADD_STATUS(_field)	\
-		status._field += inst_status._field
-
-		ADD_STATUS(packet_rx_success_count);
-		ADD_STATUS(packet_rx_drop_count);
-		ADD_STATUS(buffer_overrun);
-		ADD_STATUS(parse_error);
-		/* seq counters always 0 for this connection type */
-
-#undef ADD_STATUS
-	};
-
-	return status;
-}
-
-MAVConnInterface::IOStat MAVConnTCPServer::get_iostat()
-{
-	MAVConnInterface::IOStat iostat{};
-
-	lock_guard lock(mutex);
-	for (auto &instp : client_list) {
-		auto inst_iostat = instp->get_iostat();
-
-#define ADD_IOSTAT(_field)	\
-		iostat._field += inst_iostat._field
-
-		ADD_IOSTAT(tx_total_bytes);
-		ADD_IOSTAT(rx_total_bytes);
-		ADD_IOSTAT(tx_speed);
-		ADD_IOSTAT(rx_speed);
-
-#undef ADD_IOSTAT
-	};
-
-	return iostat;
-}
-
 void MAVConnTCPServer::send_bytes(const uint8_t *bytes, size_t length)
 {
 	lock_guard lock(mutex);
-	for (auto &instp : client_list) {
+	std::for_each(client_list.begin(), client_list.end(),
+			[&](boost::shared_ptr<MAVConnTCPClient> instp) {
 		instp->send_bytes(bytes, length);
-	};
+	});
 }
 
 void MAVConnTCPServer::send_message(const mavlink_message_t *message, uint8_t sysid, uint8_t compid)
 {
 	lock_guard lock(mutex);
-	for (auto &instp : client_list) {
+	std::for_each(client_list.begin(), client_list.end(),
+			[&](boost::shared_ptr<MAVConnTCPClient> instp) {
 		instp->send_message(message, sysid, compid);
-	};
+	});
 }
 
 void MAVConnTCPServer::do_accept()
@@ -410,7 +365,7 @@ void MAVConnTCPServer::client_closed(boost::weak_ptr<MAVConnTCPClient> weak_inst
 	if (auto instp = weak_instp.lock()) {
 		bool locked = mutex.try_lock();
 		logInform("tcp-l%d: Client connection closed, channel: %d, address: %s",
-				channel, instp->channel, to_string_ss(instp->server_ep).c_str());
+				channel, instp->channel, to_string_cs(instp->server_ep));
 
 		client_list.remove(instp);
 

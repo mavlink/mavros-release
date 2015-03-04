@@ -2,84 +2,26 @@
 Changelog for package mavros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.10.2 (2015-02-25)
--------------------
-* Document launch files
-* launch: Fix vim modelines `#213 <https://github.com/vooon/mavros/issues/213>`_
-* launch `#210 <https://github.com/vooon/mavros/issues/210>`_: blacklist image_pub by px4 default.
-  Fix `#210 <https://github.com/vooon/mavros/issues/210>`_.
-* Contributors: Clay McClure, Vladimir Ermakov
-
-0.10.1 (2015-02-02)
--------------------
-* Fix @mhkabir name in contributors.
-* uas `#200 <https://github.com/vooon/mavros/issues/200>`_: Add APM:Rover custom mode decoding.
-  Fix `#200 <https://github.com/vooon/mavros/issues/200>`_.
-* uas `#200 <https://github.com/vooon/mavros/issues/200>`_: Update APM:Plane and APM:Copter modes.
+0.8.6 (2015-03-04)
+------------------
+* plugin: param: Fix build error `#237 <https://github.com/vooon/mavros/issues/237>`_.
+  Master alredy fixed, see `#170 <https://github.com/vooon/mavros/issues/170>`_.
 * Contributors: Vladimir Ermakov
 
-0.10.0 (2015-01-24)
--------------------
-* mavros `#154 <https://github.com/vooon/mavros/issues/154>`_: Add IO stats to diagnostics.
-  Fix `#154 <https://github.com/vooon/mavros/issues/154>`_.
-* Add rosindex metadata
-* plugin: ftp: init ctor.
-* plugin: sts_time: Code cleanup and codestyle fix.
-* plugin: command: Quirk for older FCU's (component_id)
-  Older FCU's expect that commands addtessed to MAV_COMP_ID_SYSTEM_CONTROL.
-  Now there parameter: `~cmd/use_comp_id_system_control`
-* plugin: rc_io: `#185 <https://github.com/vooon/mavros/issues/185>`_ Use synchronized timestamp.
-* plugin: gps: `#185 <https://github.com/vooon/mavros/issues/185>`_ use synchronized timestamp
-  common.xml tells that GPS_RAW_INT have time_usec stamps.
-* uas: Fix ros timestamp calculation.
-  Issues: `#186 <https://github.com/vooon/mavros/issues/186>`_, `#185 <https://github.com/vooon/mavros/issues/185>`_.
-* plugin: add synchronisation to most plugins (fixed)
-  Closes `#186 <https://github.com/vooon/mavros/issues/186>`_.
-* readme: Add notes about coordinate frame conversions `#49 <https://github.com/vooon/mavros/issues/49>`_
-* Contributors: Mohammed Kabir, Vladimir Ermakov
-
-0.9.4 (2015-01-06)
-------------------
-* plugin: sys_time: enable EMA
-* Contributors: Mohammed Kabir
-
-0.9.3 (2014-12-30)
-------------------
-* plugin: visualization finshed
-* Restore EMA. Works better for low rates.
-* Update sys_time.cpp
-* plugin : add time offset field to dt_diag
-* Final fixes
-* minor
-* plugin : fixes timesync. FCU support checked.
-* Visualisation system import
-* param: Fix float copying too
-* param: Fix missing
-* param: Trynig to fix 'crosses initialization of XXX' error.
-* param: Try to fix `#170 <https://github.com/vooon/mavros/issues/170>`_.
-* Update units
-* New message, moving average compensation
-* Initial import new sync interface
-* plugin: sys_status: Enable TERRAIN health decoding.
-* Contributors: Mohammed Kabir, Vladimir Ermakov
-
-0.9.2 (2014-11-04)
+0.8.5 (2014-11-04)
 ------------------
 
-0.9.1 (2014-11-03)
+0.8.4 (2014-11-03)
 ------------------
-* Update installation notes for `#162 <https://github.com/vooon/mavros/issues/162>`_
+
+0.8.3 (2014-11-03)
+------------------
+* 0.8.2
+* prepare minor release 0.8.2 for hydro
 * Contributors: Vladimir Ermakov
-
-0.9.0 (2014-11-03)
-------------------
 
 0.8.2 (2014-11-03)
 ------------------
-* REP140: update package.xml format.
-  Hydro don't accept this format correctly,
-  but after split i can update.
-* Contributors: Vladimir Ermakov
 
 0.8.1 (2014-11-02)
 ------------------
@@ -572,7 +514,7 @@ Changelog for package mavros
 * mavconn: Move MAVConnSerial to libev.
   Adds stub for open URL function.
   Issure `#54 <https://github.com/vooon/mavros/issues/54>`_.
-* Contributors: Vladimir Ermakov, Mohammed Kabir, Nuno Marques, Glenn Gregory
+* Contributors: Vladimir Ermakov, M.H.Kabir, Nuno Marques, Glenn Gregory
 
 0.6.0 (2014-07-17)
 ------------------

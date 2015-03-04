@@ -2,58 +2,23 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.10.2 (2015-02-25)
--------------------
-* launch: Fix vim modelines `#213 <https://github.com/vooon/mavros/issues/213>`_
+0.8.6 (2015-03-04)
+------------------
+
+0.8.5 (2014-11-04)
+------------------
+
+0.8.4 (2014-11-03)
+------------------
+
+0.8.3 (2014-11-03)
+------------------
+* 0.8.2
+* prepare minor release 0.8.2 for hydro
 * Contributors: Vladimir Ermakov
-
-0.10.1 (2015-02-02)
--------------------
-* Fix @mhkabir name in contributors.
-* Updated mavros_extra README to explain the vision_estimate plugin should be used for the mocap data currently.
-* Update px4flow.cpp
-* plguin: px4flow: Remove all ref to old message
-* Merge remote-tracking branch 'upstream/master' into optflow_rad
-  Conflicts:
-  mavros_extras/CMakeLists.txt
-* Update
-* Clean up
-* New interface commit
-* Add new interface. Raw message only for now. Removed the tx functionality as it doesn't make much sense.
-* Contributors: Mohammed Kabir, Tony Baltovski, Vladimir Ermakov
-
-0.10.0 (2015-01-24)
--------------------
-* mocap_pose_estimate: Switched from pose to poseStamped.
-* Contributors: Tony Baltovski
-
-0.9.4 (2015-01-06)
-------------------
-
-0.9.3 (2014-12-30)
-------------------
-* Initiliser fix
-* plugin: visualisation - Fixes CI build
-* plugin: visualisation
-* plugin: visualization minor patch
-* plugin: visualization finshed
-* Contributors: Mohammed Kabir
-
-0.9.2 (2014-11-04)
-------------------
-
-0.9.1 (2014-11-03)
-------------------
-
-0.9.0 (2014-11-03)
-------------------
 
 0.8.2 (2014-11-03)
 ------------------
-* REP140: update package.xml format.
-  Hydro don't accept this format correctly,
-  but after split i can update.
-* Contributors: Vladimir Ermakov
 
 0.8.1 (2014-11-02)
 ------------------
@@ -118,4 +83,4 @@ Changelog for package mavros_extras
 0.7.0 (2014-08-12)
 ------------------
 * move exras to subdirectory, `#101 <https://github.com/vooon/mavros/issues/101>`_
-* Contributors: Vladimir Ermakov, Mohammed Kabir
+* Contributors: Vladimir Ermakov, M.H.Kabir

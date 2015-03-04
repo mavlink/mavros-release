@@ -10,9 +10,6 @@ find_package(catkin REQUIRED COMPONENTS
   mavros
   roscpp
   sensor_msgs
-  geometry_msgs
-  std_msgs
-  visualization_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -52,7 +49,7 @@ include(MavrosMavlink)
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  OpticalFlowRad.msg
+  OpticalFlow.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -112,7 +109,6 @@ add_library(mavros_extras
   src/plugins/mocap_pose_estimate.cpp
   src/plugins/vision_pose_estimate.cpp
   src/plugins/vision_speed_estimate.cpp
-  src/plugins/visualization.cpp
 )
 add_dependencies(mavros_extras
   mavros_extras_generate_messages_cpp

@@ -207,7 +207,7 @@ private:
 
 		// publish data
 		imu_msg->header.frame_id = frame_id;
-		imu_msg->header.stamp = uas->synchronise_stamp(att.time_boot_ms);
+		imu_msg->header.stamp = ros::Time::now();
 		imu_pub.publish(imu_msg);
 	}
 
@@ -235,7 +235,7 @@ private:
 
 		// publish data
 		imu_msg->header.frame_id = frame_id;
-		imu_msg->header.stamp = uas->synchronise_stamp(att_q.time_boot_ms);
+		imu_msg->header.stamp = ros::Time::now();
 		imu_pub.publish(imu_msg);
 	}
 
@@ -247,7 +247,7 @@ private:
 		has_hr_imu = true;
 
 		std_msgs::Header header;
-		header.stamp = uas->synchronise_stamp(imu_hr.time_usec);
+		header.stamp = ros::Time::now();
 		header.frame_id = frame_id;
 
 		/* imu/data_raw filled by HR IMU */
@@ -302,7 +302,7 @@ private:
 		mavlink_msg_raw_imu_decode(msg, &imu_raw);
 
 		std_msgs::Header header;
-		header.stamp = uas->synchronise_stamp(imu_raw.time_usec);
+		header.stamp = ros::Time::now();
 		header.frame_id = frame_id;
 
 		/* NOTE: APM send SCALED_IMU data as RAW_IMU */
@@ -350,7 +350,8 @@ private:
 		mavlink_msg_scaled_imu_decode(msg, &imu_raw);
 
 		std_msgs::Header header;
-		header.stamp = uas->synchronise_stamp(imu_raw.time_boot_ms);
+		header.stamp = ros::Time::now();
+		header.frame_id = frame_id;
 
 		fill_imu_msg_raw(imu_msg,
 				imu_raw.xgyro * MILLIRS_TO_RADSEC,
@@ -385,7 +386,7 @@ private:
 		mavlink_msg_scaled_pressure_decode(msg, &press);
 
 		std_msgs::Header header;
-		header.stamp = uas->synchronise_stamp(press.time_boot_ms);
+		header.stamp = ros::Time::now();
 		header.frame_id = frame_id;
 
 		sensor_msgs::TemperaturePtr temp_msg = boost::make_shared<sensor_msgs::Temperature>();
