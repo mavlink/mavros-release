@@ -7,6 +7,8 @@ MAVLink extendable communication node for ROS.
 
 - Since 2014-08-11 this repository contains several packages.
 - Since 2014-11-02 hydro support splited from master to hydro-devel branch.
+- Since 2015-03-04 all packages also dual licensed under terms of BSD license.
+
 
 mavros package
 --------------
@@ -38,11 +40,13 @@ Please ask your questions not related to bugs/feauture requests on:
 
 We'd like to keep the project bugtracker as free as possible, so please contact via the above methods. You can also PM us via Gitter.
 
+
 CI Statuses
 -----------
 
   - ROS Hydro: [![Hydro build status](http://jenkins.ros.org/buildStatus/icon?job=devel-hydro-mavros)](http://jenkins.ros.org/job/devel-hydro-mavros/)
   - ROS Indigo: [![Indigo build status](http://jenkins.ros.org/buildStatus/icon?job=devel-indigo-mavros)](http://jenkins.ros.org/job/devel-indigo-mavros/)
+  - ROS Jade: [![Jade build status](http://jenkins.ros.org/buildStatus/icon?job=devel-jade-mavros)](http://jenkins.ros.org/job/devel-jade-mavros/)
   - Travis Hydro (PX4): [![Hydro px4 status](https://travis-ci.org/mavlink/mavros.svg?branch=master)](https://travis-ci.org/mavlink/mavros)
   - Travis Hydro (Coverity Scan): [![Hydro scan status](https://travis-ci.org/mavlink/mavros.svg?branch=coverity_scan)](https://travis-ci.org/mavlink/mavros)
     : [![Coverity Scan](https://scan.coverity.com/projects/3183/badge.svg)](https://scan.coverity.com/projects/3183)
