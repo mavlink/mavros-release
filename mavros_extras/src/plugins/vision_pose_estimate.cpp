@@ -10,19 +10,9 @@
 /*
  * Copyright 2014 M.H.Kabir.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #include <mavros/mavros_plugin.h>
@@ -33,54 +23,47 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 namespace mavplugin {
-
 /**
  * @brief Vision pose estimate plugin
  *
  * Send pose estimation from various vision estimators
  * to FCU position controller.
- * 
+ *
  */
 class VisionPoseEstimatePlugin : public MavRosPlugin,
 	private TFListenerMixin<VisionPoseEstimatePlugin> {
 public:
 	VisionPoseEstimatePlugin() :
+		sp_nh("~vision_pose"),
 		uas(nullptr),
 		tf_rate(10.0)
 	{ };
 
-	void initialize(UAS &uas_,
-			ros::NodeHandle &nh,
-			diagnostic_updater::Updater &diag_updater)
+	void initialize(UAS &uas_)
 	{
 		bool pose_with_covariance;
 		bool listen_tf;
 
 		uas = &uas_;
-		sp_nh = ros::NodeHandle(nh, "position");
 
-		sp_nh.param("vision/pose_with_covariance", pose_with_covariance, false);
-		sp_nh.param("vision/listen_tf", listen_tf, false);
-		sp_nh.param<std::string>("vision/frame_id", frame_id, "local_origin");
-		sp_nh.param<std::string>("vision/child_frame_id", child_frame_id, "vision");
-		sp_nh.param("vision/tf_rate_limit", tf_rate, 50.0);
+		sp_nh.param("pose_with_covariance", pose_with_covariance, false);
+		sp_nh.param("listen_tf", listen_tf, false);
+		sp_nh.param<std::string>("frame_id", frame_id, "local_origin");
+		sp_nh.param<std::string>("child_frame_id", child_frame_id, "vision");
+		sp_nh.param("tf_rate_limit", tf_rate, 50.0);
 
-		ROS_DEBUG_STREAM_NAMED("position", "Vision pose topic type: " <<
-				((pose_with_covariance)? "PoseWithCovarianceStamped" : "PoseStamped"));
+		ROS_DEBUG_STREAM_NAMED("vision_pose", "Vision pose topic type: " <<
+				((pose_with_covariance) ? "PoseWithCovarianceStamped" : "PoseStamped"));
 
 		if (listen_tf) {
-			ROS_INFO_STREAM_NAMED("position", "Listen to vision transform " << frame_id
-					<< " -> " << child_frame_id);
-			tf_start("VisionTF", &VisionPoseEstimatePlugin::send_vision_transform);
+			ROS_INFO_STREAM_NAMED("vision_pose", "Listen to vision transform " << frame_id
+											<< " -> " << child_frame_id);
+			tf_start("VisionPoseTF", &VisionPoseEstimatePlugin::send_vision_transform);
 		}
 		else if (pose_with_covariance)
-			vision_sub = sp_nh.subscribe("vision", 10, &VisionPoseEstimatePlugin::vision_cov_cb, this);
+			vision_sub = sp_nh.subscribe("pose", 10, &VisionPoseEstimatePlugin::vision_cov_cb, this);
 		else
-			vision_sub = sp_nh.subscribe("vision", 10, &VisionPoseEstimatePlugin::vision_cb, this);
-	}
-
-	const std::string get_name() const {
-		return "VisionPoseEstimate";
+			vision_sub = sp_nh.subscribe("pose", 10, &VisionPoseEstimatePlugin::vision_cb, this);
 	}
 
 	const message_map get_rx_handlers() {
@@ -89,9 +72,9 @@ public:
 
 private:
 	friend class TFListenerMixin;
+	ros::NodeHandle sp_nh;
 	UAS *uas;
 
-	ros::NodeHandle sp_nh;
 	ros::Subscriber vision_sub;
 
 	std::string frame_id;
@@ -133,7 +116,7 @@ private:
 		 * Note: this now affects pose callbacks too, but i think its not big deal.
 		 */
 		if (last_transform_stamp == stamp) {
-			ROS_DEBUG_THROTTLE_NAMED(10, "position", "Vision: Same transform as last one, dropped.");
+			ROS_DEBUG_THROTTLE_NAMED(10, "vision_pose", "Vision: Same transform as last one, dropped.");
 			return;
 		}
 		last_transform_stamp = stamp;
@@ -141,7 +124,7 @@ private:
 		// TODO: check conversion. Issue #49.
 		vision_position_estimate(stamp.toNSec() / 1000,
 				position.y(), position.x(), -position.z(),
-				roll, -pitch, -yaw); // ??? please check!
+				roll, -pitch, -yaw);	// ??? please check!
 	}
 
 	/* -*- callbacks -*- */
@@ -160,7 +143,6 @@ private:
 		send_vision_transform(transform, req->header.stamp);
 	}
 };
-
-}; // namespace mavplugin
+};	// namespace mavplugin
 
 PLUGINLIB_EXPORT_CLASS(mavplugin::VisionPoseEstimatePlugin, mavplugin::MavRosPlugin)
