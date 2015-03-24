@@ -6,19 +6,9 @@
 /*
  * Copyright 2014 Vladimir Ermakov.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #include <ros/ros.h>
@@ -74,9 +64,9 @@ int main(int argc, char *argv[])
 	gcs_link->message_received.connect(mavlink_pub_cb);
 
 	mavlink_sub = mavlink_nh.subscribe("from", 10, mavlink_sub_cb,
-			ros::TransportHints()
-				.unreliable()
-				.maxDatagramSize(1024));
+		ros::TransportHints()
+			.unreliable()
+			.maxDatagramSize(1024));
 
 	ros::spin();
 	return 0;
