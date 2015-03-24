@@ -1,0 +1,12 @@
+Source: ros-indigo-mavros
+Section: misc
+Priority: extra
+Maintainer: Vladimir Ermakov <vooon341@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), libboost-all-dev, ros-indigo-angles, ros-indigo-catkin, ros-indigo-diagnostic-msgs, ros-indigo-diagnostic-updater, ros-indigo-geometry-msgs, ros-indigo-libmavconn, ros-indigo-mavlink, ros-indigo-message-generation, ros-indigo-pluginlib, ros-indigo-rosconsole-bridge, ros-indigo-roscpp, ros-indigo-rospy, ros-indigo-sensor-msgs, ros-indigo-std-msgs, ros-indigo-std-srvs, ros-indigo-tf
+Homepage: http://wiki.ros.org/mavros
+Standards-Version: 3.9.2
+
+Package: ros-indigo-mavros
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libboost-all-dev, ros-indigo-angles, ros-indigo-diagnostic-msgs, ros-indigo-diagnostic-updater, ros-indigo-geometry-msgs, ros-indigo-libmavconn, ros-indigo-mavlink, ros-indigo-message-generation, ros-indigo-pluginlib, ros-indigo-rosconsole-bridge, ros-indigo-roscpp, ros-indigo-rospy, ros-indigo-sensor-msgs, ros-indigo-std-msgs, ros-indigo-std-srvs, ros-indigo-tf
+Description: MAVROS -- MAVLink extendable communication node for ROS with proxy for Ground Control Station.
