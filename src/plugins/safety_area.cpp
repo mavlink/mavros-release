@@ -10,19 +10,9 @@
 /*
  * Copyright 2014 Nuno Marques.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #include <mavros/mavros_plugin.h>
@@ -31,7 +21,6 @@
 #include <geometry_msgs/PolygonStamped.h>
 
 namespace mavplugin {
-
 /**
  * @brief Safety allopwed area plugin
  *
@@ -40,19 +29,17 @@ namespace mavplugin {
 class SafetyAreaPlugin : public MavRosPlugin {
 public:
 	SafetyAreaPlugin() :
+		safety_nh("~safety_area"),
 		uas(nullptr)
 	{ };
 
-	void initialize(UAS &uas_,
-			ros::NodeHandle &nh,
-			diagnostic_updater::Updater &diag_updater)
+	void initialize(UAS &uas_)
 	{
 		bool manual_def = false;
 		double p1x, p1y, p1z,
-		       p2x, p2y, p2z;
+			p2x, p2y, p2z;
 
 		uas = &uas_;
-		safety_nh = ros::NodeHandle(nh, "safety_area");
 
 		if (safety_nh.getParam("p1/x", p1x) &&
 				safety_nh.getParam("p1/y", p1y) &&
@@ -81,10 +68,6 @@ public:
 		safetyarea_sub = safety_nh.subscribe("set", 10, &SafetyAreaPlugin::safetyarea_cb, this);
 	}
 
-	const std::string get_name() const {
-		return "SafetyArea";
-	}
-
 	const message_map get_rx_handlers() {
 		return { /* Rx disabled */ };
 		/**
@@ -93,9 +76,9 @@ public:
 	}
 
 private:
+	ros::NodeHandle safety_nh;
 	UAS *uas;
 
-	ros::NodeHandle safety_nh;
 	ros::Subscriber safetyarea_sub;
 
 	/* -*- low-level send -*- */
@@ -123,7 +106,6 @@ private:
 	 */
 	void send_safety_set_allowed_area(float p1x, float p1y, float p1z,
 			float p2x, float p2y, float p2z) {
-
 		ROS_INFO_NAMED("safetyarea", "SA: Set safty area: P1(%f %f %f) P2(%f %f %f)",
 				p1x, p1y, p1z,
 				p2x, p2y, p2z);
@@ -151,7 +133,6 @@ private:
 				req->polygon.points[1].z);
 	}
 };
-
-}; // namespace mavplugin
+};	// namespace mavplugin
 
 PLUGINLIB_EXPORT_CLASS(mavplugin::SafetyAreaPlugin, mavplugin::MavRosPlugin)
