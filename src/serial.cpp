@@ -10,18 +10,9 @@
  * libmavconn
  * Copyright 2013,2014,2015 Vladimir Ermakov, All rights reserved.
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3.0 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library.
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #include <cassert>
@@ -37,6 +28,8 @@ using boost::asio::serial_port_base;
 using boost::asio::buffer;
 typedef std::lock_guard<std::recursive_mutex> lock_guard;
 
+#define PFXd	"mavconn: serial%d: "
+
 
 MAVConnSerial::MAVConnSerial(uint8_t system_id, uint8_t component_id,
 		std::string device, unsigned baudrate) :
@@ -45,7 +38,7 @@ MAVConnSerial::MAVConnSerial(uint8_t system_id, uint8_t component_id,
 	io_service(),
 	serial_dev(io_service)
 {
-	logInform("serial%d: device: %s @ %d bps", channel, device.c_str(), baudrate);
+	logInform(PFXd "device: %s @ %d bps", channel, device.c_str(), baudrate);
 
 	try {
 		serial_dev.open(device);
@@ -96,7 +89,7 @@ void MAVConnSerial::close() {
 void MAVConnSerial::send_bytes(const uint8_t *bytes, size_t length)
 {
 	if (!is_open()) {
-		logError("serial%d:send: channel closed!", channel);
+		logError(PFXd "send: channel closed!", channel);
 		return;
 	}
 
@@ -113,11 +106,12 @@ void MAVConnSerial::send_message(const mavlink_message_t *message, uint8_t sysid
 	assert(message != nullptr);
 
 	if (!is_open()) {
-		logError("serial%d:send: channel closed!", channel);
+		logError(PFXd "send: channel closed!", channel);
 		return;
 	}
 
-	logDebug("serial%d:send: Message-Id: %d [%d bytes]", channel, message->msgid, message->len);
+	logDebug(PFXd "send: Message-Id: %d [%d bytes] Sys-Id: %d Comp-Id: %d",
+			channel, message->msgid, message->len, sysid, compid);
 
 	MsgBuffer *buf = new_msgbuffer(message, sysid, compid);
 	{
@@ -143,7 +137,7 @@ void MAVConnSerial::async_read_end(error_code error, size_t bytes_transferred)
 	mavlink_status_t status;
 
 	if (error) {
-		logError("serial%d:receive: %s", channel, error.message().c_str());
+		logError(PFXd "receive: %s", channel, error.message().c_str());
 		close();
 		return;
 	}
@@ -151,7 +145,7 @@ void MAVConnSerial::async_read_end(error_code error, size_t bytes_transferred)
 	iostat_rx_add(bytes_transferred);
 	for (ssize_t i = 0; i < bytes_transferred; i++) {
 		if (mavlink_parse_char(channel, rx_buf[i], &message, &status)) {
-			logDebug("serial%d:recv: Message-Id: %d [%d bytes] Sys-Id: %d Comp-Id: %d",
+			logDebug(PFXd "recv: Message-Id: %d [%d bytes] Sys-Id: %d Comp-Id: %d",
 					channel, message.msgid, message.len, message.sysid, message.compid);
 
 			/* emit */ message_received(&message, message.sysid, message.compid);
@@ -183,7 +177,7 @@ void MAVConnSerial::do_write(bool check_tx_state)
 void MAVConnSerial::async_write_end(error_code error, size_t bytes_transferred)
 {
 	if (error) {
-		logError("serial%d:write: %s", channel, error.message().c_str());
+		logError(PFXd "write: %s", channel, error.message().c_str());
 		close();
 		return;
 	}
