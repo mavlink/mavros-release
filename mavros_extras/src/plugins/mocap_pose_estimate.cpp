@@ -8,21 +8,11 @@
  * @{
  */
 /*
- * Copyright 2014 Vladimir Ermakov.
+ * Copyright 2014,2015 Vladimir Ermakov, Tony Baltovski.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #include <mavros/mavros_plugin.h>
@@ -33,56 +23,49 @@
 
 
 namespace mavplugin {
-
+/**
+ * @brief MocapPoseEstimate plugin
+ *
+ * Sends mountion capture data to FCU.
+ */
 class MocapPoseEstimatePlugin : public MavRosPlugin
 {
 public:
 	MocapPoseEstimatePlugin() :
+		mp_nh("~mocap"),
 		uas(nullptr)
-		{ };
+	{ };
 
-	void initialize(UAS &uas_,
-		ros::NodeHandle &nh,
-		diagnostic_updater::Updater &diag_updater)
+	void initialize(UAS &uas_)
 	{
 		bool use_tf;
 		bool use_pose;
 
 		uas = &uas_;
-		mp_nh = ros::NodeHandle(nh, "mocap");
 
-		mp_nh.param("use_tf", use_tf, false);  // Vicon
-		mp_nh.param("use_pose", use_pose, true);  // Optitrack
+		mp_nh.param("use_tf", use_tf, false);		// Vicon
+		mp_nh.param("use_pose", use_pose, true);	// Optitrack
 
 
-		if (use_tf && !use_pose)
-		{
+		if (use_tf && !use_pose) {
 			mocap_tf_sub = mp_nh.subscribe("tf", 1, &MocapPoseEstimatePlugin::mocap_tf_cb, this);
 		}
-		else if (use_pose && !use_tf)
-		{
+		else if (use_pose && !use_tf) {
 			mocap_pose_sub = mp_nh.subscribe("pose", 1, &MocapPoseEstimatePlugin::mocap_pose_cb, this);
 		}
-		else
-		{
+		else {
 			ROS_ERROR_NAMED("mocap", "Use one motion capture source.");
 		}
 	}
 
-	const std::string get_name() const
-	{
-		return "MocapPoseEstimate";
-	}
-
-	const message_map get_rx_handlers()
-	{
+	const message_map get_rx_handlers() {
 		return { /* Rx disabled */ };
 	}
 
 private:
+	ros::NodeHandle mp_nh;
 	UAS *uas;
 
-	ros::NodeHandle mp_nh;
 	ros::Subscriber mocap_pose_sub;
 	ros::Subscriber mocap_tf_sub;
 
@@ -90,51 +73,50 @@ private:
 
 	void mocap_pose_send
 		(uint64_t usec,
-		float x, float y, float z,
-		float roll, float pitch, float yaw)
+			float q[4],
+			float x, float y, float z)
 	{
 		mavlink_message_t msg;
-		mavlink_msg_vicon_position_estimate_pack_chan(UAS_PACK_CHAN(uas), &msg,
-			usec,
-			x,
-			y,
-			z,
-			roll,
-			pitch,
-			yaw);
+		mavlink_msg_att_pos_mocap_pack_chan(UAS_PACK_CHAN(uas), &msg,
+				usec,
+				q,
+				x,
+				y,
+				z);
 		UAS_FCU(uas)->send_message(&msg);
 	}
 
 
 	void mocap_pose_cb(const geometry_msgs::PoseStamped::ConstPtr &pose)
 	{
-		tf::Quaternion quat;
-		tf::quaternionMsgToTF(pose->pose.orientation, quat);
-		double roll, pitch, yaw;
-		tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+		float q[4];
+		q[0] =  pose->pose.orientation.y;	// w
+		q[1] =  pose->pose.orientation.x;	// x
+		q[2] = -pose->pose.orientation.z;	// y
+		q[3] =  pose->pose.orientation.w;	// z
 		// Convert to mavlink body frame
 		mocap_pose_send(pose->header.stamp.toNSec() / 1000,
-			pose->pose.position.x,
-			-pose->pose.position.y,
-			-pose->pose.position.z,
-			roll, -pitch, -yaw); 
+				q,
+				pose->pose.position.x,
+				-pose->pose.position.y,
+				-pose->pose.position.z);
 	}
 
 	void mocap_tf_cb(const geometry_msgs::TransformStamped::ConstPtr &trans)
 	{
-		tf::Quaternion quat;
-		tf::quaternionMsgToTF(trans->transform.rotation, quat);
-		double roll, pitch, yaw;
-		tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+		float q[4];
+		q[0] =  trans->transform.rotation.y;	// w
+		q[1] =  trans->transform.rotation.x;	// x
+		q[2] = -trans->transform.rotation.z;	// y
+		q[3] =  trans->transform.rotation.w;	// z
 		// Convert to mavlink body frame
 		mocap_pose_send(trans->header.stamp.toNSec() / 1000,
-			trans->transform.translation.x,
-			-trans->transform.translation.y,
-			-trans->transform.translation.z,
-			roll, -pitch, -yaw); 
+				q,
+				trans->transform.translation.x,
+				-trans->transform.translation.y,
+				-trans->transform.translation.z);
 	}
 };
-
-}; // namespace mavplugin
+};	// namespace mavplugin
 
 PLUGINLIB_EXPORT_CLASS(mavplugin::MocapPoseEstimatePlugin, mavplugin::MavRosPlugin)
