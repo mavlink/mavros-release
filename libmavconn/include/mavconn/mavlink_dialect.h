@@ -7,21 +7,12 @@
  * @{
  */
 /*
- * Copyright 2014 Vladimir Ermakov.
+ * libmavconn
+ * Copyright 2014,2015 Vladimir Ermakov, All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #pragma once
@@ -46,6 +37,7 @@
 #define _DIALECT_test		8
 #define _DIALECT_ualberta	9
 #define _DIALECT_sensesoar	10
+#define _DIALECT_ASLUAV		11
 
 #  if _DIALECT(MAVLINK_DIALECT) == _DIALECT_ardupilotmega
 #  include <mavlink/v1.0/ardupilotmega/mavlink.h>
@@ -67,6 +59,8 @@
 #  include <mavlink/v1.0/ualberta/mavlink.h>
 #elif _DIALECT(MAVLINK_DIALECT) == _DIALECT_sensesoar
 #  include <mavlink/v1.0/sensesoar/mavlink.h>
+#elif _DIALECT(MAVLINK_DIALECT) == _DIALECT_ASLUAV
+#  include <mavlink/v1.0/ASLUAV/mavlink.h>
 #else
 #  error "Unknown MAVLINK_DIALECT"
 #endif

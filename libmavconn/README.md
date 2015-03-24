@@ -37,8 +37,10 @@ Same as for mavros:
 License
 -------
 
-Licensed under terms of LGPLv3 or GPLv3
-(actually GPLv3 in headers, but it also LGPL).
+Licensed under terms of [*LGPLv3*][lgpllic], [*BSD*][bsdlic], or [*GPLv3*][gpllic].
 
 
 [mr]: https://github.com/mavlink/mavros
+[lgpllic]: https://www.gnu.org/licenses/lgpl.html
+[gpllic]: https://www.gnu.org/licenses/gpl.html
+[bsdlic]: https://github.com/mavlink/mavros/blob/master/LICENSE-BSD.txt

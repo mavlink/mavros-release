@@ -10,19 +10,9 @@
 /*
  * Copyright 2014 Vladimir Ermakov.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #include <mavros/mavros_plugin.h>
@@ -32,7 +22,6 @@
 #include <geometry_msgs/PoseStamped.h>
 
 namespace mavplugin {
-
 /**
  * @brief Local position plugin.
  * Publish local position to TF and PositionStamped,
@@ -41,39 +30,32 @@ namespace mavplugin {
 class LocalPositionPlugin : public MavRosPlugin {
 public:
 	LocalPositionPlugin() :
+		lp_nh("~local_position"),
 		uas(nullptr),
 		send_tf(false)
 	{ };
 
-	void initialize(UAS &uas_,
-			ros::NodeHandle &nh,
-			diagnostic_updater::Updater &diag_updater)
+	void initialize(UAS &uas_)
 	{
 		uas = &uas_;
 
-		pos_nh = ros::NodeHandle(nh, "position");
+		lp_nh.param("send_tf", send_tf, true);
+		lp_nh.param<std::string>("frame_id", frame_id, "local_origin");
+		lp_nh.param<std::string>("child_frame_id", child_frame_id, "fcu");
 
-		pos_nh.param("local/send_tf", send_tf, true);
-		pos_nh.param<std::string>("local/frame_id", frame_id, "local_origin");
-		pos_nh.param<std::string>("local/child_frame_id", child_frame_id, "fcu");
-
-		local_position = pos_nh.advertise<geometry_msgs::PoseStamped>("local", 10);
-	}
-
-	std::string const get_name() const {
-		return "LocalPosition";
+		local_position = lp_nh.advertise<geometry_msgs::PoseStamped>("local", 10);
 	}
 
 	const message_map get_rx_handlers() {
 		return {
-			MESSAGE_HANDLER(MAVLINK_MSG_ID_LOCAL_POSITION_NED, &LocalPositionPlugin::handle_local_position_ned)
+			       MESSAGE_HANDLER(MAVLINK_MSG_ID_LOCAL_POSITION_NED, &LocalPositionPlugin::handle_local_position_ned)
 		};
 	}
 
 private:
+	ros::NodeHandle lp_nh;
 	UAS *uas;
 
-	ros::NodeHandle pos_nh;
 	ros::Publisher local_position;
 	tf::TransformBroadcaster tf_broadcaster;
 
@@ -102,11 +84,11 @@ private:
 		transform.setOrigin(tf::Vector3(pos_ned.y, pos_ned.x, -pos_ned.z));
 		transform.setRotation(uas->get_attitude_orientation());
 
-		geometry_msgs::PoseStampedPtr pose = boost::make_shared<geometry_msgs::PoseStamped>();
+		auto pose = boost::make_shared<geometry_msgs::PoseStamped>();
 
 		tf::poseTFToMsg(transform, pose->pose);
 		pose->header.frame_id = frame_id;
-		pose->header.stamp = ros::Time::now();
+		pose->header.stamp = uas->synchronise_stamp(pos_ned.time_boot_ms);
 
 		if (send_tf)
 			tf_broadcaster.sendTransform(
@@ -118,8 +100,8 @@ private:
 		local_position.publish(pose);
 	}
 };
-
-}; // namespace mavplugin
+};	// namespace mavplugin
 
 PLUGINLIB_EXPORT_CLASS(mavplugin::LocalPositionPlugin, mavplugin::MavRosPlugin)
+
 

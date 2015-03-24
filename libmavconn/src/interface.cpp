@@ -7,21 +7,12 @@
  * @{
  */
 /*
- * Copyright 2013,2014 Vladimir Ermakov.
+ * libmavconn
+ * Copyright 2013,2014,2015 Vladimir Ermakov, All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #include <set>
@@ -36,6 +27,8 @@
 
 namespace mavconn {
 
+#define PFX	"mavconn: "
+
 #if MAVLINK_CRC_EXTRA
 const uint8_t MAVConnInterface::mavlink_crcs[] = MAVLINK_MESSAGE_CRCS;
 #endif
@@ -45,7 +38,12 @@ std::recursive_mutex MAVConnInterface::channel_mutex;
 
 MAVConnInterface::MAVConnInterface(uint8_t system_id, uint8_t component_id) :
 	sys_id(system_id),
-	comp_id(component_id)
+	comp_id(component_id),
+	tx_total_bytes(0),
+	rx_total_bytes(0),
+	last_tx_total_bytes(0),
+	last_rx_total_bytes(0),
+	last_iostat(steady_clock::now())
 {
 	channel = new_channel();
 	assert(channel >= 0);
@@ -57,19 +55,19 @@ int MAVConnInterface::new_channel() {
 
 	for (chan = 0; chan < MAVLINK_COMM_NUM_BUFFERS; chan++) {
 		if (allocated_channels.count(chan) == 0) {
-			logDebug("Allocate new channel: %d", chan);
+			logDebug(PFX "Allocate new channel: %d", chan);
 			allocated_channels.insert(chan);
 			return chan;
 		}
 	}
 
-	logError("channel overrun");
+	logError(PFX "channel overrun");
 	return -1;
 }
 
 void MAVConnInterface::delete_channel(int chan) {
 	std::lock_guard<std::recursive_mutex> lock(channel_mutex);
-	logDebug("Freeing channel: %d", chan);
+	logDebug(PFX "Freeing channel: %d", chan);
 	allocated_channels.erase(allocated_channels.find(chan));
 }
 
@@ -97,6 +95,46 @@ MsgBuffer *MAVConnInterface::new_msgbuffer(const mavlink_message_t *message,
 	}
 	else
 		return new MsgBuffer(message);
+}
+
+mavlink_status_t MAVConnInterface::get_status()
+{
+	return *mavlink_get_channel_status(channel);
+}
+
+MAVConnInterface::IOStat MAVConnInterface::get_iostat()
+{
+	std::lock_guard<std::recursive_mutex> lock(iostat_mutex);
+	IOStat stat;
+
+	stat.tx_total_bytes = tx_total_bytes;
+	stat.rx_total_bytes = rx_total_bytes;
+
+	auto d_tx = stat.tx_total_bytes - last_tx_total_bytes;
+	auto d_rx = stat.rx_total_bytes - last_rx_total_bytes;
+	last_tx_total_bytes = stat.tx_total_bytes;
+	last_rx_total_bytes = stat.rx_total_bytes;
+
+	auto now = steady_clock::now();
+	auto dt = now - last_iostat;
+	last_iostat = now;
+
+	float dt_s = std::chrono::duration_cast<std::chrono::seconds>(dt).count();
+
+	stat.tx_speed = d_tx / dt_s;
+	stat.rx_speed = d_rx / dt_s;
+
+	return stat;
+}
+
+void MAVConnInterface::iostat_tx_add(size_t bytes)
+{
+	tx_total_bytes += bytes;
+}
+
+void MAVConnInterface::iostat_rx_add(size_t bytes)
+{
+	rx_total_bytes += bytes;
 }
 
 /**
@@ -149,14 +187,14 @@ static void url_parse_query(std::string query, uint8_t &sysid, uint8_t &compid)
 	auto ids_it = std::search(query.begin(), query.end(),
 			ids_end.begin(), ids_end.end());
 	if (ids_it == query.end()) {
-		logWarn("URL: unknown query arguments");
+		logWarn(PFX "URL: unknown query arguments");
 		return;
 	}
 
 	std::advance(ids_it, ids_end.length());
 	auto comma_it = std::find(ids_it, query.end(), ',');
 	if (comma_it == query.end()) {
-		logError("URL: no comma in ids= query");
+		logError(PFX "URL: no comma in ids= query");
 		return;
 	}
 
@@ -166,7 +204,7 @@ static void url_parse_query(std::string query, uint8_t &sysid, uint8_t &compid)
 	sysid = std::stoi(sys);
 	compid = std::stoi(comp);
 
-	logDebug("URL: found system/component id = [%u, %u]", sysid, compid);
+	logDebug(PFX "URL: found system/component id = [%u, %u]", sysid, compid);
 }
 
 static MAVConnInterface::Ptr url_parse_serial(
@@ -194,7 +232,7 @@ static MAVConnInterface::Ptr url_parse_udp(
 
 	auto sep_it = std::find(hosts.begin(), hosts.end(), '@');
 	if (sep_it == hosts.end()) {
-		logError("UDP URL should contain @!");
+		logError(PFX "UDP URL should contain @!");
 		throw DeviceError("url", "UDP separator not found");
 	}
 
@@ -259,7 +297,7 @@ MAVConnInterface::Ptr MAVConnInterface::open_url(std::string url,
 			proto_end.begin(), proto_end.end());
 	if (proto_it == url.end()) {
 		// looks like file path
-		logDebug("URL: %s: looks like file path", url.c_str());
+		logDebug(PFX "URL: %s: looks like file path", url.c_str());
 		return url_parse_serial(url, "", system_id, component_id);
 	}
 
@@ -283,7 +321,7 @@ MAVConnInterface::Ptr MAVConnInterface::open_url(std::string url,
 		++query_it;
 	query.assign(query_it, url.end());
 
-	logDebug("URL: %s: proto: %s, host: %s, path: %s, query: %s",
+	logDebug(PFX "URL: %s: proto: %s, host: %s, path: %s, query: %s",
 			url.c_str(), proto.c_str(), host.c_str(),
 			path.c_str(), query.c_str());
 

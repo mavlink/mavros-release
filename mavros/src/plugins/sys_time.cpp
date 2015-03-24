@@ -7,21 +7,11 @@
  * @{
  */
 /*
- * Copyright 2013 Vladimir Ermakov.
+ * Copyright 2014,2015 Vladimir Ermakov, M.H.Kabir.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #include <mavros/mavros_plugin.h>
@@ -31,7 +21,6 @@
 #include <std_msgs/Duration.h>
 
 namespace mavplugin {
-
 /**
  * Time syncronization status publisher
  *
@@ -49,7 +38,9 @@ public:
 		times_(win_size),
 		seq_nums_(win_size),
 		last_dt(0),
-		dt_sum(0)
+		dt_sum(0),
+		last_ts(0),
+		offset(0)
 	{
 		clear();
 	}
@@ -69,17 +60,18 @@ public:
 		hist_indx_ = 0;
 	}
 
-	void tick(int64_t dt, uint64_t timestamp_us) {
+	void tick(int64_t dt, uint64_t timestamp_ns, int64_t time_offset_ns) {
 		lock_guard lock(mutex);
 		count_++;
 		last_dt = dt;
 		dt_sum += dt;
-		last_ts = timestamp_us;
+		last_ts = timestamp_ns;
+		offset = time_offset_ns;
 	}
 
-	void set_timestamp(uint64_t timestamp_us) {
+	void set_timestamp(uint64_t timestamp_ns) {
 		lock_guard lock(mutex);
-		last_ts = timestamp_us;
+		last_ts = timestamp_ns;
 	}
 
 	void run(diagnostic_updater::DiagnosticStatusWrapper &stat) {
@@ -106,13 +98,12 @@ public:
 			stat.summary(0, "Normal");
 		}
 
-		stat.addf("Events in window", "%d", events);
-		stat.addf("Events since startup", "%d", count_);
-		stat.addf("Duration of window (s)", "%f", window);
-		stat.addf("Actual frequency (Hz)", "%f", freq);
-		stat.addf("Last dt (ms)", "%0.3f", last_dt / 1000.0);
-		stat.addf("Mean dt (ms)", "%0.3f", (count_)? dt_sum / count_ / 1000.0 : 0.0);
-		stat.addf("Last system time (s)", "%0.6f", last_ts / 1e6);
+		stat.addf("Timesyncs since startup", "%d", count_);
+		stat.addf("Frequency (Hz)", "%f", freq);
+		stat.addf("Last dt (ms)", "%0.6f", last_dt / 1e6);
+		stat.addf("Mean dt (ms)", "%0.6f", (count_) ? dt_sum / count_ / 1e6 : 0.0);
+		stat.addf("Last system time (s)", "%0.9f", last_ts / 1e9);
+		stat.addf("Time offset (s)", "%0.9f", offset / 1e9);
 	}
 
 private:
@@ -128,122 +119,145 @@ private:
 	int64_t last_dt;
 	int64_t dt_sum;
 	uint64_t last_ts;
+	int64_t offset;
 };
 
 
-
+/**
+ * @brief System time plugin
+ */
 class SystemTimePlugin : public MavRosPlugin {
 public:
-	SystemTimePlugin():
+	SystemTimePlugin() :
+		nh("~"),
 		uas(nullptr),
 		dt_diag("Time Sync", 10),
-		time_offset_us(0)
-	{};
+		time_offset_ns(0),
+		offset_avg_alpha(0)
+	{ };
 
-	void initialize(UAS &uas_,
-			ros::NodeHandle &nh,
-			diagnostic_updater::Updater &diag_updater)
+	void initialize(UAS &uas_)
 	{
 		double conn_system_time_d;
+		double conn_timesync_d;
 
 		uas = &uas_;
 
-		nh.param("conn_system_time", conn_system_time_d, 0.0);
-		nh.param<std::string>("frame_id", frame_id, "fcu");
-		nh.param<std::string>("time_ref_source", time_ref_source, frame_id);
+		nh.param("conn/system_time", conn_system_time_d, 0.0);
+		nh.param("conn/timesync", conn_timesync_d, 0.0);
 
-		diag_updater.add(dt_diag);
+		nh.param<std::string>("time/time_ref_source", time_ref_source, "fcu");
+		nh.param("time/timesync_avg_alpha", offset_avg_alpha, 0.6);
+		/*
+		 * alpha for exponential moving average. The closer alpha is to 1.0,
+		 * the faster the moving average updates in response to new offset samples (more jitter)
+		 * We need a significant amount of smoothing , more so for lower message rates like 1Hz
+		 */
 
 		time_ref_pub = nh.advertise<sensor_msgs::TimeReference>("time_reference", 10);
-		time_offset_pub = nh.advertise<std_msgs::Duration>("time_offset", 10);
 
-		// timer for sending time sync messages
+		// timer for sending system time messages
 		if (conn_system_time_d > 0.0) {
 			sys_time_timer = nh.createTimer(ros::Duration(conn_system_time_d),
 					&SystemTimePlugin::sys_time_cb, this);
 			sys_time_timer.start();
 		}
-	}
 
+		// timer for sending timesync messages
+		if (conn_timesync_d > 0.0) {
+			// enable timesync diag only if that feature enabled
+			UAS_DIAG(uas).add(dt_diag);
 
-	std::string const get_name() const {
-		return "SystemTime";
+			timesync_timer = nh.createTimer(ros::Duration(conn_timesync_d),
+					&SystemTimePlugin::timesync_cb, this);
+			timesync_timer.start();
+		}
 	}
 
 	const message_map get_rx_handlers() {
 		return {
-			MESSAGE_HANDLER(MAVLINK_MSG_ID_SYSTEM_TIME, &SystemTimePlugin::handle_system_time),
+			       MESSAGE_HANDLER(MAVLINK_MSG_ID_SYSTEM_TIME, &SystemTimePlugin::handle_system_time),
+			       MESSAGE_HANDLER(MAVLINK_MSG_ID_TIMESYNC, &SystemTimePlugin::handle_timesync),
 		};
 	}
 
 private:
+	ros::NodeHandle nh;
 	UAS *uas;
 	ros::Publisher time_ref_pub;
-	ros::Publisher time_offset_pub;
+
 	ros::Timer sys_time_timer;
+	ros::Timer timesync_timer;
+
 	TimeSyncStatus dt_diag;
 
-	std::string frame_id;
 	std::string time_ref_source;
-	uint64_t time_offset_us;
+	int64_t time_offset_ns;
+	double offset_avg_alpha;
 
 	void handle_system_time(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
 		mavlink_system_time_t mtime;
 		mavlink_msg_system_time_decode(msg, &mtime);
 
-		uint64_t now_ms = ros::Time::now().toNSec() / 1000000;
-
 		// date -d @1234567890: Sat Feb 14 02:31:30 MSK 2009
 		const bool fcu_time_valid = mtime.time_unix_usec > 1234567890ULL * 1000000;
-		const bool ros_time_valid = now_ms > 1234567890ULL * 1000;
-
-		int64_t offset_us = (now_ms - mtime.time_boot_ms) * 1000;
-		int64_t dt = offset_us - time_offset_us;
-		if (std::abs(dt) > 2000000 /* microseconds */) {
-			ROS_WARN_THROTTLE_NAMED(10, "time", "TM: Large clock skew detected (%0.6f s). "
-					"Resyncing clocks.", dt / 1e6);
-			time_offset_us = offset_us;
-			dt_diag.clear();
-			dt_diag.set_timestamp(mtime.time_unix_usec);
-		}
-		else {
-			time_offset_us = (time_offset_us + offset_us) / 2;
-			dt_diag.tick(dt, mtime.time_unix_usec);
-		}
 
 		if (fcu_time_valid) {
 			// continious publish for ntpd
-			sensor_msgs::TimeReferencePtr time_unix = boost::make_shared<sensor_msgs::TimeReference>();
+			auto time_unix = boost::make_shared<sensor_msgs::TimeReference>();
 			ros::Time time_ref(
 					mtime.time_unix_usec / 1000000,			// t_sec
 					(mtime.time_unix_usec % 1000000) * 1000);	// t_nsec
 
-			time_unix->source = time_ref_source;
-			time_unix->time_ref = time_ref;
 			time_unix->header.stamp = ros::Time::now();
+			time_unix->time_ref = time_ref;
+			time_unix->source = time_ref_source;
 
 			time_ref_pub.publish(time_unix);
 		}
 		else {
-			ROS_WARN_THROTTLE_NAMED(60, "time", "TM: Wrong GPS time.");
+			ROS_WARN_THROTTLE_NAMED(60, "time", "TM: Wrong FCU time.");
 		}
+	}
 
-		// offset publisher
-		std_msgs::DurationPtr offset = boost::make_shared<std_msgs::Duration>();
-		ros::Duration time_ref(
-				time_offset_us / 1000000,		// t_sec
-				(time_offset_us % 1000000) * 1000);	// t_nsec
+	void handle_timesync(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+		mavlink_timesync_t tsync;
+		mavlink_msg_timesync_decode(msg, &tsync);
 
-		offset->data = time_ref;
+		uint64_t now_ns = ros::Time::now().toNSec();
 
-		uas->set_time_offset(time_offset_us);
-		time_offset_pub.publish(offset);
+		if (tsync.tc1 == 0) {
+			send_timesync_msg(now_ns, tsync.ts1);
+			return;
+		}
+		else if (tsync.tc1 > 0) {
+			int64_t offset_ns = (tsync.ts1 + now_ns - tsync.tc1 * 2) / 2;
+			int64_t dt = time_offset_ns - offset_ns;
+
+			if (std::abs(dt) > 10000000) {		// 10 millisecond skew
+				time_offset_ns = offset_ns;	// hard-set it.
+				uas->set_time_offset(time_offset_ns);
+
+				dt_diag.clear();
+				dt_diag.set_timestamp(tsync.tc1);
+
+				ROS_WARN_THROTTLE_NAMED(10, "time", "TM: Clock skew detected (%0.9f s). "
+						"Hard syncing clocks.", dt / 1e9);
+			}
+			else {
+				average_offset(offset_ns);
+				dt_diag.tick(dt, tsync.tc1, time_offset_ns);
+
+				uas->set_time_offset(time_offset_ns);
+			}
+		}
 	}
 
 	void sys_time_cb(const ros::TimerEvent &event) {
+		// For filesystem only
 		mavlink_message_t msg;
 
-		uint64_t time_unix_usec = ros::Time::now().toNSec() / 1000;  // nano -> micro
+		uint64_t time_unix_usec = ros::Time::now().toNSec() / 1000;	// nano -> micro
 
 		mavlink_msg_system_time_pack_chan(UAS_PACK_CHAN(uas), &msg,
 				time_unix_usec,
@@ -251,8 +265,25 @@ private:
 				);
 		UAS_FCU(uas)->send_message(&msg);
 	}
-};
 
-}; // namespace mavplugin
+	void timesync_cb(const ros::TimerEvent &event) {
+		send_timesync_msg( 0, ros::Time::now().toNSec());
+	}
+
+	void send_timesync_msg(uint64_t tc1, uint64_t ts1) {
+		mavlink_message_t msg;
+
+		mavlink_msg_timesync_pack_chan(UAS_PACK_CHAN(uas), &msg,
+				tc1,
+				ts1
+				);
+		UAS_FCU(uas)->send_message(&msg);
+	}
+
+	inline void average_offset(int64_t offset_ns) {
+		time_offset_ns = (offset_avg_alpha * offset_ns) + (1.0 - offset_avg_alpha) * time_offset_ns;
+	}
+};
+};	// namespace mavplugin
 
 PLUGINLIB_EXPORT_CLASS(mavplugin::SystemTimePlugin, mavplugin::MavRosPlugin)

@@ -2,26 +2,184 @@
 Changelog for package mavros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.8.6 (2015-03-04)
-------------------
-* plugin: param: Fix build error `#237 <https://github.com/vooon/mavros/issues/237>`_.
-  Master alredy fixed, see `#170 <https://github.com/vooon/mavros/issues/170>`_.
+0.11.0 (2015-03-24)
+-------------------
+* plugin: setpoint_position `#247 <https://github.com/vooon/mavros/issues/247>`_: rename topic
+* launch `#257 <https://github.com/vooon/mavros/issues/257>`_: rename blacklist.yaml to pluginlists.yaml
+* node `#257 <https://github.com/vooon/mavros/issues/257>`_: implement while list.
+* plugin: actuator_control `#247 <https://github.com/vooon/mavros/issues/247>`_: update topic name.
+* mavros: Initialize UAS before connecting plugin routing.
+  Inspired by `#256 <https://github.com/vooon/mavros/issues/256>`_.
+* plugin: sys_status: Check sender id.
+  Inspired by `#256 <https://github.com/vooon/mavros/issues/256>`_.
+* plugin: sys_status: Use WARN severity for unknown levels
+* uas: Add `UAS::is_my_target()`
+  Inspired by `#256 <https://github.com/vooon/mavros/issues/256>`_.
+* plugin: global_position: Fill status and covariance if no raw_fix.
+  Additional fix for `#252 <https://github.com/vooon/mavros/issues/252>`_.
+* launch: change apm target component id
+  APM uses 1/1 (sys/comp) by default.
+* plugin: sys_status: publish state msg after updating uas
+  Before this commit, the custom mode string published in the
+  state message was computed using the autopilot type from the
+  previous heartbeat message--*not* the autopilot type from the
+  current hearbeat message.
+  Normally that isn't a problem, but when running a GCS and mavros
+  concurrently, both connected to an FCU that routes mavlink packets
+  (such as APM), then this causes the custom mode to be computed
+  incorrectly, because the mode string for the GCS's hearbeat packet
+  will be computed using the FCU's autopilot type, and the mode string
+  for the FCU's heartbeat packet will be computed using the GCS's
+  autopilot type.
+* plugin: global_position: fix nullptr crash
+  This fixes a crash in cases where a GLOBAL_POSITION_INT message
+  is received before a GPS_RAW_INT message, causing the `gps_fix`
+  pointer member to be dereferenced before it has been set.
+* msgs: fix spelling, add version rq.
+* coverity: init ctor in 3dr_radio
+* launch fix `#249 <https://github.com/vooon/mavros/issues/249>`_: update apm blacklist
+* launch: rename APM2 to APM.
+* launch `#211 <https://github.com/vooon/mavros/issues/211>`_: update configs
+* plugin: gps: remove unused param
+* plugin: sys_time: remove unused param
+* launch fix `#248 <https://github.com/vooon/mavros/issues/248>`_: remove radio launch
+* plugin: 3dr_radio `#248 <https://github.com/vooon/mavros/issues/248>`_: add/remove diag conditionally
+* plugin: sys_status: move connection params to ns
+* plugin: sys_time: fix `#206 <https://github.com/vooon/mavros/issues/206>`_ (param ns)
+* node: Inform what dialect built-in node
+* plugin: sys_status: Conditionaly add APM diag
+* plugin: sys_status: fix `#244 <https://github.com/vooon/mavros/issues/244>`_
+* uas `#244 <https://github.com/vooon/mavros/issues/244>`_: add enum lookups
+* package: update lic
+* license `#242 <https://github.com/vooon/mavros/issues/242>`_: update mavros headers
+* plugin: local_positon: use auto
+* plugin: imu_pub: Update UAS store.
+* plugin: gps: remove diag class, change UAS storage API.
+* plugin api `#241 <https://github.com/vooon/mavros/issues/241>`_: move diag updater to UAS.
+* plugin api `#241 <https://github.com/vooon/mavros/issues/241>`_: remove global private node handle.
+  Now all plugins should define their local node handle (see dummy.cpp).
+  Also partially does `#233 <https://github.com/vooon/mavros/issues/233>`_ (unmerge setpoint topic namespace).
+* plugin api `#241 <https://github.com/vooon/mavros/issues/241>`_: remove `get_name()`
+* package: mavros now has any-link proxy, not only UDP
+* Update years. I left gpl header, but it is BSD too.
+* Add BSD license option `#220 <https://github.com/vooon/mavros/issues/220>`_
+* plugin: sys_status: AUTOPILOT_VERSION support.
+  Fix `#96 <https://github.com/vooon/mavros/issues/96>`_.
+* mavros fix `#235 <https://github.com/vooon/mavros/issues/235>`_: Use AsyncSpinner to allow plugins chat.
+  Old single-threaded spinner have a dead-lock if you tried to call
+  a service from for example timer callback.
+  For now i hardcoded thread count (4).
+* uncrustify: actuator_control
+* Merge branch 'master' of github.com:mstuettgen/Mavros
+* fixed missing ;
+* code cosmetics
+* further removed unneeded white spaces and minor code cosmetics
+* fixed timestamp and commented in the not-working function call
+* code cosmetics, removed whitespaces and re-ordered function signatures
+* more code comment cosmetic
+* code comment cosmetic
+* uncrustify: fix style
+* readme: add contributing notes
+* uncrustify: mavros base plugins
+* uncrustify: mavros lib
+* uncrustify: mavros headers
+* tools: add uncrustify cfg for fixing codestyle
+  Actually it different from my codestyle,
+  but much closer than others.
+* added more const to function calls to ensure data consistency
+* modified code to fit new message
+* added group_mix to ActuatorControl.msg and a link to mixing-wiki
+* plugin: rc_io: Add override support warning
+* REALLY added ActuatorControl.msg
+* added ActuatorControl.msg
+* fixed latest compiler error
+* renamed cpp file to actuator_control.cpp and added the new plugin to mavros_plugins.xml
+* removed unneeded Mixinx and reverse_throttle, and unneeded variables in function signatures
+* inital draft for set_actuator_control plugin
+* launch: enable setpoint plugins for APM
+  As of ArduCopter 3.2, APM supports position and velocity setpoints via SET_POSITION_TARGET_LOCAL_NED.
+* plugin: setpoint_velocity: Fix vx setpoint
+  vz should have been vx.
+* Contributors: Clay McClure, Marcel Stuettgen, Marcel Stüttgen, Vladimir Ermakov
+
+0.10.2 (2015-02-25)
+-------------------
+* Document launch files
+* launch: Fix vim modelines `#213 <https://github.com/vooon/mavros/issues/213>`_
+* launch `#210 <https://github.com/vooon/mavros/issues/210>`_: blacklist image_pub by px4 default.
+  Fix `#210 <https://github.com/vooon/mavros/issues/210>`_.
+* Contributors: Clay McClure, Vladimir Ermakov
+
+0.10.1 (2015-02-02)
+-------------------
+* Fix @mhkabir name in contributors.
+* uas `#200 <https://github.com/vooon/mavros/issues/200>`_: Add APM:Rover custom mode decoding.
+  Fix `#200 <https://github.com/vooon/mavros/issues/200>`_.
+* uas `#200 <https://github.com/vooon/mavros/issues/200>`_: Update APM:Plane and APM:Copter modes.
 * Contributors: Vladimir Ermakov
 
-0.8.5 (2014-11-04)
+0.10.0 (2015-01-24)
+-------------------
+* mavros `#154 <https://github.com/vooon/mavros/issues/154>`_: Add IO stats to diagnostics.
+  Fix `#154 <https://github.com/vooon/mavros/issues/154>`_.
+* Add rosindex metadata
+* plugin: ftp: init ctor.
+* plugin: sts_time: Code cleanup and codestyle fix.
+* plugin: command: Quirk for older FCU's (component_id)
+  Older FCU's expect that commands addtessed to MAV_COMP_ID_SYSTEM_CONTROL.
+  Now there parameter: `~cmd/use_comp_id_system_control`
+* plugin: rc_io: `#185 <https://github.com/vooon/mavros/issues/185>`_ Use synchronized timestamp.
+* plugin: gps: `#185 <https://github.com/vooon/mavros/issues/185>`_ use synchronized timestamp
+  common.xml tells that GPS_RAW_INT have time_usec stamps.
+* uas: Fix ros timestamp calculation.
+  Issues: `#186 <https://github.com/vooon/mavros/issues/186>`_, `#185 <https://github.com/vooon/mavros/issues/185>`_.
+* plugin: add synchronisation to most plugins (fixed)
+  Closes `#186 <https://github.com/vooon/mavros/issues/186>`_.
+* readme: Add notes about coordinate frame conversions `#49 <https://github.com/vooon/mavros/issues/49>`_
+* Contributors: Mohammed Kabir, Vladimir Ermakov
+
+0.9.4 (2015-01-06)
+------------------
+* plugin: sys_time: enable EMA
+* Contributors: Mohammed Kabir
+
+0.9.3 (2014-12-30)
+------------------
+* plugin: visualization finshed
+* Restore EMA. Works better for low rates.
+* Update sys_time.cpp
+* plugin : add time offset field to dt_diag
+* Final fixes
+* minor
+* plugin : fixes timesync. FCU support checked.
+* Visualisation system import
+* param: Fix float copying too
+* param: Fix missing
+* param: Trynig to fix 'crosses initialization of XXX' error.
+* param: Try to fix `#170 <https://github.com/vooon/mavros/issues/170>`_.
+* Update units
+* New message, moving average compensation
+* Initial import new sync interface
+* plugin: sys_status: Enable TERRAIN health decoding.
+* Contributors: Mohammed Kabir, Vladimir Ermakov
+
+0.9.2 (2014-11-04)
 ------------------
 
-0.8.4 (2014-11-03)
+0.9.1 (2014-11-03)
 ------------------
-
-0.8.3 (2014-11-03)
-------------------
-* 0.8.2
-* prepare minor release 0.8.2 for hydro
+* Update installation notes for `#162 <https://github.com/vooon/mavros/issues/162>`_
 * Contributors: Vladimir Ermakov
+
+0.9.0 (2014-11-03)
+------------------
 
 0.8.2 (2014-11-03)
 ------------------
+* REP140: update package.xml format.
+  Hydro don't accept this format correctly,
+  but after split i can update.
+* Contributors: Vladimir Ermakov
 
 0.8.1 (2014-11-02)
 ------------------
@@ -514,7 +672,7 @@ Changelog for package mavros
 * mavconn: Move MAVConnSerial to libev.
   Adds stub for open URL function.
   Issure `#54 <https://github.com/vooon/mavros/issues/54>`_.
-* Contributors: Vladimir Ermakov, M.H.Kabir, Nuno Marques, Glenn Gregory
+* Contributors: Vladimir Ermakov, Mohammed Kabir, Nuno Marques, Glenn Gregory
 
 0.6.0 (2014-07-17)
 ------------------
