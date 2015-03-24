@@ -9,19 +9,9 @@
 /*
  * Copyright 2014 Vladimir Ermakov.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #include <mavros/mavros_plugin.h>
@@ -44,34 +34,31 @@ namespace enc = sensor_msgs::image_encodings;
 class ImagePubPlugin : public MavRosPlugin {
 public:
 	ImagePubPlugin() :
+		im_nh("~image"),
 		im_width(0), im_height(0),
 		im_size(0), im_packets(0), im_payload(0),
 		im_seqnr(0), im_type(255),
-		im_buffer{}
+		im_buffer {}
 	{ };
 
-	void initialize(UAS &uas_,
-			ros::NodeHandle &nh,
-			diagnostic_updater::Updater &diag_updater)
+	void initialize(UAS &uas_)
 	{
-		nh.param<std::string>("camera_frame_id", frame_id, "px4flow");
+		im_nh.param<std::string>("frame_id", frame_id, "px4flow");
 
-		itp = boost::make_shared<image_transport::ImageTransport>(nh);
+		itp = boost::make_shared<image_transport::ImageTransport>(im_nh);
 		image_pub = itp->advertise("camera_image", 1);
-	}
-
-	const std::string get_name() const {
-		return "ImagePub";
 	}
 
 	const message_map get_rx_handlers() {
 		return {
-			MESSAGE_HANDLER(MAVLINK_MSG_ID_DATA_TRANSMISSION_HANDSHAKE, &ImagePubPlugin::handle_data_transmission_handshake),
-			MESSAGE_HANDLER(MAVLINK_MSG_ID_ENCAPSULATED_DATA, &ImagePubPlugin::handle_encapsulated_data)
+			       MESSAGE_HANDLER(MAVLINK_MSG_ID_DATA_TRANSMISSION_HANDSHAKE, &ImagePubPlugin::handle_data_transmission_handshake),
+			       MESSAGE_HANDLER(MAVLINK_MSG_ID_ENCAPSULATED_DATA, &ImagePubPlugin::handle_encapsulated_data)
 		};
 	}
 
 private:
+	ros::NodeHandle im_nh;
+
 	boost::shared_ptr<image_transport::ImageTransport> itp;
 	image_transport::Publisher image_pub;
 
@@ -96,7 +83,7 @@ private:
 	}
 
 	void publish_raw8u_image() {
-		sensor_msgs::ImagePtr image = boost::make_shared<sensor_msgs::Image>();
+		auto image = boost::make_shared<sensor_msgs::Image>();
 
 		image->header.frame_id = frame_id;
 		image->header.stamp = ros::Time::now();
@@ -224,7 +211,6 @@ private:
 		}
 	}
 };
-
-}; // namespace mavplugin
+};	// namespace mavplugin
 
 PLUGINLIB_EXPORT_CLASS(mavplugin::ImagePubPlugin, mavplugin::MavRosPlugin)
