@@ -9,19 +9,9 @@
 /*
  * Copyright 2014 Vladimir Ermakov.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #include <chrono>
@@ -48,7 +38,6 @@
 //#define FTP_LL_DEBUG
 
 namespace mavplugin {
-
 /**
  * @brief FTP Request message abstraction class
  *
@@ -136,7 +125,7 @@ public:
 	 *       it used to send multiple strings in one message
 	 */
 	void set_data_string(std::string &s) {
-		size_t sz = (s.size() < DATA_MAXSZ - 1)? s.size() : DATA_MAXSZ - 1;
+		size_t sz = (s.size() < DATA_MAXSZ - 1) ? s.size() : DATA_MAXSZ - 1;
 
 		memcpy(data_c(), s.c_str(), sz);
 		data_c()[sz] = '\0';
@@ -178,18 +167,18 @@ public:
 #endif
 
 		mavlink_msg_file_transfer_protocol_pack_chan(UAS_PACK_CHAN(uas), &msg,
-				0, // target_network
+				0,	// target_network
 				UAS_PACK_TGT(uas),
 				raw_payload());
 		UAS_FCU(uas)->send_message(&msg);
 	}
 
 	FTPRequest() :
-		message{}
+		message {}
 	{ }
 
 	explicit FTPRequest(Opcode op, uint8_t session = 0) :
-		message{}
+		message {}
 	{
 		header()->session = session;
 		header()->opcode = op;
@@ -206,6 +195,7 @@ private:
 class FTPPlugin : public MavRosPlugin {
 public:
 	FTPPlugin() :
+		ftp_nh("~ftp"),
 		uas(nullptr),
 		op_state(OP_IDLE),
 		last_send_seqnr(0),
@@ -217,17 +207,13 @@ public:
 		write_offset(0),
 		open_size(0),
 		read_size(0),
-		read_buffer{},
+		read_buffer {},
 		checksum_crc32(0)
 	{ }
 
-	void initialize(UAS &uas_,
-			ros::NodeHandle &nh,
-			diagnostic_updater::Updater &diag_updater)
+	void initialize(UAS &uas_)
 	{
 		uas = &uas_;
-
-		ftp_nh = ros::NodeHandle(nh, "ftp");
 
 		list_srv = ftp_nh.advertiseService("list", &FTPPlugin::list_cb, this);
 		open_srv = ftp_nh.advertiseService("open", &FTPPlugin::open_cb, this);
@@ -243,13 +229,9 @@ public:
 		checksum_srv = ftp_nh.advertiseService("checksum", &FTPPlugin::checksum_cb, this);
 	}
 
-	std::string const get_name() const {
-		return "FTP";
-	}
-
 	const message_map get_rx_handlers() {
 		return {
-			MESSAGE_HANDLER(MAVLINK_MSG_ID_FILE_TRANSFER_PROTOCOL, &FTPPlugin::handle_file_transfer_protocol),
+			       MESSAGE_HANDLER(MAVLINK_MSG_ID_FILE_TRANSFER_PROTOCOL, &FTPPlugin::handle_file_transfer_protocol),
 		};
 	}
 
@@ -575,8 +557,8 @@ private:
 	void go_idle(bool is_error_, int r_errno_ = 0) {
 		op_state = OP_IDLE;
 		is_error = is_error_;
-		if (is_error && r_errno_ != 0)	r_errno = r_errno_;
-		else if (!is_error)		r_errno = 0;
+		if (is_error && r_errno_ != 0) r_errno = r_errno_;
+		else if (!is_error) r_errno = 0;
 		cond.notify_all();
 	}
 
@@ -858,7 +840,7 @@ private:
 		std::unique_lock<std::mutex> lock(cond_mutex);
 
 		bool is_timedout = cond.wait_for(lock, std::chrono::milliseconds(msecs))
-			== std::cv_status::timeout;
+				== std::cv_status::timeout;
 
 		if (is_timedout) {
 			// If timeout occurs don't forget to reset state
@@ -1046,8 +1028,7 @@ private:
 		return true;
 	}
 };
-
-}; // namespace mavplugin
+};	// namespace mavplugin
 
 PLUGINLIB_EXPORT_CLASS(mavplugin::FTPPlugin, mavplugin::MavRosPlugin)
 

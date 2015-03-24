@@ -26,7 +26,8 @@ Only for linux. Depends on [Boost library][boost] >= 1.46 (hydro on 12.04).
 Catkin build system required (tested with ROS Hydro Medusa and Indigo Igloo).
 
 This package are dependent on [ros-\*-mavlink][mlwiki] build from [mavlink-gbp-release][mlgbp].
-Since 2014-06-19 it exists in hydro and indigo package index (so you can install via rosdep).
+Since 2014-06-19 it exists in Hydro and Indigo package index (so you can install via rosdep).
+Since 2015-02-25 exists for Jade too.
 
 
 Connection URL
@@ -65,7 +66,7 @@ Run example:
     rosrun mavros mavros_node _fcu_url:=/dev/ttyACM0:115200 _gcs_url:=tcp-l://
 
 
-### gcs\_bridge -- additional UDP proxy
+### gcs\_bridge -- additional proxy
 
 Allows you to add a channel for GCS.
 For example if you need to connect one GCS for HIL and the second on the tablet.
@@ -77,45 +78,7 @@ Example (HIL & DroidPlanner):
     rosrun mavros mavros_node _gcs_url:='udp://:14556@hil-host:14551' &
     rosrun mavros gcs_bridge _gcs_url:='udp://@nexus7'
 
-
-### mavparam -- parameter manipulation
-
-Just see `--help`.
-
-Examples:
-
-    rosrun mavros mavparam dump /tmp/apm.param
-    rosrun mavros mavparam load /tmp/apm2.param
-
-
-### mavwp -- mission manipulation
-
-See `--help`.
-
-Examples:
-
-    rosrun mavros mavwp show -p
-    rosrun mavros dump /tmp/mission.txt
-
-
-### mavsafety -- safety tool
-
-See `--help`.
-
-Examples:
-
-    rosrun mavros mavsafety arm
-    rosrun mavros mavsafety disarm
-
-
-### mavcmd -- commander tool
-
-See `--help`.
-
-Examples:
-
-    rosrun mavros mavcmd takeoff 20 15 0 0 50
-    rosrun mavros mavcmd sethome --current-gps 0 0 0
+<!-- scripts moved to ROS wiki -->
 
 
 Launch Files
@@ -124,13 +87,12 @@ Launch Files
 Launch files are provided for use with common FCUs:
 
   * [px4.launch](launch/px4.launch) -- for use with the PX4 native flight stack
-  * [apm2.launch](launch/apm2.launch) -- for use with APM flight stacks (e.g., all versions of ArduPlane, ArduCopter, etc)
-  * *_radio.launch -- as above, but includes the `3dr_radio` plugin
+  * [apm.launch](launch/apm.launch) -- for use with APM flight stacks (e.g., all versions of ArduPlane, ArduCopter, etc)
 
 Examples:
 
     roslaunch mavros px4.launch
-    roslaunch mavros apm2.launch gcs_url:=udp://@
+    roslaunch mavros apm.launch fcu_url:=tcp://localhost gcs_url:=udp://@
 
 
 Installation
@@ -139,6 +101,7 @@ Installation
 ### Binary installation (debian)
 
 Since v0.5 that programs available in precompiled debian packages for x86 and amd64 (x86\_64).
+Also v0.9+ exists in ARMv7 repo for Ubuntu armhf.
 Just use `apt-get` for installation:
 
     sudo apt-get install ros-indigo-mavros ros-indigo-mavros-extras
@@ -148,7 +111,7 @@ Just use `apt-get` for installation:
 
 Use `wstool` utility for installation. In your workspace do:
 
-    wstool init src (if not already initialized)
+    wstool init src # (if not already initialized)
     wstool set -t src mavros --git https://github.com/mavlink/mavros.git
     wstool update -t src
     rosdep install --from-paths src --ignore-src --rosdistro indigo -y
@@ -183,6 +146,24 @@ If rosdep could not install mavlink library, you could install it from source:
 $ROSINSTALL must be writable for user or you can add `sudo -s` to last command.
 Or you could build debian package by pulling right bloom branch from [mavlink-gbp-release][mlgbp]
 (common naming: `debian/<rosdistro>/<osdistro>/<package>`) using `dh binary`.
+
+    cd /tmp
+    git clone https://github.com/mavlink/mavlink-gbp-release.git -b debian/indigo/trusty/mavlink
+    cd mavlink-gbp-release
+    fakeroot dh binary
+    # deb will be in /tmp
+
+
+Contributing
+------------
+
+1. Fork the repo and clone it.
+2. Make feature branch (`git checkout -b patch`)
+3. ???
+4. Commit.
+5. Check code style `uncrustify -c tools/uncrustify-cpp.cfg --replace --no-backup <your-files>`
+6. Fix small code style errors.
+7. Commit & push & do PR.
 
 
 Links
