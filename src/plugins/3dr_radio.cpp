@@ -7,21 +7,11 @@
  * @{
  */
 /*
- * Copyright 2014 Vladimir Ermakov.
+ * Copyright 2014,2015 Vladimir Ermakov.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #include <mavros/mavros_plugin.h>
@@ -30,106 +20,50 @@
 #include <mavros/RadioStatus.h>
 
 namespace mavplugin {
-
-class TDRRadioStatus : public diagnostic_updater::DiagnosticTask
-{
-public:
-	TDRRadioStatus(const std::string name, uint8_t _low_rssi) :
-		diagnostic_updater::DiagnosticTask(name),
-		data_received(false),
-		low_rssi(_low_rssi),
-		last_rst{}
-	{ }
-
-
-	template <typename msgT>
-	void set(msgT &rst) {
-		lock_guard lock(mutex);
-		data_received = true;
-#define RST_COPY(field)	last_rst.field = rst.field
-		RST_COPY(rssi);
-		RST_COPY(remrssi);
-		RST_COPY(txbuf);
-		RST_COPY(noise);
-		RST_COPY(remnoise);
-		RST_COPY(rxerrors);
-		RST_COPY(fixed);
-#undef RST_COPY
-	}
-
-	/**
-	 * @todo check RSSI warning level
-	 */
-	void run(diagnostic_updater::DiagnosticStatusWrapper &stat) {
-		lock_guard lock(mutex);
-
-		if (!data_received)
-			stat.summary(2, "No data");
-		else if (last_rst.rssi < low_rssi)
-			stat.summary(1, "Low RSSI");
-		else if (last_rst.remrssi < low_rssi)
-			stat.summary(1, "Low remote RSSI");
-		else
-			stat.summary(0, "Normal");
-
-		float rssi_dbm = (last_rst.rssi / 1.9) - 127;
-		float remrssi_dbm = (last_rst.remrssi / 1.9) - 127;
-
-		stat.addf("RSSI", "%u", last_rst.rssi);
-		stat.addf("RSSI (dBm)", "%.1f", rssi_dbm);
-		stat.addf("Remote RSSI", "%u", last_rst.remrssi);
-		stat.addf("Remote RSSI (dBm)", "%.1f", remrssi_dbm);
-		stat.addf("Tx buffer (%)", "%u", last_rst.txbuf);
-		stat.addf("Noice level", "%u", last_rst.noise);
-		stat.addf("Remote noice level", "%u", last_rst.remnoise);
-		stat.addf("Rx errors", "%u", last_rst.rxerrors);
-		stat.addf("Fixed", "%u", last_rst.fixed);
-	}
-
-private:
-	std::recursive_mutex mutex;
-	mavlink_radio_status_t last_rst;
-	bool data_received;
-	const uint8_t low_rssi;
-};
-
-
 /**
  * @brief 3DR Radio plugin.
  */
 class TDRRadioPlugin : public MavRosPlugin {
 public:
 	TDRRadioPlugin() :
-		tdr_diag("3DR Radio", 40),
-		has_radio_status(false)
+		nh("~"),
+		has_radio_status(false),
+		diag_added(false),
+		low_rssi(0)
 	{ }
 
-	void initialize(UAS &uas,
-			ros::NodeHandle &nh,
-			diagnostic_updater::Updater &diag_updater)
+	void initialize(UAS &uas_)
 	{
-		diag_updater.add(tdr_diag);
-		status_pub = nh.advertise<mavros::RadioStatus>("radio_status", 10);
-	}
+		uas = &uas_;
 
-	std::string const get_name() const {
-		return "3DRRadio";
+		nh.param("tdr_radio/low_rssi", low_rssi, 40);
+
+		status_pub = nh.advertise<mavros::RadioStatus>("radio_status", 10);
+
+		uas->sig_connection_changed.connect(boost::bind(&TDRRadioPlugin::connection_cb, this, _1));
 	}
 
 	const message_map get_rx_handlers() {
 		return {
-			MESSAGE_HANDLER(MAVLINK_MSG_ID_RADIO_STATUS, &TDRRadioPlugin::handle_radio_status),
+			       MESSAGE_HANDLER(MAVLINK_MSG_ID_RADIO_STATUS, &TDRRadioPlugin::handle_radio_status),
 #ifdef MAVLINK_MSG_ID_RADIO
-			MESSAGE_HANDLER(MAVLINK_MSG_ID_RADIO, &TDRRadioPlugin::handle_radio),
+			       MESSAGE_HANDLER(MAVLINK_MSG_ID_RADIO, &TDRRadioPlugin::handle_radio),
 #endif
 		};
 	}
 
 private:
-	TDRRadioStatus tdr_diag;
+	ros::NodeHandle nh;
+	UAS *uas;
+
 	bool has_radio_status;
+	bool diag_added;
+	int low_rssi;
 
 	ros::Publisher status_pub;
+
+	std::recursive_mutex diag_mutex;
+	mavros::RadioStatus::Ptr last_status;
 
 	/* -*- message handlers -*- */
 
@@ -157,9 +91,9 @@ private:
 		if (sysid != '3' || compid != 'D')
 			ROS_WARN_THROTTLE_NAMED(30, "radio", "RADIO_STATUS not from 3DR modem?");
 
-		tdr_diag.set(rst);
+		auto msg = boost::make_shared<mavros::RadioStatus>();
 
-		mavros::RadioStatusPtr msg = boost::make_shared<mavros::RadioStatus>();
+		msg->header.stamp = ros::Time::now();
 
 #define RST_COPY(field)	msg->field = rst.field
 		RST_COPY(rssi);
@@ -171,12 +105,58 @@ private:
 		RST_COPY(fixed);
 #undef RST_COPY
 
-		msg->header.stamp = ros::Time::now();
+		// valid for 3DR modem
+		msg->rssi_dbm = (rst.rssi / 1.9) - 127;
+		msg->remrssi_dbm = (rst.remrssi / 1.9) - 127;
+
+		// add diag at first event
+		if (!diag_added) {
+			UAS_DIAG(uas).add("3DR Radio", this, &TDRRadioPlugin::diag_run);
+			diag_added = true;
+		}
+
+		// store last status for diag
+		{
+			lock_guard lock(diag_mutex);
+			last_status = msg;
+		}
+
 		status_pub.publish(msg);
 	}
-};
 
-}; // namespace mavplugin
+
+	void diag_run(diagnostic_updater::DiagnosticStatusWrapper &stat) {
+		lock_guard lock(diag_mutex);
+
+		if (!last_status) {
+			stat.summary(2, "No data");
+			return;
+		}
+		else if (last_status->rssi < low_rssi)
+			stat.summary(1, "Low RSSI");
+		else if (last_status->remrssi < low_rssi)
+			stat.summary(1, "Low remote RSSI");
+		else
+			stat.summary(0, "Normal");
+
+		stat.addf("RSSI", "%u", last_status->rssi);
+		stat.addf("RSSI (dBm)", "%.1f", last_status->rssi_dbm);
+		stat.addf("Remote RSSI", "%u", last_status->remrssi);
+		stat.addf("Remote RSSI (dBm)", "%.1f", last_status->remrssi_dbm);
+		stat.addf("Tx buffer (%)", "%u", last_status->txbuf);
+		stat.addf("Noice level", "%u", last_status->noise);
+		stat.addf("Remote noice level", "%u", last_status->remnoise);
+		stat.addf("Rx errors", "%u", last_status->rxerrors);
+		stat.addf("Fixed", "%u", last_status->fixed);
+	}
+
+	void connection_cb(bool connected) {
+		UAS_DIAG(uas).removeByName("3DR Radio");
+		diag_added = false;
+	}
+
+};
+};	// namespace mavplugin
 
 PLUGINLIB_EXPORT_CLASS(mavplugin::TDRRadioPlugin, mavplugin::MavRosPlugin)
 

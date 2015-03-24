@@ -4,21 +4,11 @@
  * @author Vladimir Ermakov <vooon341@gmail.com>
  */
 /*
- * Copyright 2013,2014 Vladimir Ermakov.
+ * Copyright 2013,2014,2015 Vladimir Ermakov.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #include <mavros/mavros.h>
@@ -31,30 +21,34 @@ using namespace mavconn;
 using namespace mavplugin;
 
 
-MavRos::MavRos(const ros::NodeHandle &nh_) :
-	node_handle(nh_),
-	mavlink_node_handle("/mavlink"), // for compatible reasons
+MavRos::MavRos() :
+	mavlink_nh("/mavlink"),		// for compatible reasons
 	fcu_link_diag("FCU connection"),
 	gcs_link_diag("GCS bridge"),
 	plugin_loader("mavros", "mavplugin::MavRosPlugin"),
-	message_route_table{}
+	message_route_table {}
 {
 	std::string fcu_url, gcs_url;
 	int system_id, component_id;
 	int tgt_system_id, tgt_component_id;
 	bool px4_usb_quirk;
+	ros::V_string plugin_blacklist{}, plugin_whitelist{};
 	MAVConnInterface::Ptr fcu_link;
 
-	node_handle.param<std::string>("fcu_url", fcu_url, "serial:///dev/ttyACM0");
-	node_handle.param<std::string>("gcs_url", gcs_url, "udp://@");
-	node_handle.param("system_id", system_id, 1);
-	node_handle.param<int>("component_id", component_id, MAV_COMP_ID_UDP_BRIDGE);
-	node_handle.param("target_system_id", tgt_system_id, 1);
-	node_handle.param("target_component_id", tgt_component_id, 1);
-	node_handle.param("startup_px4_usb_quirk", px4_usb_quirk, false);
-	node_handle.getParam("plugin_blacklist", plugin_blacklist);
+	ros::NodeHandle nh("~");
 
-	diag_updater.setHardwareID("Mavlink");
+	nh.param<std::string>("fcu_url", fcu_url, "serial:///dev/ttyACM0");
+	nh.param<std::string>("gcs_url", gcs_url, "udp://@");
+	nh.param("system_id", system_id, 1);
+	nh.param<int>("component_id", component_id, MAV_COMP_ID_UDP_BRIDGE);
+	nh.param("target_system_id", tgt_system_id, 1);
+	nh.param("target_component_id", tgt_component_id, 1);
+	nh.param("startup_px4_usb_quirk", px4_usb_quirk, false);
+	nh.getParam("plugin_blacklist", plugin_blacklist);
+	nh.getParam("plugin_whitelist", plugin_whitelist);
+
+	// Now we use FCU URL as a hardware Id
+	UAS_DIAG(&mav_uas).setHardwareID(fcu_url);
 
 	ROS_INFO_STREAM("FCU URL: " << fcu_url);
 	try {
@@ -64,7 +58,7 @@ MavRos::MavRos(const ros::NodeHandle &nh_) :
 		component_id = fcu_link->get_component_id();
 
 		fcu_link_diag.set_mavconn(fcu_link);
-		diag_updater.add(fcu_link_diag);
+		UAS_DIAG(&mav_uas).add(fcu_link_diag);
 	}
 	catch (mavconn::DeviceError &ex) {
 		ROS_FATAL("FCU: %s", ex.what());
@@ -78,7 +72,7 @@ MavRos::MavRos(const ros::NodeHandle &nh_) :
 			gcs_link = MAVConnInterface::open_url(gcs_url, system_id, component_id);
 
 			gcs_link_diag.set_mavconn(gcs_link);
-			diag_updater.add(gcs_link_diag);
+			UAS_DIAG(&mav_uas).add(gcs_link_diag);
 		}
 		catch (mavconn::DeviceError &ex) {
 			ROS_FATAL("GCS: %s", ex.what());
@@ -90,46 +84,60 @@ MavRos::MavRos(const ros::NodeHandle &nh_) :
 		ROS_INFO("GCS bridge disabled");
 
 	// ROS mavlink bridge
-	mavlink_pub = mavlink_node_handle.advertise<Mavlink>("from", 100);
-	mavlink_sub = mavlink_node_handle.subscribe("to", 100, &MavRos::mavlink_sub_cb, this,
-			ros::TransportHints()
+	mavlink_pub = mavlink_nh.advertise<Mavlink>("from", 100);
+	mavlink_sub = mavlink_nh.subscribe("to", 100, &MavRos::mavlink_sub_cb, this,
+		ros::TransportHints()
 			.unreliable()
 			.maxDatagramSize(1024));
 
-	fcu_link->message_received.connect(boost::bind(&MavRos::mavlink_pub_cb, this, _1, _2, _3));
-	fcu_link->message_received.connect(boost::bind(&MavRos::plugin_route_cb, this, _1, _2, _3));
-	fcu_link->port_closed.connect(boost::bind(&MavRos::terminate_cb, this));
-
-	if (gcs_link) {
-		fcu_link->message_received.connect(
-				boost::bind(&MAVConnInterface::send_message, gcs_link, _1, _2, _3));
-		gcs_link->message_received.connect(
-				boost::bind(&MAVConnInterface::send_message, fcu_link, _1, _2, _3));
-		gcs_link_diag.set_connection_status(true);
-	}
-
+	// setup UAS and diag
 	mav_uas.set_tgt(tgt_system_id, tgt_component_id);
 	UAS_FCU(&mav_uas) = fcu_link;
 	mav_uas.sig_connection_changed.connect(boost::bind(&MavlinkDiag::set_connection_status, &fcu_link_diag, _1));
 	mav_uas.sig_connection_changed.connect(boost::bind(&MavRos::log_connect_change, this, _1));
 
+	// connect FCU link
+	fcu_link->message_received.connect(boost::bind(&MavRos::mavlink_pub_cb, this, _1, _2, _3));
+	fcu_link->message_received.connect(boost::bind(&MavRos::plugin_route_cb, this, _1, _2, _3));
+	fcu_link->port_closed.connect(boost::bind(&MavRos::terminate_cb, this));
+
+	if (gcs_link) {
+		// setup GCS link bridge
+		fcu_link->message_received.connect(
+			boost::bind(&MAVConnInterface::send_message, gcs_link, _1, _2, _3));
+		gcs_link->message_received.connect(
+			boost::bind(&MAVConnInterface::send_message, fcu_link, _1, _2, _3));
+		gcs_link_diag.set_connection_status(true);
+	}
+
+	// prepare plugin lists
+	// issue #257 2: assume that all plugins blacklisted
+	if (plugin_blacklist.empty() and !plugin_whitelist.empty())
+		plugin_blacklist.push_back("*");
+
 	for (auto &name : plugin_loader.getDeclaredClasses())
-		add_plugin(name);
+		add_plugin(name, plugin_blacklist, plugin_whitelist);
 
 	if (px4_usb_quirk)
 		startup_px4_usb_quirk();
 
+#define STR2(x)	#x
+#define STR(x)	STR2(x)
+
+	ROS_INFO("Built-in mavlink dialect: %s", STR(MAVLINK_DIALECT));
 	ROS_INFO("MAVROS started. MY ID [%d, %d], TARGET ID [%d, %d]",
-			system_id, component_id,
-			tgt_system_id, tgt_component_id);
+		system_id, component_id,
+		tgt_system_id, tgt_component_id);
 }
 
 void MavRos::spin() {
-	ros::Rate loop_rate(1000);
-	while (node_handle.ok()) {
-		ros::spinOnce();
-		diag_updater.update();
+	ros::AsyncSpinner spinner(4 /* threads */);
 
+	spinner.start();
+
+	ros::Rate loop_rate(1000);
+	while (ros::ok()) {
+		UAS_DIAG(&mav_uas).update();
 		loop_rate.sleep();
 	}
 
@@ -138,7 +146,7 @@ void MavRos::spin() {
 }
 
 void MavRos::mavlink_pub_cb(const mavlink_message_t *mmsg, uint8_t sysid, uint8_t compid) {
-	MavlinkPtr rmsg = boost::make_shared<Mavlink>();
+	auto rmsg = boost::make_shared<Mavlink>();
 
 	if  (mavlink_pub.getNumSubscribers() == 0)
 		return;
@@ -161,43 +169,69 @@ void MavRos::plugin_route_cb(const mavlink_message_t *mmsg, uint8_t sysid, uint8
 	message_route_table[mmsg->msgid](mmsg, sysid, compid);
 }
 
-bool MavRos::check_in_blacklist(std::string &pl_name) {
-	for (auto &pattern : plugin_blacklist) {
-		int cmp = fnmatch(pattern.c_str(), pl_name.c_str(), FNM_CASEFOLD);
-		if (cmp == 0)
-			return true;
-		else if (cmp != FNM_NOMATCH)
-			ROS_ERROR("Blacklist check error! fnmatch('%s', '%s', FNM_CASEFOLD) -> %d",
-					pattern.c_str(), pl_name.c_str(), cmp);
+static bool pattern_match(std::string &pattern, std::string &pl_name) {
+	int cmp = fnmatch(pattern.c_str(), pl_name.c_str(), FNM_CASEFOLD);
+	if (cmp == 0)
+		return true;
+	else if (cmp != FNM_NOMATCH) {
+		// never see that, i think that it is fatal error.
+		ROS_FATAL("Plugin list check error! fnmatch('%s', '%s', FNM_CASEFOLD) -> %d",
+				pattern.c_str(), pl_name.c_str(), cmp);
+		ros::shutdown();
 	}
 
 	return false;
 }
 
-void MavRos::add_plugin(std::string &pl_name) {
-	boost::shared_ptr<mavplugin::MavRosPlugin> plugin;
+/**
+ * @brief Checks that plugin blacklisted
+ *
+ * Operation algo:
+ *
+ *  1. if blacklist and whitelist is empty: load all
+ *  2. if blacklist is empty and whitelist non empty: assume blacklist is ["*"]
+ *  3. if blacklist non empty: usual blacklist behavior
+ *  4. if whitelist non empty: override blacklist
+ *
+ * @note Issue #257.
+ */
+bool MavRos::is_blacklisted(std::string &pl_name, ros::V_string &blacklist, ros::V_string &whitelist) {
+	for (auto &bl_pattern : blacklist) {
+		if (pattern_match(bl_pattern, pl_name)) {
+			for (auto &wl_pattern : whitelist) {
+				if (pattern_match(wl_pattern, pl_name))
+					return false;
+			}
 
-	if (check_in_blacklist(pl_name)) {
-		ROS_INFO_STREAM("Plugin [alias " << pl_name << "] blacklisted");
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * @brief Loads plugin (if not blacklisted)
+ */
+void MavRos::add_plugin(std::string &pl_name, ros::V_string &blacklist, ros::V_string &whitelist) {
+	if (is_blacklisted(pl_name, blacklist, whitelist)) {
+		ROS_INFO_STREAM("Plugin " << pl_name << " blacklisted");
 		return;
 	}
 
 	try {
-		plugin = plugin_loader.createInstance(pl_name);
-		plugin->initialize(mav_uas, node_handle, diag_updater);
+		auto plugin = plugin_loader.createInstance(pl_name);
+		plugin->initialize(mav_uas);
 		loaded_plugins.push_back(plugin);
-		std::string repr_name = plugin->get_name();
 
-		ROS_INFO_STREAM("Plugin " << repr_name <<
-				" [alias " << pl_name << "] loaded and initialized");
+		ROS_INFO_STREAM("Plugin " << pl_name << " loaded and initialized");
 
 		for (auto &pair : plugin->get_rx_handlers()) {
-			ROS_DEBUG("Route msgid %d to %s", pair.first, repr_name.c_str());
+			ROS_DEBUG_STREAM("Route msgid " << int(pair.first) << " to " << pl_name);
 			message_route_table[pair.first].connect(pair.second);
 		}
-
 	} catch (pluginlib::PluginlibException &ex) {
-		ROS_ERROR_STREAM("Plugin [alias " << pl_name << "] load exception: " << ex.what());
+		ROS_ERROR_STREAM("Plugin " << pl_name << " load exception: " << ex.what());
 	}
 }
 
