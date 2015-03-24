@@ -9,19 +9,9 @@
 /*
  * Copyright 2014 Vladimir Ermakov.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #pragma once
@@ -29,10 +19,13 @@
 #include <mutex>
 #include <atomic>
 #include <tf/transform_datatypes.h>
+#include <diagnostic_updater/diagnostic_updater.h>
 #include <mavconn/interface.h>
 
-namespace mavros {
+#include <sensor_msgs/NavSatFix.h>
 
+
+namespace mavros {
 /**
  * @brief helper accessor to FCU link interface
  */
@@ -40,13 +33,19 @@ namespace mavros {
 	((uasobjptr)->fcu_link)
 
 /**
+ * @brief helper accessor to diagnostic updater
+ */
+#define UAS_DIAG(uasobjptr)				\
+	((uasobjptr)->diag_updater)
+
+/**
  * @brief helper for mavlink_msg_*_pack_chan()
  *
  * Filler for first arguments of *_pack_chan functions.
  */
 #define UAS_PACK_CHAN(uasobjptr)			\
-	UAS_FCU(uasobjptr)->get_system_id(), 		\
-	UAS_FCU(uasobjptr)->get_component_id(), 	\
+	UAS_FCU(uasobjptr)->get_system_id(),		\
+	UAS_FCU(uasobjptr)->get_component_id(),		\
 	UAS_FCU(uasobjptr)->get_channel()
 
 /**
@@ -55,7 +54,7 @@ namespace mavros {
  * Filler for target_system, target_component fields.
  */
 #define UAS_PACK_TGT(uasobjptr)				\
-	(uasobjptr)->get_tgt_system(), 			\
+	(uasobjptr)->get_tgt_system(),			\
 	(uasobjptr)->get_tgt_component()
 
 /**
@@ -91,25 +90,10 @@ public:
 	 */
 	mavconn::MAVConnInterface::Ptr fcu_link;
 
-	/* -*- HEARTBEAT data -*- */
-
 	/**
-	 * Update autopilot type on every HEARTBEAT
+	 * @brief Mavros diagnostic updater
 	 */
-	void update_heartbeat(uint8_t type_, uint8_t autopilot_) {
-		type = type_;
-		autopilot = autopilot_;
-	}
-
-	/**
-	 * Update autopilot connection status (every HEARTBEAT/conn_timeout)
-	 */
-	void update_connection_status(bool conn_) {
-		if (conn_ != connected) {
-			connected = conn_;
-			sig_connection_changed(connected);
-		}
-	}
+	diagnostic_updater::Updater diag_updater;
 
 	/**
 	 * @brief This signal emit when status was changed
@@ -118,12 +102,18 @@ public:
 	 */
 	boost::signals2::signal<void(bool)> sig_connection_changed;
 
+
+	/* -*- HEARTBEAT data -*- */
+
 	/**
-	 * @brief Returns connection status
+	 * Update autopilot type on every HEARTBEAT
 	 */
-	inline bool get_connection_status() {
-		return connected;
-	}
+	void update_heartbeat(uint8_t type_, uint8_t autopilot_);
+
+	/**
+	 * Update autopilot connection status (every HEARTBEAT/conn_timeout)
+	 */
+	void update_connection_status(bool conn_);
 
 	/**
 	 * @brief Returns vehicle type
@@ -147,14 +137,14 @@ public:
 	 * @brief Return communication target system
 	 */
 	inline uint8_t get_tgt_system() {
-		return target_system; // not changed after configuration
+		return target_system;	// not changed after configuration
 	}
 
 	/**
 	 * @brief Return communication target component
 	 */
 	inline uint8_t get_tgt_component() {
-		return target_component; // not changed after configuration
+		return target_component;// not changed after configuration
 	}
 
 	inline void set_tgt(uint8_t sys, uint8_t comp) {
@@ -162,117 +152,45 @@ public:
 		target_component = comp;
 	}
 
+
 	/* -*- IMU data -*- */
+	void update_attitude_imu(tf::Quaternion &q, tf::Vector3 &av, tf::Vector3 &lacc);
 
 	/**
 	 * @brief Get Attitude angular velocity vector
 	 * @return angilar velocity [ENU, body-fixed]
 	 */
-	inline tf::Vector3 get_attitude_angular_velocity() {
-		lock_guard lock(mutex);
-		return angular_velocity;
-	}
-
-	/**
-	 * @brief Store Attitude angular velocity vector
-	 * @param[in] vec angular velocity [ENU, body-fixed]
-	 */
-	inline void set_attitude_angular_velocity(tf::Vector3 &vec) {
-		lock_guard lock(mutex);
-		angular_velocity = vec;
-	}
+	tf::Vector3 get_attitude_angular_velocity();
 
 	/**
 	 * @brief Get Attitude linear acceleration vector
 	 * @return linear acceleration [ENU, body-fixed]
 	 */
-	inline tf::Vector3 get_attitude_linear_acceleration() {
-		lock_guard lock(mutex);
-		return linear_acceleration;
-	}
-
-	/**
-	 * @brief Store Attitude linear acceleration vector
-	 * @param[in] vec linear acceleration [ENU, body-fixed]
-	 */
-	inline void set_attitude_linear_acceleration(tf::Vector3 &vec) {
-		lock_guard lock(mutex);
-		linear_acceleration = vec;
-	}
+	tf::Vector3 get_attitude_linear_acceleration();
 
 	/**
 	 * @brief Get Attitude orientation quaternion
 	 * @return orientation quaternion [ENU, body-fixed]
 	 */
-	inline tf::Quaternion get_attitude_orientation() {
-		lock_guard lock(mutex);
-		return orientation;
-	}
+	tf::Quaternion get_attitude_orientation();
 
-	/**
-	 * @brief Store Attitude orientation quaternion
-	 * @param[in] quat orientation [ENU, body-fixed]
-	 */
-	inline void set_attitude_orientation(tf::Quaternion &quat) {
-		lock_guard lock(mutex);
-		orientation = quat;
-	}
 
 	/* -*- GPS data -*- */
 
-	/**
-	 * @brief Store GPS Lat/Long/Alt and EPH/EPV data
-	 *
-	 * @param[in] latitude  in deg
-	 * @param[in] longitude in deg
-	 * @param[in] altitude  in m
-	 * @param[in] eph       in m
-	 * @param[in] epv       in m
-	 */
-	inline void set_gps_llae(double latitude, double longitude, double altitude,
-			double eph, double epv) {
-		lock_guard lock(mutex);
-		gps_latitude = latitude;
-		gps_longitude = longitude;
-		gps_altitude = altitude;
-		gps_eph = eph;
-		gps_epv = epv;
-	}
+	//! Store GPS RAW data
+	void update_gps_fix_epts(sensor_msgs::NavSatFix::Ptr &fix,
+			float eph, float epv,
+			int fix_type, int satellites_visible);
 
-	inline double get_gps_latitude() {
-		lock_guard lock(mutex);
-		return gps_latitude;
-	}
+	//! Returns EPH, EPV, Fix type and satellites visible
+	void get_gps_epts(float &eph, float &epv, int &fix_type, int &satellites_visible);
 
-	inline double get_gps_longitude() {
-		lock_guard lock(mutex);
-		return gps_longitude;
-	}
+	//! Retunrs last GPS RAW message
+	sensor_msgs::NavSatFix::Ptr get_gps_fix();
 
-	inline double get_gps_altitude() {
-		lock_guard lock(mutex);
-		return gps_altitude;
-	}
-
-	inline double get_gps_eph() {
-		lock_guard lock(mutex);
-		return gps_eph;
-	}
-
-	inline double get_gps_epv() {
-		lock_guard lock(mutex);
-		return gps_epv;
-	}
-
-	inline void set_gps_status(bool fix_status_) {
-		fix_status = fix_status_;
-	}
-
-	inline bool get_gps_status() {
-		return fix_status;
-	}
 
 	/* -*- time sync -*- */
+
 	inline void set_time_offset(uint64_t offset_ns) {
 		time_offset = offset_ns;
 	}
@@ -281,7 +199,25 @@ public:
 		return time_offset;
 	}
 
+	/* -*- autopilot version -*- */
+	uint64_t get_capabilities();
+	void update_capabilities(bool known, uint64_t caps = 0);
+
 	/* -*- utils -*- */
+
+	/**
+	 * @brief Check that sys/comp id's is my target
+	 */
+	inline bool is_my_target(uint8_t sysid, uint8_t compid) {
+		return sysid == get_tgt_system() && compid == get_tgt_component();
+	}
+
+	/**
+	 * @brief Check that system id is my target
+	 */
+	inline bool is_my_target(uint8_t sysid) {
+		return sysid == get_tgt_system();
+	}
 
 	/**
 	 * @brief Check that FCU is APM
@@ -333,23 +269,45 @@ public:
 	ros::Time synchronise_stamp(uint32_t time_boot_ms);
 	ros::Time synchronise_stamp(uint64_t time_usec);
 
+	/**
+	 * @brief Represent MAV_AUTOPILOT as string
+	 */
+	static std::string str_autopilot(enum MAV_AUTOPILOT ap);
+
+	/**
+	 * @brief Represent MAV_TYPE as string
+	 */
+	static std::string str_type(enum MAV_TYPE type);
+
+	/**
+	 * @brief Represent MAV_STATE as string
+	 */
+	static std::string str_system_status(enum MAV_STATE st);
+
 private:
 	std::recursive_mutex mutex;
+
 	std::atomic<uint8_t> type;
 	std::atomic<uint8_t> autopilot;
+
 	uint8_t target_system;
 	uint8_t target_component;
-	std::atomic<bool> connected;
-	tf::Vector3 angular_velocity;
-	tf::Vector3 linear_acceleration;
-	tf::Quaternion orientation;
-	double gps_latitude;
-	double gps_longitude;
-	double gps_altitude;
-	double gps_eph;
-	double gps_epv;
-	std::atomic<bool> fix_status;
-	std::atomic<uint64_t> time_offset;
-};
 
-}; // namespace mavros
+	std::atomic<bool> connected;
+
+	tf::Quaternion imu_orientation;
+	tf::Vector3 imu_angular_velocity;
+	tf::Vector3 imu_linear_acceleration;
+
+	sensor_msgs::NavSatFix::Ptr gps_fix;
+	float gps_eph;
+	float gps_epv;
+	int gps_fix_type;
+	int gps_satellites_visible;
+
+	std::atomic<uint64_t> time_offset;
+
+	std::atomic<bool> fcu_caps_known;
+	std::atomic<uint64_t> fcu_capabilities;
+};
+};	// namespace mavros

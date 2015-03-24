@@ -7,21 +7,11 @@
  * @{
  */
 /*
- * Copyright 2013 Vladimir Ermakov.
+ * Copyright 2014,2015 Vladimir Ermakov, M.H.Kabir.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #include <mavros/mavros_plugin.h>
@@ -31,7 +21,6 @@
 #include <std_msgs/Duration.h>
 
 namespace mavplugin {
-
 /**
  * Time syncronization status publisher
  *
@@ -109,12 +98,10 @@ public:
 			stat.summary(0, "Normal");
 		}
 
-		stat.addf("Events in window", "%d", events);
-		stat.addf("Events since startup", "%d", count_);
-		stat.addf("Duration of window (s)", "%f", window);
-		stat.addf("Actual frequency (Hz)", "%f", freq);
+		stat.addf("Timesyncs since startup", "%d", count_);
+		stat.addf("Frequency (Hz)", "%f", freq);
 		stat.addf("Last dt (ms)", "%0.6f", last_dt / 1e6);
-		stat.addf("Mean dt (ms)", "%0.6f", (count_)? dt_sum / count_ / 1e6 : 0.0);
+		stat.addf("Mean dt (ms)", "%0.6f", (count_) ? dt_sum / count_ / 1e6 : 0.0);
 		stat.addf("Last system time (s)", "%0.9f", last_ts / 1e9);
 		stat.addf("Time offset (s)", "%0.9f", offset / 1e9);
 	}
@@ -136,38 +123,36 @@ private:
 };
 
 
-
+/**
+ * @brief System time plugin
+ */
 class SystemTimePlugin : public MavRosPlugin {
 public:
-	SystemTimePlugin():
+	SystemTimePlugin() :
+		nh("~"),
 		uas(nullptr),
 		dt_diag("Time Sync", 10),
 		time_offset_ns(0),
 		offset_avg_alpha(0)
 	{ };
 
-	void initialize(UAS &uas_,
-			ros::NodeHandle &nh,
-			diagnostic_updater::Updater &diag_updater)
+	void initialize(UAS &uas_)
 	{
 		double conn_system_time_d;
 		double conn_timesync_d;
 
 		uas = &uas_;
 
-		nh.param("conn_system_time", conn_system_time_d, 0.0);
-		nh.param("conn_timesync", conn_timesync_d, 0.0);
+		nh.param("conn/system_time", conn_system_time_d, 0.0);
+		nh.param("conn/timesync", conn_timesync_d, 0.0);
 
-		nh.param<std::string>("frame_id", frame_id, "fcu");
-		nh.param<std::string>("time_ref_source", time_ref_source, frame_id);
-		nh.param("timesync_avg_alpha", offset_avg_alpha, 0.6);
+		nh.param<std::string>("time/time_ref_source", time_ref_source, "fcu");
+		nh.param("time/timesync_avg_alpha", offset_avg_alpha, 0.6);
 		/*
 		 * alpha for exponential moving average. The closer alpha is to 1.0,
 		 * the faster the moving average updates in response to new offset samples (more jitter)
 		 * We need a significant amount of smoothing , more so for lower message rates like 1Hz
 		 */
-
-		diag_updater.add(dt_diag);
 
 		time_ref_pub = nh.advertise<sensor_msgs::TimeReference>("time_reference", 10);
 
@@ -180,24 +165,24 @@ public:
 
 		// timer for sending timesync messages
 		if (conn_timesync_d > 0.0) {
+			// enable timesync diag only if that feature enabled
+			UAS_DIAG(uas).add(dt_diag);
+
 			timesync_timer = nh.createTimer(ros::Duration(conn_timesync_d),
 					&SystemTimePlugin::timesync_cb, this);
 			timesync_timer.start();
 		}
 	}
 
-	std::string const get_name() const {
-		return "SystemTime";
-	}
-
 	const message_map get_rx_handlers() {
 		return {
-			MESSAGE_HANDLER(MAVLINK_MSG_ID_SYSTEM_TIME, &SystemTimePlugin::handle_system_time),
-			MESSAGE_HANDLER(MAVLINK_MSG_ID_TIMESYNC, &SystemTimePlugin::handle_timesync),
+			       MESSAGE_HANDLER(MAVLINK_MSG_ID_SYSTEM_TIME, &SystemTimePlugin::handle_system_time),
+			       MESSAGE_HANDLER(MAVLINK_MSG_ID_TIMESYNC, &SystemTimePlugin::handle_timesync),
 		};
 	}
 
 private:
+	ros::NodeHandle nh;
 	UAS *uas;
 	ros::Publisher time_ref_pub;
 
@@ -206,7 +191,6 @@ private:
 
 	TimeSyncStatus dt_diag;
 
-	std::string frame_id;
 	std::string time_ref_source;
 	int64_t time_offset_ns;
 	double offset_avg_alpha;
@@ -220,14 +204,14 @@ private:
 
 		if (fcu_time_valid) {
 			// continious publish for ntpd
-			sensor_msgs::TimeReferencePtr time_unix = boost::make_shared<sensor_msgs::TimeReference>();
+			auto time_unix = boost::make_shared<sensor_msgs::TimeReference>();
 			ros::Time time_ref(
-					 mtime.time_unix_usec / 1000000,		// t_sec
+					mtime.time_unix_usec / 1000000,			// t_sec
 					(mtime.time_unix_usec % 1000000) * 1000);	// t_nsec
 
-			time_unix->source = time_ref_source;
-			time_unix->time_ref = time_ref;
 			time_unix->header.stamp = ros::Time::now();
+			time_unix->time_ref = time_ref;
+			time_unix->source = time_ref_source;
 
 			time_ref_pub.publish(time_unix);
 		}
@@ -247,7 +231,7 @@ private:
 			return;
 		}
 		else if (tsync.tc1 > 0) {
-			int64_t offset_ns = (tsync.ts1 + now_ns - tsync.tc1 * 2) / 2 ;
+			int64_t offset_ns = (tsync.ts1 + now_ns - tsync.tc1 * 2) / 2;
 			int64_t dt = time_offset_ns - offset_ns;
 
 			if (std::abs(dt) > 10000000) {		// 10 millisecond skew
@@ -300,7 +284,6 @@ private:
 		time_offset_ns = (offset_avg_alpha * offset_ns) + (1.0 - offset_avg_alpha) * time_offset_ns;
 	}
 };
-
-}; // namespace mavplugin
+};	// namespace mavplugin
 
 PLUGINLIB_EXPORT_CLASS(mavplugin::SystemTimePlugin, mavplugin::MavRosPlugin)

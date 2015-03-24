@@ -10,19 +10,9 @@
 /*
  * Copyright 2014 Nuno Marques.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #include <mavros/mavros_plugin.h>
@@ -32,38 +22,31 @@
 #include <geometry_msgs/Vector3Stamped.h>
 
 namespace mavplugin {
-
 /**
  * @brief Vision speed estimate plugin
  *
  * Send speed estimation from various vision estimators
  * to FCU position controller.
- * 
+ *
  */
 class VisionSpeedEstimatePlugin : public MavRosPlugin {
 public:
 	VisionSpeedEstimatePlugin() :
+		sp_nh("~vision_speed"),
 		uas(nullptr)
 	{ };
 
-	void initialize(UAS &uas_,
-			ros::NodeHandle &nh,
-			diagnostic_updater::Updater &diag_updater)
+	void initialize(UAS &uas_)
 	{
 		bool listen_twist;
 		uas = &uas_;
-		sp_nh = ros::NodeHandle(nh, "vision_speed");
 
 		sp_nh.param("listen_twist", listen_twist, false);
 
-		if(listen_twist)
+		if (listen_twist)
 			vision_vel_sub = sp_nh.subscribe("speed_twist", 10, &VisionSpeedEstimatePlugin::vel_twist_cb, this);
 		else
 			vision_vel_sub = sp_nh.subscribe("speed_vector", 10, &VisionSpeedEstimatePlugin::vel_speed_cb, this);
-	}
-
-	const std::string get_name() const {
-		return "VisionSpeedEstimate";
 	}
 
 	const message_map get_rx_handlers() {
@@ -71,9 +54,9 @@ public:
 	}
 
 private:
+	ros::NodeHandle sp_nh;
 	UAS *uas;
 
-	ros::NodeHandle sp_nh;
 	ros::Subscriber vision_vel_sub;
 
 	/* -*- low-level send -*- */
@@ -93,7 +76,6 @@ private:
 	 * Send vision speed estimate to FCU velocity controller
 	 */
 	void send_vision_speed(float vx, float vy, float vz, const ros::Time &stamp) {
-
 		// TODO: check conversion. Issue #49.
 		vision_speed_estimate(stamp.toNSec() / 1000,
 				vy, vx, -vz);
@@ -109,7 +91,6 @@ private:
 		send_vision_speed(req->vector.x, req->vector.y, req->vector.z, req->header.stamp);
 	}
 };
-
-}; // namespace mavplugin
+};	// namespace mavplugin
 
 PLUGINLIB_EXPORT_CLASS(mavplugin::VisionSpeedEstimatePlugin, mavplugin::MavRosPlugin)
