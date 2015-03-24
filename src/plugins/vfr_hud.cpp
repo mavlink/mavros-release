@@ -9,19 +9,9 @@
 /*
  * Copyright 2014 Vladimir Ermakov.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #include <angles/angles.h>
@@ -32,21 +22,19 @@
 #include <geometry_msgs/TwistStamped.h>
 
 namespace mavplugin {
-
 /**
  * @brief VFR HUD plugin.
  */
 class VfrHudPlugin : public MavRosPlugin {
 public:
-	VfrHudPlugin()
+	VfrHudPlugin() :
+		nh("~")
 	{ }
 
 	/**
 	 * Plugin initializer. Constructor should not do this.
 	 */
-	void initialize(UAS &uas,
-			ros::NodeHandle &nh,
-			diagnostic_updater::Updater &diag_updater)
+	void initialize(UAS &uas)
 	{
 		vfr_pub = nh.advertise<mavros::VFR_HUD>("vfr_hud", 10);
 
@@ -55,20 +43,18 @@ public:
 #endif
 	}
 
-	std::string const get_name() const {
-		return "VFRHUD";
-	}
-
 	const message_map get_rx_handlers() {
 		return {
-			MESSAGE_HANDLER(MAVLINK_MSG_ID_VFR_HUD, &VfrHudPlugin::handle_vfr_hud),
+			       MESSAGE_HANDLER(MAVLINK_MSG_ID_VFR_HUD, &VfrHudPlugin::handle_vfr_hud),
 #ifdef MAVLINK_MSG_ID_WIND
-			MESSAGE_HANDLER(MAVLINK_MSG_ID_WIND, &VfrHudPlugin::handle_wind),
+			       MESSAGE_HANDLER(MAVLINK_MSG_ID_WIND, &VfrHudPlugin::handle_wind),
 #endif
 		};
 	}
 
 private:
+	ros::NodeHandle nh;
+
 	ros::Publisher vfr_pub;
 	ros::Publisher wind_pub;
 
@@ -81,7 +67,7 @@ private:
 		vmsg->airspeed = vfr_hud.airspeed;
 		vmsg->groundspeed = vfr_hud.groundspeed;
 		vmsg->heading = vfr_hud.heading;
-		vmsg->throttle = vfr_hud.throttle / 100.0; // comes in 0..100 range
+		vmsg->throttle = vfr_hud.throttle / 100.0;	// comes in 0..100 range
 		vmsg->altitude = vfr_hud.alt;
 		vmsg->climb = vfr_hud.climb;
 
@@ -110,8 +96,7 @@ private:
 	}
 #endif
 };
-
-}; // namespace mavplugin
+};	// namespace mavplugin
 
 PLUGINLIB_EXPORT_CLASS(mavplugin::VfrHudPlugin, mavplugin::MavRosPlugin)
 

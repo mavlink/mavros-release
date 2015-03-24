@@ -10,19 +10,9 @@
 /*
  * Copyright 2014 Nuno Marques.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
 #include <mavros/mavros_plugin.h>
@@ -35,7 +25,6 @@
 #include <std_msgs/Float64.h>
 
 namespace mavplugin {
-
 /**
  * @brief Setpoint attitude plugin
  *
@@ -45,21 +34,19 @@ class SetpointAttitudePlugin : public MavRosPlugin,
 	private TFListenerMixin<SetpointAttitudePlugin> {
 public:
 	SetpointAttitudePlugin() :
+		sp_nh("~setpoint_attitude"),
 		uas(nullptr),
 		tf_rate(10.0),
 		reverse_throttle(false)
 	{ };
 
-	void initialize(UAS &uas_,
-			ros::NodeHandle &nh,
-			diagnostic_updater::Updater &diag_updater)
+	void initialize(UAS &uas_)
 	{
 		bool pose_with_covariance;
 		bool listen_tf;
 		bool listen_twist;
 
 		uas = &uas_;
-		sp_nh = ros::NodeHandle(nh, "setpoint");
 
 		sp_nh.param("attitude/listen_twist", listen_twist, true);
 		sp_nh.param("attitude/pose_with_covariance", pose_with_covariance, false);
@@ -91,19 +78,15 @@ public:
 		throttle_sub = sp_nh.subscribe("att_throttle", 10, &SetpointAttitudePlugin::throttle_cb, this);
 	}
 
-	const std::string get_name() const {
-		return "SetpointAttitude";
-	}
-
 	const message_map get_rx_handlers() {
 		return { /* Rx disabled */ };
 	}
 
 private:
 	friend class TFListenerMixin;
+	ros::NodeHandle sp_nh;
 	UAS *uas;
 
-	ros::NodeHandle sp_nh;
 	ros::Subscriber att_sub;
 	ros::Subscriber throttle_sub;
 
@@ -140,7 +123,7 @@ private:
 	 */
 	void send_attitude_transform(const tf::Transform &transform, const ros::Time &stamp) {
 		// Thrust + RPY, also bits noumbering started from 1 in docs
-		const uint8_t ignore_all_except_q = (1<<6)|(7<<0);
+		const uint8_t ignore_all_except_q = (1 << 6) | (7 << 0);
 		float q[4];
 
 		// ENU->NED, description in #49.
@@ -164,7 +147,7 @@ private:
 	 */
 	void send_attitude_ang_velocity(const ros::Time &stamp, const float vx, const float vy, const float vz) {
 		// Q + Thrust, also bits noumbering started from 1 in docs
-		const uint8_t ignore_all_except_rpy = (1<<7)|(1<<6);
+		const uint8_t ignore_all_except_rpy = (1 << 7) | (1 << 6);
 		float q[4] = { 1.0, 0.0, 0.0, 0.0 };
 
 		set_attitude_target(stamp.toNSec() / 1000000,
@@ -179,7 +162,7 @@ private:
 	 */
 	void send_attitude_throttle(const float throttle) {
 		// Q + RPY
-		const uint8_t ignore_all_except_throttle = (1<<7)|(7<<0);
+		const uint8_t ignore_all_except_throttle = (1 << 7) | (7 << 0);
 		float q[4] = { 1.0, 0.0, 0.0, 0.0 };
 
 		set_attitude_target(ros::Time::now().toNSec() / 1000000,
@@ -236,7 +219,6 @@ private:
 		send_attitude_throttle(throttle_normalized);
 	}
 };
-
-}; // namespace mavplugin
+};	// namespace mavplugin
 
 PLUGINLIB_EXPORT_CLASS(mavplugin::SetpointAttitudePlugin, mavplugin::MavRosPlugin)
