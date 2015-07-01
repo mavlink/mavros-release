@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>mavros</name>
-  <version>0.11.2</version>
+  <version>0.12.0</version>
   <description>
     MAVROS -- MAVLink extendable communication node for ROS
     with proxy for Ground Control Station.
@@ -23,6 +23,7 @@
   <depend>diagnostic_msgs</depend>
   <depend>diagnostic_updater</depend>
   <depend>message_generation</depend>
+  <depend>message_runtime</depend>
   <depend>pluginlib</depend>
   <depend>roscpp</depend>
   <depend>rospy</depend>
@@ -36,6 +37,8 @@
   <depend>libmavconn</depend>
   <depend>rosconsole_bridge</depend>
   <exec_depend>python-argparse</exec_depend>
+
+  <test_depend>gtest</test_depend>
 
   <export>
     <mavros plugin="${prefix}/mavros_plugins.xml" />
