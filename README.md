@@ -1,46 +1,57 @@
-MAVCONN library
-===============
+MAVROS
+======
 
-It is mavlink connection and communication library used in [MAVROS][mr].
-Since 2014-11-02 it adopted to use outside from ROS environment
-by splitting to individual package and removing dependencies to rosconsole.
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/mavlink/mavros?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
+MAVLink extendable communication node for ROS.
+
+- Since 2014-08-11 this repository contains several packages.
+- Since 2014-11-02 hydro support splited from master to hydro-devel branch.
+- Since 2015-03-04 all packages also dual licensed under terms of BSD license.
 
 
-Connection URL
+mavros package
 --------------
 
-Connection defined by URL.
-Just pass one of that URL to `MAVConnInterface::open_url()` and get connection object.
-
-Supported schemas:
-
-  - Serial: `/path/to/serial/device[:baudrate]`
-  - Serial: `serial:///path/to/serial/device[:baudrate][?ids=sysid,compid]`
-  - UDP: `udp://[bind_host[:port]]@[remote_host[:port]][/?ids=sysid,compid]`
-  - TCP client: `tcp://[server_host][:port][/?ids=sysid,compid]`
-  - TCP server: `tcp-l://[bind_port][:port][/?ids=sysid,compid]`
-
-Note: ids from URL overrides ids given by system\_id & component\_id parameters.
+It is the main package, please see it's [README][mrrm].
 
 
-Dependencies
-------------
+mavros\_extras package
+----------------------
 
-Same as for mavros:
-
-  - Linux host
-  - Boost >= 1.46 (used Boost.ASIO and Boost.Signals2)
-  - console-bridge library
-  - compiller with C++11 support
+This package contain some extra nodes and plugins for mavros, please see it's [README][exrm].
 
 
-License
--------
+libmavconn package
+------------------
 
-Licensed under terms of [*LGPLv3*][lgpllic], [*BSD*][bsdlic], or [*GPLv3*][gpllic].
+This package contain mavconn library, see it's [README][libmc].
+LibMAVConn may be used outside of ROS environment.
 
 
-[mr]: https://github.com/mavlink/mavros
-[lgpllic]: https://www.gnu.org/licenses/lgpl.html
-[gpllic]: https://www.gnu.org/licenses/gpl.html
-[bsdlic]: https://github.com/mavlink/mavros/blob/master/LICENSE-BSD.txt
+Support forums and chats
+------------------------
+
+Please ask your questions not related to bugs/feauture requests on:
+
+- [px4users Google Group (Mailing List) ](https://groups.google.com/forum/#!forum/px4users)
+- [Mavros on Gitter IM](https://gitter.im/mavlink/mavros)
+- [PX4/Firmware on Gitter IM](https://gitter.im/PX4/Firmware)
+
+We'd like to keep the project bugtracker as free as possible, so please contact via the above methods. You can also PM us via Gitter.
+
+
+CI Statuses
+-----------
+
+  - ROS Hydro: [![Hydro build status](http://jenkins.ros.org/buildStatus/icon?job=devel-hydro-mavros)](http://jenkins.ros.org/job/devel-hydro-mavros/)
+  - ROS Indigo: [![Indigo build status](http://jenkins.ros.org/buildStatus/icon?job=devel-indigo-mavros)](http://jenkins.ros.org/job/devel-indigo-mavros/)
+  - ROS Jade: [![Jade build status](http://jenkins.ros.org/buildStatus/icon?job=devel-jade-mavros)](http://jenkins.ros.org/job/devel-jade-mavros/)
+  - Travis Hydro (PX4): [![Hydro px4 status](https://travis-ci.org/mavlink/mavros.svg?branch=master)](https://travis-ci.org/mavlink/mavros)
+  - Travis Hydro (Coverity Scan): [![Hydro scan status](https://travis-ci.org/mavlink/mavros.svg?branch=coverity_scan)](https://travis-ci.org/mavlink/mavros)
+    : [![Coverity Scan](https://scan.coverity.com/projects/3183/badge.svg)](https://scan.coverity.com/projects/3183)
+
+
+[mrrm]: https://github.com/mavlink/mavros/blob/master/mavros/README.md
+[exrm]: https://github.com/mavlink/mavros/blob/master/mavros_extras/README.md
+[libmc]: https://github.com/mavlink/mavros/blob/master/libmavconn/README.md
