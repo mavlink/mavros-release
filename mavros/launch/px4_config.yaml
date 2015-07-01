@@ -7,10 +7,10 @@ startup_px4_usb_quirk: true
 
 # sys_status & sys_time connection options
 conn:
-  heartbeat: 5.0    # send hertbeat every n seconds
-  timeout: 10.0     # hertbeat timeout in seconds
-  timesync: 0.1     # TIMESYNC period in seconds (feature disabled if 0.0)
-  system_time: 1.0  # send system time to FCU every n seconds
+  heartbeat_rate: 1.0    # send hertbeat rate in Hertz
+  timeout: 10.0          # hertbeat timeout in seconds
+  timesync_rate: 10.0    # TIMESYNC rate in Hertz (feature disabled if 0.0)
+  system_time_rate: 1.0  # send system time to FCU rate in Hertz (disabled if 0.0)
 
 # sys_status
 sys:
@@ -111,6 +111,31 @@ mission:
 
 # --- mavros extras plugins (same order) ---
 
+# distance_sensor (PX4 only)
+distance_sensor:
+  hrlv_ez4_pub:
+    id: 0
+    frame_id: "hrlv_ez4_sonar"
+    orientation: 8 # RPY:{180.0, 0.0, 0.0}
+    field_of_view: 0.0  # XXX TODO
+    send_tf: true
+    sensor_position: {x:  0.0, y:  0.0, z:  -0.1}
+  lidarlite_pub:
+    id: 1
+    frame_id: "lidarlite_laser"
+    orientation: 8
+    field_of_view: 0.0  # XXX TODO
+    send_tf: true
+    sensor_position: {x:  0.0, y:  0.0, z:  -0.1}
+  sonar_1_sub:
+    subscriber: true
+    id: 2
+    orientation: 8
+  laser_1_sub:
+    subscriber: true
+    id: 3
+    orientation: 8
+
 # image_pub
 image:
   frame_id: "px4flow"
@@ -121,6 +146,7 @@ mocap:
   use_tf: false   # ~mocap/tf
   use_pose: true  # ~mocap/pose
 
+# px4flow
 px4flow:
   frame_id: "px4flow"
   ranger_fov: !degrees 0.0  # XXX TODO
@@ -144,5 +170,9 @@ visualization:
   fixed_frame_id: "local_origin"
   child_frame_id: "fcu"
   marker_scale: 2.0
+
+# vibration
+vibration:
+  frame_id: "vibration"
 
 # vim:ts=2 sw=2 et:
