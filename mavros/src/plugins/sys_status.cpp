@@ -354,14 +354,26 @@ public:
 	{
 		uas = &uas_;
 
+		ros::Duration conn_heartbeat;
+
 		double conn_timeout_d;
 		double conn_heartbeat_d;
 		double min_voltage;
 
 		nh.param("conn/timeout", conn_timeout_d, 30.0);
-		nh.param("conn/heartbeat", conn_heartbeat_d, 0.0);
 		nh.param("sys/min_voltage", min_voltage, 6.0);
 		nh.param("sys/disable_diag", disable_diag, false);
+
+		// rate parameter
+		if (nh.getParam("conn/heartbeat_rate", conn_heartbeat_d) && conn_heartbeat_d != 0.0) {
+			conn_heartbeat = ros::Duration(ros::Rate(conn_heartbeat_d));
+		}
+		else if (nh.getParam("conn/heartbeat", conn_heartbeat_d)) {
+			// XXX deprecated parameter
+			ROS_WARN_NAMED("sys", "SYS: parameter `~conn/heartbeat` deprecated, "
+					"please use `~conn/heartbeat_rate` instead!");
+			conn_heartbeat = ros::Duration(conn_heartbeat_d);
+		}
 
 		// heartbeat diag always enabled
 		UAS_DIAG(uas).add(hb_diag);
@@ -378,8 +390,8 @@ public:
 				&SystemStatusPlugin::timeout_cb, this, true);
 		timeout_timer.start();
 
-		if (conn_heartbeat_d > 0.0) {
-			heartbeat_timer = nh.createTimer(ros::Duration(conn_heartbeat_d),
+		if (!conn_heartbeat.isZero()) {
+			heartbeat_timer = nh.createTimer(conn_heartbeat,
 					&SystemStatusPlugin::heartbeat_cb, this);
 			heartbeat_timer.start();
 		}
@@ -392,10 +404,13 @@ public:
 		// subscribe to connection event
 		uas->sig_connection_changed.connect(boost::bind(&SystemStatusPlugin::connection_cb, this, _1));
 
-		state_pub = nh.advertise<mavros::State>("state", 10);
+		state_pub = nh.advertise<mavros::State>("state", 10, true);
 		batt_pub = nh.advertise<mavros::BatteryStatus>("battery", 10);
 		rate_srv = nh.advertiseService("set_stream_rate", &SystemStatusPlugin::set_rate_cb, this);
 		mode_srv = nh.advertiseService("set_mode", &SystemStatusPlugin::set_mode_cb, this);
+
+		// init state topic
+		publish_disconnection();
 	}
 
 	const message_map get_rx_handlers() {
@@ -499,6 +514,66 @@ private:
 		};
 	}
 
+	static inline std::string custom_version_to_hex_string(uint8_t array[8])
+	{
+		// inefficient, but who care for one time call function?
+
+		std::ostringstream ss;
+		ss << std::setfill('0');
+
+		for (ssize_t i = 7; i >= 0; i--)
+			ss << std::hex << std::setw(2) << int(array[i]);
+
+		return ss.str();
+	}
+
+	void process_autopilot_version_normal(mavlink_autopilot_version_t &apv)
+	{
+		ROS_INFO_NAMED("sys", "VER: Capabilities 0x%016llx", (long long int)apv.capabilities);
+		ROS_INFO_NAMED("sys", "VER: Flight software:     %08x (%s)",
+				apv.flight_sw_version,
+				custom_version_to_hex_string(apv.flight_custom_version).c_str());
+		ROS_INFO_NAMED("sys", "VER: Middleware software: %08x (%s)",
+				apv.middleware_sw_version,
+				custom_version_to_hex_string(apv.middleware_custom_version).c_str());
+		ROS_INFO_NAMED("sys", "VER: OS software:         %08x (%s)",
+				apv.os_sw_version,
+				custom_version_to_hex_string(apv.os_custom_version).c_str());
+		ROS_INFO_NAMED("sys", "VER: Board hardware:      %08x", apv.board_version);
+		ROS_INFO_NAMED("sys", "VER: VID/PID: %04x:%04x", apv.vendor_id, apv.product_id);
+		ROS_INFO_NAMED("sys", "VER: UID: %016llx", (long long int)apv.uid);
+	}
+
+	void process_autopilot_version_apm_quirk(mavlink_autopilot_version_t &apv)
+	{
+		// Note based on current APM's impl.
+		// APM uses custom version array[8] as a string
+		ROS_INFO_NAMED("sys", "VER: Capabilities 0x%016llx", (long long int)apv.capabilities);
+		ROS_INFO_NAMED("sys", "VER: Flight software:     %08x (%*s)",
+				apv.flight_sw_version,
+				8, apv.flight_custom_version);
+		ROS_INFO_NAMED("sys", "VER: Middleware software: %08x (%*s)",
+				apv.middleware_sw_version,
+				8, apv.middleware_custom_version);
+		ROS_INFO_NAMED("sys", "VER: OS software:         %08x (%*s)",
+				apv.os_sw_version,
+				8, apv.os_custom_version);
+		ROS_INFO_NAMED("sys", "VER: Board hardware:      %08x", apv.board_version);
+		ROS_INFO_NAMED("sys", "VER: VID/PID: %04x:%04x", apv.vendor_id, apv.product_id);
+		ROS_INFO_NAMED("sys", "VER: UID: %016llx", (long long int)apv.uid);
+	}
+
+	void publish_disconnection() {
+		auto state_msg = boost::make_shared<mavros::State>();
+		state_msg->header.stamp = ros::Time::now();
+		state_msg->connected = false;
+		state_msg->armed = false;
+		state_msg->guided = false;
+		state_msg->mode = "";
+
+		state_pub.publish(state_msg);
+	}
+
 	/* -*- message handlers -*- */
 
 	void handle_heartbeat(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
@@ -519,6 +594,7 @@ private:
 		// build state message after updating uas
 		auto state_msg = boost::make_shared<mavros::State>();
 		state_msg->header.stamp = ros::Time::now();
+		state_msg->connected = true;
 		state_msg->armed = hb.base_mode & MAV_MODE_FLAG_SAFETY_ARMED;
 		state_msg->guided = hb.base_mode & MAV_MODE_FLAG_GUIDED_ENABLED;
 		state_msg->mode = uas->str_mode_v10(hb.base_mode, hb.custom_mode);
@@ -582,21 +658,10 @@ private:
 		autopilot_version_timer.stop();
 		uas->update_capabilities(true, apv.capabilities);
 
-		// Note based on current APM's impl.
-		// APM uses custom version array[8] as a string
-		ROS_INFO_NAMED("sys", "VER: Capabilities 0x%016llx", (long long int)apv.capabilities);
-		ROS_INFO_NAMED("sys", "VER: Flight software:     %08x (%*s)",
-				apv.flight_sw_version,
-				8, apv.flight_custom_version);
-		ROS_INFO_NAMED("sys", "VER: Middleware software: %08x (%*s)",
-				apv.middleware_sw_version,
-				8, apv.middleware_custom_version);
-		ROS_INFO_NAMED("sys", "VER: OS software:         %08x (%*s)",
-				apv.os_sw_version,
-				8, apv.os_custom_version);
-		ROS_INFO_NAMED("sys", "VER: Board hardware:      %08x", apv.board_version);
-		ROS_INFO_NAMED("sys", "VER: VID/PID: %04x:%04x", apv.vendor_id, apv.product_id);
-		ROS_INFO_NAMED("sys", "VER: UID: %016llx", (long long int)apv.uid);
+		if (uas->is_ardupilotmega())
+			process_autopilot_version_apm_quirk(apv);
+		else
+			process_autopilot_version_normal(apv);
 	}
 
 	/* -*- timer callbacks -*- */
@@ -678,6 +743,11 @@ private:
 			UAS_DIAG(uas).removeByName(mem_diag.getName());
 			UAS_DIAG(uas).removeByName(hwst_diag.getName());
 			ROS_DEBUG_NAMED("sys", "SYS: APM extra diagnostics disabled.");
+		}
+
+		if (!connected) {
+			// publish connection change
+			publish_disconnection();
 		}
 	}
 
