@@ -53,6 +53,7 @@ include(MavrosMavlink)
 add_message_files(
   FILES
   OpticalFlowRad.msg
+  Vibration.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -107,12 +108,14 @@ include_directories(
 
 ## Declare a cpp library
 add_library(mavros_extras
+  src/plugins/distance_sensor.cpp
   src/plugins/px4flow.cpp
   src/plugins/image_pub.cpp
   src/plugins/mocap_pose_estimate.cpp
   src/plugins/vision_pose_estimate.cpp
   src/plugins/vision_speed_estimate.cpp
   src/plugins/visualization.cpp
+  src/plugins/vibration.cpp
 )
 add_dependencies(mavros_extras
   mavros_extras_generate_messages_cpp
