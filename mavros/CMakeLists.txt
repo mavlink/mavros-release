@@ -15,15 +15,25 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   std_srvs
-  tf
+  tf2_ros
   angles
   libmavconn
   rosconsole_bridge
+  eigen_conversions
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 find_package(Boost REQUIRED COMPONENTS system)
+
+find_package(Eigen3)
+if(NOT EIGEN3_FOUND)
+  # Fallback to cmake_modules
+  find_package(cmake_modules REQUIRED)
+  find_package(Eigen REQUIRED)
+  set(EIGEN3_INCLUDE_DIRS ${EIGEN_INCLUDE_DIRS})
+  set(EIGEN3_LIBRARIES ${EIGEN_LIBRARIES})
+endif()
 
 include(EnableCXX11)
 include(MavrosMavlink)
@@ -72,6 +82,8 @@ add_message_files(
   VFR_HUD.msg
   FileEntry.msg
   ActuatorControl.msg
+  CommandCode.msg
+  ParamValue.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -91,6 +103,7 @@ add_service_files(
   CommandBool.srv
   CommandHome.srv
   CommandTOL.srv
+  CommandTriggerControl.srv
   StreamRate.srv
   SetMode.srv
   FileOpen.srv
@@ -134,8 +147,8 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES mavros
-  CATKIN_DEPENDS diagnostic_msgs diagnostic_updater pluginlib roscpp sensor_msgs std_msgs tf geometry_msgs libmavconn message_runtime
-  DEPENDS Boost
+  CATKIN_DEPENDS diagnostic_msgs diagnostic_updater pluginlib roscpp sensor_msgs std_msgs tf2_ros geometry_msgs libmavconn message_runtime eigen_conversions
+  DEPENDS Boost Eigen
 )
 
 ###########
@@ -151,8 +164,8 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
   ${mavlink_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
 )
-
 
 add_library(mavros
   src/lib/uas_data.cpp
@@ -177,7 +190,6 @@ add_library(mavros_plugins
   src/plugins/sys_status.cpp
   src/plugins/sys_time.cpp
   src/plugins/imu_pub.cpp
-  src/plugins/gps.cpp
   src/plugins/param.cpp
   src/plugins/waypoint.cpp
   src/plugins/rc_io.cpp
@@ -274,6 +286,9 @@ if(CATKIN_ENABLE_TESTING)
 
 catkin_add_gtest(libmavros-frame-test test/test_frame_conv.cpp)
 target_link_libraries(libmavros-frame-test mavros)
+
+catkin_add_gtest(libmavros-sens-orientation-test test/test_sensor_orientation.cpp)
+target_link_libraries(libmavros-sens-orientation-test mavros)
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
