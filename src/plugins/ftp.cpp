@@ -75,6 +75,7 @@ public:
 		kCmdTruncateFile,	///< Truncate file at <path> to <offset> length
 		kCmdRename,		///< Rename <path1> to <path2>
 		kCmdCalcFileCRC32,	///< Calculate CRC32 for file at <path>
+		kCmdBurstReadFile,	///< Burst download session file
 
 		kRspAck = 128,		///< Ack response
 		kRspNak			///< Nak response
@@ -89,7 +90,9 @@ public:
 		kErrInvalidSession,		///< Session is not currently open
 		kErrNoSessionsAvailable,	///< All available Sessions in use
 		kErrEOF,			///< Offset past end of file for List and Read commands
-		kErrUnknownCommand		///< Unknown command opcode
+		kErrUnknownCommand,		///< Unknown command opcode
+		kErrFailFileExists,		///< File exists already
+		kErrFailFileProtected		///< File is write protected
 	};
 
 	static const char	DIRENT_FILE = 'F';
@@ -564,7 +567,7 @@ private:
 
 	void send_reset() {
 		ROS_DEBUG_NAMED("ftp", "FTP:m: kCmdResetSessions");
-		if (session_file_map.size() > 0) {
+		if (!session_file_map.empty()) {
 			ROS_WARN_NAMED("ftp", "FTP: Reset closes %zu sessons",
 					session_file_map.size());
 			session_file_map.clear();
@@ -576,7 +579,7 @@ private:
 	}
 
 	/// Send any command with string payload (usually file/dir path)
-	inline void send_any_path_command(FTPRequest::Opcode op, const std::string debug_msg, std::string &path, uint32_t offset) {
+	inline void send_any_path_command(FTPRequest::Opcode op, const std::string &debug_msg, std::string &path, uint32_t offset) {
 		ROS_DEBUG_STREAM_NAMED("ftp", "FTP:m: " << debug_msg << path << " off: " << offset);
 		FTPRequest req(op);
 		req.header()->offset = offset;
