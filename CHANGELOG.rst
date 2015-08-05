@@ -2,6 +2,9 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.13.1 (2015-08-05)
+-------------------
+
 0.13.0 (2015-08-01)
 -------------------
 * extras: mocap fix `#352 <https://github.com/mavlink/mavros/issues/352>`_: use new helper for quaternion.
