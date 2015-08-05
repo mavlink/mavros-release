@@ -2,6 +2,9 @@
 Changelog for package libmavconn
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.13.1 (2015-08-05)
+-------------------
+
 0.13.0 (2015-08-01)
 -------------------
 * libmavconn: simpify exception code.
