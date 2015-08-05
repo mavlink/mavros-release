@@ -1,0 +1,12 @@
+Source: ros-jade-mavros-extras
+Section: misc
+Priority: extra
+Maintainer: Vladimir Ermakov <vooon341@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), ros-jade-catkin, ros-jade-cv-bridge, ros-jade-image-transport, ros-jade-mavlink, ros-jade-mavros, ros-jade-roscpp, ros-jade-sensor-msgs, ros-jade-visualization-msgs
+Homepage: http://wiki.ros.org/mavros_extras
+Standards-Version: 3.9.2
+
+Package: ros-jade-mavros-extras
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-jade-cv-bridge, ros-jade-image-transport, ros-jade-mavlink, ros-jade-mavros, ros-jade-roscpp, ros-jade-sensor-msgs, ros-jade-visualization-msgs
+Description: Extra nodes and plugins for mavros
