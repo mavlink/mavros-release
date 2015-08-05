@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   geometry_msgs
   sensor_msgs
+  nav_msgs
   std_msgs
   std_srvs
   tf2_ros
@@ -147,7 +148,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES mavros
-  CATKIN_DEPENDS diagnostic_msgs diagnostic_updater pluginlib roscpp sensor_msgs std_msgs tf2_ros geometry_msgs libmavconn message_runtime eigen_conversions
+  CATKIN_DEPENDS diagnostic_msgs diagnostic_updater pluginlib roscpp sensor_msgs nav_msgs std_msgs tf2_ros geometry_msgs libmavconn message_runtime eigen_conversions
   DEPENDS Boost Eigen
 )
 
@@ -173,6 +174,7 @@ add_library(mavros
   src/lib/uas_timesync.cpp
   src/lib/uas_sensor_orientation.cpp
   src/lib/uas_frame_conversions.cpp
+  src/lib/uas_quaternion_utils.cpp
   src/lib/mavros.cpp
   src/lib/mavlink_diag.cpp
   src/lib/rosconsole_bridge.cpp
@@ -284,11 +286,14 @@ install(DIRECTORY launch/
 
 if(CATKIN_ENABLE_TESTING)
 
-catkin_add_gtest(libmavros-frame-test test/test_frame_conv.cpp)
-target_link_libraries(libmavros-frame-test mavros)
+catkin_add_gtest(libmavros-frame-conversions-test test/test_frame_conversions.cpp)
+target_link_libraries(libmavros-frame-conversions-test mavros)
 
-catkin_add_gtest(libmavros-sens-orientation-test test/test_sensor_orientation.cpp)
-target_link_libraries(libmavros-sens-orientation-test mavros)
+catkin_add_gtest(libmavros-sensor-orientation-test test/test_sensor_orientation.cpp)
+target_link_libraries(libmavros-sensor-orientation-test mavros)
+
+catkin_add_gtest(libmavros-quaternion-utils-test test/test_quaternion_utils.cpp)
+target_link_libraries(libmavros-quaternion-utils-test mavros)
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
