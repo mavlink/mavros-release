@@ -1,0 +1,12 @@
+Source: ros-indigo-test-mavros
+Section: misc
+Priority: extra
+Maintainer: Vladimir Ermakov <vooon341@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), libeigen3-dev, ros-indigo-catkin, ros-indigo-eigen-conversions, ros-indigo-geometry-msgs, ros-indigo-mavros, ros-indigo-mavros-extras, ros-indigo-roscpp, ros-indigo-std-msgs, ros-indigo-tf2-ros
+Homepage: 
+Standards-Version: 3.9.2
+
+Package: ros-indigo-test-mavros
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libeigen3-dev, ros-indigo-eigen-conversions, ros-indigo-geometry-msgs, ros-indigo-mavros, ros-indigo-mavros-extras, ros-indigo-roscpp, ros-indigo-std-msgs, ros-indigo-tf2-ros
+Description: Tests for MAVROS package
