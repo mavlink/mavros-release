@@ -1,56 +1,57 @@
-MAVROS test package
-===================
+MAVROS
+======
 
-This package consists hand-tests with FCU SITL environment.
-I hope later we will do automatic tests too.
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/mavlink/mavros?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
+MAVLink extendable communication node for ROS.
 
-APM SITL
---------
-
-All what you need described in [ardupilot wiki][sitl-wiki].
-
-
-### Preparation
-
-```sh
-# this is for zsh, but bash should be similar
-function add-dir-to-path() {
-    PATH+=":$1"
-}
-
-# get sources
-cd ~/ros/src
-wstool set imu_tools --git https://github.com/ccny-ros-pkg/imu_tools.git -v indigo
-wstool update -j2
-catkin build
-
-cd ~/src/UAV
-git clone https://github.com/diydrones/ardupilot.git
-git checkout ArduPlane-3.3.0 -b ArduPlane-3.3.0
-git clone https://github.com/tridge/jsbsim.git
-
-# compile JSBSim
-cd jsbsim
-./autogen.sh --enable-libraries
-make -j4
-
-# also look ardupliot wiki
-
-# prepare to sim_vehicle.sh
-add-dir-to-path $PWD/src
-
-cd ../ardupilot/Tools/autotest/
-add-dir-to-path $PWD
-```
+- Since 2014-08-11 this repository contains several packages.
+- Since 2014-11-02 hydro support splited from master to hydro-devel branch.
+- Since 2015-03-04 all packages also dual licensed under terms of BSD license.
 
 
-### Run simulation
+mavros package
+--------------
 
-```
-./sim_vehicle.sh -v ArduPlane --out udp:localhost:15550 --map
-roslaunch test_mavros launch/apm/apm_imu_test.launch
-```
+It is the main package, please see it's [README][mrrm].
 
 
-[sitl-wiki]: http://dev.ardupilot.com/wiki/simulation-2/sitl-simulator-software-in-the-loop/setting-up-sitl-on-linux/
+mavros\_extras package
+----------------------
+
+This package contain some extra nodes and plugins for mavros, please see it's [README][exrm].
+
+
+libmavconn package
+------------------
+
+This package contain mavconn library, see it's [README][libmc].
+LibMAVConn may be used outside of ROS environment.
+
+
+Support forums and chats
+------------------------
+
+Please ask your questions not related to bugs/feauture requests on:
+
+- [px4users Google Group (Mailing List) ](https://groups.google.com/forum/#!forum/px4users)
+- [Mavros on Gitter IM](https://gitter.im/mavlink/mavros)
+- [PX4/Firmware on Gitter IM](https://gitter.im/PX4/Firmware)
+
+We'd like to keep the project bugtracker as free as possible, so please contact via the above methods. You can also PM us via Gitter.
+
+
+CI Statuses
+-----------
+
+  - ROS Hydro: [![Hydro build status](http://jenkins.ros.org/buildStatus/icon?job=devel-hydro-mavros)](http://jenkins.ros.org/job/devel-hydro-mavros/)
+  - ROS Indigo: [![Indigo build status](http://jenkins.ros.org/buildStatus/icon?job=devel-indigo-mavros)](http://jenkins.ros.org/job/devel-indigo-mavros/)
+  - ROS Jade: [![Jade build status](http://jenkins.ros.org/buildStatus/icon?job=devel-jade-mavros)](http://jenkins.ros.org/job/devel-jade-mavros/)
+  - Travis Hydro (PX4): [![Hydro px4 status](https://travis-ci.org/mavlink/mavros.svg?branch=master)](https://travis-ci.org/mavlink/mavros)
+  - Travis Hydro (Coverity Scan): [![Hydro scan status](https://travis-ci.org/mavlink/mavros.svg?branch=coverity_scan)](https://travis-ci.org/mavlink/mavros)
+    : [![Coverity Scan](https://scan.coverity.com/projects/3183/badge.svg)](https://scan.coverity.com/projects/3183)
+
+
+[mrrm]: https://github.com/mavlink/mavros/blob/master/mavros/README.md
+[exrm]: https://github.com/mavlink/mavros/blob/master/mavros_extras/README.md
+[libmc]: https://github.com/mavlink/mavros/blob/master/libmavconn/README.md
