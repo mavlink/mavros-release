@@ -376,9 +376,7 @@ public:
 	 *
 	 * Replacement function for @a tf::getYaw()
 	 */
-	static inline double getYaw(const Eigen::Quaterniond &q) {
-		return quaternion_to_rpy(q).z();
-	}
+	static double quaternion_get_yaw(const Eigen::Quaterniond &q);
 
 	/**
 	 * @brief Store Quaternion to MAVLink float[4] format
