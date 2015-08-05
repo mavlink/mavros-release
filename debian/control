@@ -1,0 +1,12 @@
+Source: ros-jade-test-mavros
+Section: misc
+Priority: extra
+Maintainer: Vladimir Ermakov <vooon341@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), libeigen3-dev, ros-jade-catkin, ros-jade-eigen-conversions, ros-jade-geometry-msgs, ros-jade-mavros, ros-jade-mavros-extras, ros-jade-roscpp, ros-jade-std-msgs, ros-jade-tf2-ros
+Homepage: 
+Standards-Version: 3.9.2
+
+Package: ros-jade-test-mavros
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libeigen3-dev, ros-jade-eigen-conversions, ros-jade-geometry-msgs, ros-jade-mavros, ros-jade-mavros-extras, ros-jade-roscpp, ros-jade-std-msgs, ros-jade-tf2-ros
+Description: Tests for MAVROS package
