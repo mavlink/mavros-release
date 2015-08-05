@@ -2,6 +2,34 @@
 Changelog for package mavros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.13.1 (2015-08-05)
+-------------------
+* lib `#358 <https://github.com/mavlink/mavros/issues/358>`_: cleanup.
+  Replace UAS::getYaw() with UAS::quaternion_get_yaw().
+* lib `#358 <https://github.com/mavlink/mavros/issues/358>`_: found correct getYaw(). Test for each degrees in -180..180.
+* test `#358 <https://github.com/mavlink/mavros/issues/358>`_: test more different angles. Compare rotation result.
+* lib `#358 <https://github.com/mavlink/mavros/issues/358>`_: try to implement algo from wikipedia.
+* lib `#358 <https://github.com/mavlink/mavros/issues/358>`_: still failing. add recursive test for range -Pi..+Pi
+* lib `#358 <https://github.com/mavlink/mavros/issues/358>`_: try solve issue using older eulerAngles()
+* lib `#358 <https://github.com/mavlink/mavros/issues/358>`_: remove to_rpy test
+* Merge branch 'master' of github.com:mavlink/mavros
+  * 'master' of github.com:mavlink/mavros:
+  global_position: move relative_alt and compass_heading init back
+  add nav_msgs to dependencies so to make Travis happy
+  global_position: update pose and twist to odom msg
+* test fix `#359 <https://github.com/mavlink/mavros/issues/359>`_: split out quaternion tests.
+* lib `#359 <https://github.com/mavlink/mavros/issues/359>`_: move quaternion utils.
+* global_position: move relative_alt and compass_heading init back
+* add nav_msgs to dependencies so to make Travis happy
+* global_position: update pose and twist to odom msg
+* test `#358 <https://github.com/mavlink/mavros/issues/358>`_: add tests for negative values and quaternion_to_rpy tf2 compatibility check
+  Tests now fails!
+* sctipts: fix gps topic path
+* lib: fix input validation in UAS::orientation_from_str()
+* test: add case for num str->sensor orientation
+* package: fix CHANGELOG.rst
+* Contributors: TSC21, Vladimir Ermakov
+
 0.13.0 (2015-08-01)
 -------------------
 * plugin: setpoint_attitude `#352 <https://github.com/mavlink/mavros/issues/352>`_: use new helper.
@@ -100,8 +128,8 @@ Changelog for package mavros
 0.12.0 (2015-07-01)
 -------------------
 * plugin: sys_time, sys_status `#266 <https://github.com/vooon/mavros/issues/266>`_: check that rate is zero
-* test `#321 <https://github.com/vooon/mavros/issues/321>`_: disable tests for broken transforms.
-* lib `#321 <https://github.com/vooon/mavros/issues/321>`_: frame transform are broken. again! revert old math.
+* test `#321 <https://github.com/vooon/mavros/issues/321>`__: disable tests for broken transforms.
+* lib `#321 <https://github.com/vooon/mavros/issues/321>`__: frame transform are broken. again! revert old math.
   RULE for me: do not accept patch without wide testing from author.
   That PR changes all plugins code, instead of do API, test and only after
   that touching working code. My bad.
@@ -162,7 +190,7 @@ Changelog for package mavros
   If on MR request FCU responses param with different `param_index`
   do not reset repeat counter to prevent endless loop.
 * gcs bridge fix `#277 <https://github.com/vooon/mavros/issues/277>`_: add link diagnostics
-* plugin: setpoint_position `#273 <https://github.com/vooon/mavros/issues/273>`_: add quirk for PX4.
+* plugin: setpoint_position `#273 <https://github.com/vooon/mavros/issues/273>`__: add quirk for PX4.
 * readme: fir glossary misprint
 * readme: add notes about catkin tool
 * Contributors: Vladimir Ermakov
