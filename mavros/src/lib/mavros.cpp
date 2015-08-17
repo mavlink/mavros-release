@@ -22,7 +22,7 @@ using namespace mavplugin;
 
 
 MavRos::MavRos() :
-	mavlink_nh("/mavlink"),		// for compatible reasons
+	mavlink_nh("mavlink"),		// allow to namespace it
 	fcu_link_diag("FCU connection"),
 	gcs_link_diag("GCS bridge"),
 	plugin_loader("mavros", "mavplugin::MavRosPlugin"),
@@ -84,7 +84,7 @@ MavRos::MavRos() :
 		ROS_INFO("GCS bridge disabled");
 
 	// ROS mavlink bridge
-	mavlink_pub = mavlink_nh.advertise<Mavlink>("from", 100);
+	mavlink_pub = mavlink_nh.advertise<mavros_msgs::Mavlink>("from", 100);
 	mavlink_sub = mavlink_nh.subscribe("to", 100, &MavRos::mavlink_sub_cb, this,
 		ros::TransportHints()
 			.unreliable()
@@ -134,33 +134,36 @@ MavRos::MavRos() :
 void MavRos::spin() {
 	ros::AsyncSpinner spinner(4 /* threads */);
 
-	spinner.start();
+	auto diag_timer = mavlink_nh.createTimer(
+			ros::Duration(0.5),
+			[&](const ros::TimerEvent &) {
+				UAS_DIAG(&mav_uas).update();
+			});
+	diag_timer.start();
 
-	ros::Rate loop_rate(1000);
-	while (ros::ok()) {
-		UAS_DIAG(&mav_uas).update();
-		loop_rate.sleep();
-	}
+	spinner.start();
+	ros::waitForShutdown();
 
 	ROS_INFO("Stopping mavros...");
 	mav_uas.stop();
+	spinner.stop();
 }
 
 void MavRos::mavlink_pub_cb(const mavlink_message_t *mmsg, uint8_t sysid, uint8_t compid) {
-	auto rmsg = boost::make_shared<Mavlink>();
+	auto rmsg = boost::make_shared<mavros_msgs::Mavlink>();
 
 	if  (mavlink_pub.getNumSubscribers() == 0)
 		return;
 
 	rmsg->header.stamp = ros::Time::now();
-	mavutils::copy_mavlink_to_ros(mmsg, rmsg);
+	mavros_msgs::mavlink::convert(*mmsg, *rmsg);
 	mavlink_pub.publish(rmsg);
 }
 
-void MavRos::mavlink_sub_cb(const Mavlink::ConstPtr &rmsg) {
+void MavRos::mavlink_sub_cb(const mavros_msgs::Mavlink::ConstPtr &rmsg) {
 	mavlink_message_t mmsg;
 
-	if (mavutils::copy_ros_to_mavlink(rmsg, mmsg))
+	if (mavros_msgs::mavlink::convert(*rmsg, mmsg))
 		UAS_FCU(&mav_uas)->send_message(&mmsg, rmsg->sysid, rmsg->compid);
 	else
 		ROS_ERROR("Drop mavlink packet: illegal payload64 size");
