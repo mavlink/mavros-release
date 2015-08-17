@@ -15,8 +15,8 @@ import threading
 import rospy
 import mavros
 from mavros.utils import *
-from mavros.msg import State
-from mavros.srv import SetMode, StreamRate, StreamRateRequest
+from mavros_msgs.msg import State
+from mavros_msgs.srv import SetMode, StreamRate, StreamRateRequest
 
 
 def do_mode(args):
@@ -80,7 +80,7 @@ def do_rate(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Chnage mode and rate on MAVLink device.")
+    parser = argparse.ArgumentParser(description="Change mode and rate on MAVLink device.")
     parser.add_argument('-n', '--mavros-ns', help="ROS node namespace", default="/mavros")
     parser.add_argument('-v', '--verbose', action='store_true', help="verbose output")
     parser.add_argument('--wait', action='store_true', help="Wait for establishing FCU connection")
