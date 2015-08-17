@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>test_mavros</name>
-  <version>0.13.1</version>
+  <version>0.14.0</version>
   <description>Tests for MAVROS package</description>
 
   <maintainer email="vooon341@gmail.com">Vladimir Ermakov</maintainer>
@@ -26,6 +26,7 @@
   <depend>mavros_extras</depend>
   <depend>eigen</depend>
   <depend>eigen_conversions</depend>
+  <depend>control_toolbox</depend>
 
   <!-- fails prerelease build
   <exec_depend>px4</exec_depend>
