@@ -23,8 +23,7 @@
 #include <mavconn/interface.h>
 #include <mavros/mavros_plugin.h>
 #include <mavros/mavlink_diag.h>
-
-#include <mavros/Mavlink.h>
+#include <mavros/utils.h>
 
 namespace mavros {
 /**
@@ -61,7 +60,7 @@ private:
 	//! fcu link -> ros
 	void mavlink_pub_cb(const mavlink_message_t *mmsg, uint8_t sysid, uint8_t compid);
 	//! ros -> fcu link
-	void mavlink_sub_cb(const Mavlink::ConstPtr &rmsg);
+	void mavlink_sub_cb(const mavros_msgs::Mavlink::ConstPtr &rmsg);
 
 	//! message router
 	void plugin_route_cb(const mavlink_message_t *mmsg, uint8_t sysid, uint8_t compid);
