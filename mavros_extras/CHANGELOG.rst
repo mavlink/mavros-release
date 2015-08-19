@@ -2,6 +2,9 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.14.1 (2015-08-19)
+-------------------
+
 0.14.0 (2015-08-17)
 -------------------
 * extras: gcs node: replace deprecated copy function
