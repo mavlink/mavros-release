@@ -2,6 +2,9 @@
 Changelog for package mavros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.14.2 (2015-08-20)
+-------------------
+
 0.14.1 (2015-08-19)
 -------------------
 * package: Fix depend on rosconsole-bridge
