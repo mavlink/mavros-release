@@ -2,6 +2,11 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.14.2 (2015-08-20)
+-------------------
+* extras: fix catkin lint warnings
+* Contributors: Vladimir Ermakov
+
 0.14.1 (2015-08-19)
 -------------------
 
