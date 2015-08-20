@@ -2,6 +2,11 @@
 Changelog for package test_mavros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.14.2 (2015-08-20)
+-------------------
+* test: fix depend on angles, fix catkin lint warnings
+* Contributors: Vladimir Ermakov
+
 0.14.1 (2015-08-19)
 -------------------
 
