@@ -95,6 +95,9 @@ class ShellHandler(EventHandler):
                 child_stdout = subprocess.PIPE
                 child_stderr = subprocess.PIPE
 
+            if hasattr(child_stdout, 'write'):
+                child_stdout.write("\n--- run cut: %s ---\n" % time.ctime())
+
             self.process = subprocess.Popen(args, stdout=child_stdout, stderr=child_stderr,
                                             close_fds=True, preexec_fn=os.setsid)
 
@@ -177,11 +180,6 @@ class Launcher(object):
         self.triggers = {}
         self.prev_armed = False
 
-        self.state_sub = rospy.Subscriber(
-            mavros.get_topic('state'),
-            State,
-            self.mavros_state_cb)
-
         try:
             params = rospy.get_param('~')
             if not isinstance(params, dict):
@@ -208,6 +206,12 @@ class Launcher(object):
                 if evt not in self.known_events:
                     rospy.logwarn("%s: unknown event: %s", h.name, evt)
 
+        # config loaded, we may subscribe
+        self.state_sub = rospy.Subscriber(
+            mavros.get_topic('state'),
+            State,
+            self.mavros_state_cb)
+
     def _load_trigger(self, name, params):
         rospy.logdebug("Loading trigger: %s", name)
 
@@ -226,17 +230,25 @@ class Launcher(object):
 
         events, actions = self._get_evt_act(params)
 
+        def expandpath(p):
+            return os.path.expandvars(os.path.expanduser(p))
+
         args = params['shell']
         if not isinstance(args, list):
             args = shlex.split(args)
 
-        command = os.path.expandvars(os.path.expanduser(args[0]))
+        command = expandpath(args[0])
         args = args[1:]
 
         logfile = params.get('logfile')
+        if logfile:
+            logfile = expandpath(logfile)
+
+        rospy.loginfo("Shell: %s (%s)", name, ' '.join([command] + [repr(v) for v in args]))
+        if logfile:
+            rospy.loginfo("Log: %s -> %s", name, logfile)
 
         handler = ShellHandler(name, command, args, logfile, events, actions)
-        rospy.loginfo("Shell: %s (%s)", name, ' '.join([command] + [repr(v) for v in args]))
         self.handlers.append(handler)
 
     def _get_evt_act(self, params):
@@ -258,7 +270,12 @@ class Launcher(object):
     def __call__(self, event):
         rospy.logdebug('Event: %s', event)
         for h in self.handlers:
-            h(event)
+            try:
+                h(event)
+            except Exception as ex:
+                import traceback
+                rospy.logerr("Event %s -> %s exception: %s", event, h, ex)
+                rospy.logerr(traceback.format_exc())
 
     def spin(self):
         if not self.handlers:
