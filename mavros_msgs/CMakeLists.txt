@@ -9,15 +9,20 @@ add_message_files(
   DIRECTORY msg
   FILES
   ActuatorControl.msg
+  AttitudeTarget.msg
   BatteryStatus.msg
   CamIMUStamp.msg
   CommandCode.msg
+  ExtendedState.msg
   FileEntry.msg
+  GlobalPositionTarget.msg
+  HomePosition.msg
   ManualControl.msg
   Mavlink.msg
   OpticalFlowRad.msg
   OverrideRCIn.msg
   ParamValue.msg
+  PositionTarget.msg
   RCIn.msg
   RCOut.msg
   RadioStatus.msg
@@ -55,7 +60,6 @@ add_service_files(
   SetMode.srv
   StreamRate.srv
   WaypointClear.srv
-  WaypointGOTO.srv
   WaypointPull.srv
   WaypointPush.srv
   WaypointSetCurrent.srv
