@@ -18,6 +18,7 @@
 #include <pluginlib/class_list_macros.h>
 
 #include <mavros_msgs/State.h>
+#include <mavros_msgs/ExtendedState.h>
 #include <mavros_msgs/BatteryStatus.h>
 #include <mavros_msgs/StreamRate.h>
 #include <mavros_msgs/SetMode.h>
@@ -404,6 +405,7 @@ public:
 		uas->sig_connection_changed.connect(boost::bind(&SystemStatusPlugin::connection_cb, this, _1));
 
 		state_pub = nh.advertise<mavros_msgs::State>("state", 10, true);
+		extended_state_pub = nh.advertise<mavros_msgs::ExtendedState>("extended_state", 10);
 		batt_pub = nh.advertise<mavros_msgs::BatteryStatus>("battery", 10);
 		rate_srv = nh.advertiseService("set_stream_rate", &SystemStatusPlugin::set_rate_cb, this);
 		mode_srv = nh.advertiseService("set_mode", &SystemStatusPlugin::set_mode_cb, this);
@@ -424,6 +426,7 @@ public:
 			       MESSAGE_HANDLER(MAVLINK_MSG_ID_HWSTATUS, &SystemStatusPlugin::handle_hwstatus),
 #endif
 			       MESSAGE_HANDLER(MAVLINK_MSG_ID_AUTOPILOT_VERSION, &SystemStatusPlugin::handle_autopilot_version),
+			       MESSAGE_HANDLER(MAVLINK_MSG_ID_EXTENDED_SYS_STATE, &SystemStatusPlugin::handle_extended_sys_state),
 		};
 	}
 
@@ -441,6 +444,7 @@ private:
 	ros::Timer autopilot_version_timer;
 
 	ros::Publisher state_pub;
+	ros::Publisher extended_state_pub;
 	ros::Publisher batt_pub;
 	ros::ServiceServer rate_srv;
 	ros::ServiceServer mode_srv;
@@ -476,34 +480,6 @@ private:
 
 		case MAV_SEVERITY_DEBUG:
 			ROS_DEBUG_STREAM_NAMED("fcu", "FCU: " << text);
-			break;
-
-		default:
-			ROS_WARN_STREAM_NAMED("fcu", "FCU: UNK(" <<
-					int(severity) << "): " << text);
-			break;
-		};
-	}
-
-	/**
-	 * Send STATUSTEXT messate to rosout with APM severity levels
-	 *
-	 * @param[in] severity  APM levels.
-	 */
-	void process_statustext_apm_quirk(uint8_t severity, std::string &text) {
-		switch (severity) {
-		case 1:	// SEVERITY_LOW
-			ROS_INFO_STREAM_NAMED("fcu", "FCU: " << text);
-			break;
-
-		case 2:	// SEVERITY_MEDIUM
-			ROS_WARN_STREAM_NAMED("fcu", "FCU: " << text);
-			break;
-
-		case 3:	// SEVERITY_HIGH
-		case 4:	// SEVERITY_CRITICAL
-		case 5:	// SEVERITY_USER_RESPONSE
-			ROS_ERROR_STREAM_NAMED("fcu", "FCU: " << text);
 			break;
 
 		default:
@@ -597,7 +573,7 @@ private:
 		mavlink_msg_heartbeat_decode(msg, &hb);
 
 		// update context && setup connection timeout
-		uas->update_heartbeat(hb.type, hb.autopilot);
+		uas->update_heartbeat(hb.type, hb.autopilot, hb.base_mode);
 		uas->update_connection_status(true);
 		timeout_timer.stop();
 		timeout_timer.start();
@@ -612,6 +588,18 @@ private:
 
 		state_pub.publish(state_msg);
 		hb_diag.tick(hb.type, hb.autopilot, state_msg->mode, hb.system_status);
+	}
+
+	void handle_extended_sys_state(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+		mavlink_extended_sys_state_t state;
+		mavlink_msg_extended_sys_state_decode(msg, &state);
+
+		auto state_msg = boost::make_shared<mavros_msgs::ExtendedState>();
+		state_msg->header.stamp = ros::Time::now();
+		state_msg->vtol_state = state.vtol_state;
+		state_msg->landed_state = state.landed_state;
+
+		extended_state_pub.publish(state_msg);
 	}
 
 	void handle_sys_status(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
@@ -640,10 +628,7 @@ private:
 		std::string text(textm.text,
 				strnlen(textm.text, sizeof(textm.text)));
 
-		if (uas->is_ardupilotmega())
-			process_statustext_apm_quirk(textm.severity, text);
-		else
-			process_statustext_normal(textm.severity, text);
+		process_statustext_normal(textm.severity, text);
 	}
 
 #ifdef MAVLINK_MSG_ID_MEMINFO
@@ -802,6 +787,13 @@ private:
 				return true;
 			}
 
+			/**
+			 * @note That call may trigger unexpected arming change because
+			 *       base_mode arming flag state based on previous HEARTBEAT
+			 *       message value.
+			 */
+			base_mode |= (uas->get_armed()) ? MAV_MODE_FLAG_SAFETY_ARMED : 0;
+			base_mode |= (uas->get_hil_state()) ? MAV_MODE_FLAG_HIL_ENABLED : 0;
 			base_mode |= MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
 		}
 
