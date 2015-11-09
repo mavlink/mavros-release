@@ -17,6 +17,7 @@ Features
   - Parameter manipulation tool
   - Waypoint manipulation tool
   - PX4Flow support (by [mavros\_extras][mrext])
+  - OFFBOARD mode support.
 
 
 Limitations
@@ -33,18 +34,23 @@ Since 2015-02-25 exists for Jade too.
 Connection URL
 --------------
 
-*New in 0.7.0*. Connection now defined by URL,
-you can use any supported type for FCU and GCS.
+Connection defined by URL, you can use any supported type for FCU and GCS.
 
 Supported schemas:
 
   - Serial: `/path/to/serial/device[:baudrate]`
   - Serial: `serial:///path/to/serial/device[:baudrate][?ids=sysid,compid]`
-  - UDP: `udp://[bind_host[:port]]@[remote_host[:port]][/?ids=sysid,compid]`
+  - UDP: `udp://[bind_host][:port]@[remote_host][:port][/?ids=sysid,compid]`
   - TCP client: `tcp://[server_host][:port][/?ids=sysid,compid]`
-  - TCP server: `tcp-l://[bind_port][:port][/?ids=sysid,compid]`
+  - TCP server: `tcp-l://[bind_host][:port][/?ids=sysid,compid]`
 
-Note: ids from URL overrides ids given by system\_id & component\_id parameters.
+Note:
+
+  - Ids from URL overrides value given by system\_id & component\_id parameters.
+  - bind\_host - default `0.0.0.0` - i.e. IP4 ANY
+  - UDP default ports: 14555 @ 14550
+  - UDP remote address updated every time with incoming packet on bind port.
+  - TCP default port: 5760
 
 
 Coordinate frames
@@ -56,6 +62,7 @@ For translate we simply apply rotation 180° abount ROLL (X) axis.
 All the conversions are handled in `src/lib/uas_frame_conversions.cpp` and `src/lib/uas_quaternion_utils.cpp` and tested in `test/test_frame_conversions.cpp` and `test/test_quaternion_utils.cpp` respectively.
 
 Related issues: [#49 (outdated)][iss49], [#216 (outdated)][iss216], [#317][iss317], [#319][iss319], [#321][iss321].
+
 
 Programs
 --------
@@ -107,73 +114,49 @@ Since v0.5 that programs available in precompiled debian packages for x86 and am
 Also v0.9+ exists in ARMv7 repo for Ubuntu armhf.
 Just use `apt-get` for installation:
 
-    sudo apt-get install ros-indigo-mavros ros-indigo-mavros-extras
+    sudo apt-get install ros-jade-mavros ros-jade-mavros-extras
 
 
 ### Source installation
 
-Use `wstool` utility for installation. In your workspace do:
+Use `wstool` utility for retriving sources and [`catkin` tool][catkin] for build.
 
-    wstool init src # (if not already initialized)
-    wstool set -t src mavros --git https://github.com/mavlink/mavros.git
-    wstool update -t src
-    rosdep install --from-paths src --ignore-src --rosdistro indigo -y
+```sh
+sudo apt-get install python-catkin-tools
 
-Then use regular `catkin_make` for build and install.
-Notes:
-  - since v0.5 (and [#35][iss35]) mavlink submodule moved to special ROS 3rd party package [ros-\*-mavlink][mlwiki].
-  - since 2014-11-02 hydro support splitted to branch hydro-devel, add `--version hydro-devel` to wstool set.
-  - in ROS Jade instead of `catkin_make` better use `catkin build`.
+# 1. unneded if you already has workspace
+mkdir -p ~/catkin_ws/src
+cd ~/catkin_ws
+catkin init
+wstool init src
+
+# 2. get source (upstream - released)
+rosinstall_generator --upstream mavros | tee /tmp/mavros.rosinstall
+# alternative: latest source
+rosinstall_generator --upstream-development mavros | tee /tmp/mavros.rosinstall
+
+# 3. latest released mavlink package
+# you may run from this line to update ros-*-mavlink package
+rosinstall_generator mavlink | tee -a /tmp/mavros.rosinstall
+
+# 4. workspace & deps
+wstool merge -t src /tmp/mavros.rosinstall
+wstool update -t src
+rosdep install --from-paths src --ignore-src --rosdistro jade -y
+
+# 5. finally - build
+catkin build
+```
+
+*Build error*. if you has error with missing `mavlink_*_t` or `MAVLINK_MSG_ID_*` then you need fresh mavlink package.
+You may update from [ros-shadow-fixed][shadow] (binary installation) or redo script from step 3.
 
 *Important*. The current implementation of mavlink does not allow to select dialect in run-time,
 so mavros package (and all plugin packages) have compile-time option `MAVLINK_DIALECT`, default is 'aurdupilotmega'.
 
-If you want change dialect you can:
+If you want change dialect change workspace config:
 
-1. Add cmake definition to catkin: `catkin_make -DMAVLINK_DIALECT=pixhawk`
-2. Edit configuration by `catkin_make edit_cache`
-3. Use `cmake-gui build`, better: it creates drop-down list with all available dialects
-   plus it will be used in next `catkin_make edit_cache`.
-   Ubuntu: `sudo apt-get install cmake-qt-gui`
-4. With `catkin`: `catkin config --cmake-args -DMAVLINK_DIALECT=pixhawk`
-
-
-### Installing ros-\*-mavlink from source
-
-If rosdep could not install mavlink library, you could install it from source:
-
-    mkdir -p ~/ros_deps/src # different workspace for building pure cmake packages by catkin_make_isolated
-    cd ~/ros_deps
-    rosinstall_generator mavlink | tee rosinstall.yaml
-    wstool init src ./rosinstall.yaml
-    catkin_make_isolated --install-space $ROSINSTALL --install -DCMAKE_BUILD_TYPE=Release
-
-$ROSINSTALL must be writable for user or you can add `sudo -s` to last command.
-
-
-### Building ros-\*-mavlink debian package
-
-You could build debian package by pulling right bloom branch from [mavlink-gbp-release][mlgbp]
-(common naming: `debian/<rosdistro>/<osdistro>/<package>`) using `dh binary`.
-
-    cd /tmp
-    git clone https://github.com/mavlink/mavlink-gbp-release.git -b debian/indigo/trusty/mavlink
-    cd mavlink-gbp-release
-    fakeroot dh binary
-    # deb will be in /tmp
-
-
-### Installing ros-\*-mavlink from source with catkin tool
-
-In ROS Jade there new tool named `catkin`. It is more powerful and more comfortable that `catkin_make`.
-With that tool you may place mavlink package in your mavros workspace.
-
-    cd ~catkin_ws/src # your mavros workspace
-    rosinstall_generator mavlink | tee /tmp/rosinstall.yaml
-    wstool merge /tmp/rosinstall.yaml
-    wstool up -j4
-    catkin clean --all # not nessessary
-    catkin build # also will build mavros
+    catkin config --cmake-args -DMAVLINK_DIALECT=pixhawk
 
 
 Contributing
@@ -229,3 +212,5 @@ Links
 [wiki]: http://wiki.ros.org/mavros
 [mrext]: https://github.com/mavlink/mavros/tree/master/mavros_extras
 [mlwiki]: http://wiki.ros.org/mavlink
+[shadow]: http://packages.ros.org/ros-shadow-fixed/ubuntu/pool/main/r/ros-jade-mavlink/
+[catkin]: https://catkin-tools.readthedocs.org/en/latest/
