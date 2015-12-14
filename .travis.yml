@@ -9,8 +9,8 @@ env:
     - ROS_DISTRO=hydro # wait until travis will update to 14.04
   matrix:
     - MAVLINK_DIALECT=common
-    - MAVLINK_DIALECT=pixhawk
     - MAVLINK_DIALECT=ardupilotmega
+    - MAVLINK_DIALECT=paparazzi
 
 before_install:
   - export CI_SOURCE_PATH=$(pwd)
