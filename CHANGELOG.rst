@@ -2,6 +2,11 @@
 Changelog for package test_mavros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.16.4 (2015-12-14)
+-------------------
+* updated local position subscription topic
+* Contributors: Andreas Antener
+
 0.16.3 (2015-11-19)
 -------------------
 
