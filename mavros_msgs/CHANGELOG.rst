@@ -2,6 +2,9 @@
 Changelog for package mavros_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.16.5 (2016-01-11)
+-------------------
+
 0.16.4 (2015-12-14)
 -------------------
 * Update mavlink message documentation links
