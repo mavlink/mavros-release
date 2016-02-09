@@ -2,6 +2,11 @@
 Changelog for package mavros_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.17.0 (2016-02-09)
+-------------------
+* rebased with master
+* Contributors: francois
+
 0.16.6 (2016-02-04)
 -------------------
 
