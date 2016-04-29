@@ -2,6 +2,15 @@
 Changelog for package mavros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.17.2 (2016-04-29)
+-------------------
+* Update README.md
+* Update README.md
+  Updated / completed examples.
+* Update README.md
+* Fix for kinetic std::isnan.
+* Contributors: James Goppert, Lorenz Meier
+
 0.17.1 (2016-03-28)
 -------------------
 * lib: Add QLAND mode of APM:Plane
