@@ -34,7 +34,7 @@ tracks:
       -i :{release_inc} --os-name debian --os-not-required
     - git-bloom-generate -y rosrpm --prefix release/:{ros_distro} :{ros_distro} -i
       :{release_inc}
-    devel_branch: master
+    devel_branch: indigo-devel
     last_version: 0.17.3
     name: upstream
     patches: null
@@ -58,7 +58,7 @@ tracks:
       -i :{release_inc} --os-name debian --os-not-required
     - git-bloom-generate -y rosrpm --prefix release/:{ros_distro} :{ros_distro} -i
       :{release_inc}
-    devel_branch: master
+    devel_branch: indigo-devel
     last_version: 0.17.3
     name: upstream
     patches: null
