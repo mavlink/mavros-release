@@ -1,0 +1,12 @@
+Source: ros-kinetic-mavros-extras
+Section: misc
+Priority: extra
+Maintainer: Vladimir Ermakov <vooon341@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), ros-kinetic-catkin, ros-kinetic-cmake-modules, ros-kinetic-geometry-msgs, ros-kinetic-mavros, ros-kinetic-mavros-msgs, ros-kinetic-roscpp, ros-kinetic-sensor-msgs, ros-kinetic-std-msgs, ros-kinetic-tf, ros-kinetic-urdf, ros-kinetic-visualization-msgs
+Homepage: http://wiki.ros.org/mavros_extras
+Standards-Version: 3.9.2
+
+Package: ros-kinetic-mavros-extras
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-kinetic-geometry-msgs, ros-kinetic-mavros, ros-kinetic-mavros-msgs, ros-kinetic-roscpp, ros-kinetic-sensor-msgs, ros-kinetic-std-msgs, ros-kinetic-tf, ros-kinetic-urdf, ros-kinetic-visualization-msgs
+Description: Extra nodes and plugins for MAVROS.
