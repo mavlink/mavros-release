@@ -2,12 +2,14 @@
 Changelog for package mavros_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.17.4 (2016-06-23)
+0.18.0 (2016-06-23)
 -------------------
 * Adding anchor to the HIL_CONTROLS message reference link
 * Utilizing synchronise_stamp and adding reference to MAVLINK msg documentation
 * Added a plugin that publishes HIL_CONTROLS as ROS messages
-* Contributors: Pavel
+* node: Rename plugib base class - API incompatible to old class
+* msgs `#543 <https://github.com/mavlink/mavros/issues/543>`_: Update for MAVLink 2.0
+* Contributors: Pavel, Vladimir Ermakov
 
 0.17.3 (2016-05-20)
 -------------------
