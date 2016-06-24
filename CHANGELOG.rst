@@ -2,6 +2,9 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.18.1 (2016-06-24)
+-------------------
+
 0.18.0 (2016-06-23)
 -------------------
 * extras `#560 <https://github.com/mavlink/mavros/issues/560>`_: remove cv_bridge and image_transport deps
