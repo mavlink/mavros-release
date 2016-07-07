@@ -122,32 +122,34 @@ Just use `apt-get` for installation:
 
 Use `wstool` utility for retriving sources and [`catkin` tool][catkin] for build.
 
-```sh
-sudo apt-get install python-catkin-tools python-rosinstall-generator
+NOTE: The source installation instructions are for the ROS Kinetic release.
 
-# 1. unneded if you already has workspace
+```sh
+sudo apt-get install python-catkin-tools python-rosinstall-generator -y
+
+# 1. Create the workspace: unneded if you already has workspace
 mkdir -p ~/catkin_ws/src
 cd ~/catkin_ws
 catkin init
 wstool init src
 
-# 2. get source (upstream - released)
-rosinstall_generator --upstream mavros | tee /tmp/mavros.rosinstall
-# alternative: latest source
-rosinstall_generator --upstream-development mavros | tee /tmp/mavros.rosinstall
-
-# 3. latest released mavlink package
+# 2. Install MAVLink
 # you may run from this line to update ros-*-mavlink package
 rosinstall_generator mavlink | tee -a /tmp/mavros.rosinstall
 # alternative: to build master on Indigo or Jade:
-rosinstall_generator --rosdistro kinetic --upstream mavlink | tee -a /tmp/mavros.rosinstall
+# rosinstall_generator --rosdistro kinetic --upstream mavlink | tee -a /tmp/mavros.rosinstall
 
-# 4. workspace & deps
+# 3. Install MAVROS: get source (upstream - released)
+rosinstall_generator --upstream mavros | tee /tmp/mavros.rosinstall
+# alternative: latest source
+# rosinstall_generator --upstream-development mavros | tee /tmp/mavros.rosinstall
+
+# 4. Create workspace & deps
 wstool merge -t src /tmp/mavros.rosinstall
 wstool update -t src
-rosdep install --from-paths src --ignore-src --rosdistro jade -y
+rosdep install --from-paths src --ignore-src --rosdistro kinetic -y
 
-# 5. finally - build
+# 4. Build source
 catkin build
 ```
 
