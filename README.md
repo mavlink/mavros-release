@@ -6,30 +6,31 @@ MAVROS
 MAVLink extendable communication node for ROS.
 
 - Since 2014-08-11 this repository contains several packages.
-- Since 2014-11-02 hydro support splited from master to hydro-devel branch.
+- Since 2014-11-02 hydro support separated from master to hydro-devel branch.
 - Since 2015-03-04 all packages also dual licensed under terms of BSD license.
 - Since 2015-08-10 all messages moved to mavros\_msgs package
 - Since 2016-02-05 (v0.17) frame conversion changed again
 - Since 2016-06-22 (pre v0.18) Indigo and Jade separated from master to indigo-devel branch.
+- Since 2016-06-23 (0.18.0) support MAVLink 2.0 without signing.
 
 
 mavros package
 --------------
 
-It is the main package, please see it's [README][mrrm].
+It is the main package, please see its [README][mrrm].
 Here you may read [installation instructions][inst].
 
 
 mavros\_extras package
 ----------------------
 
-This package contain some extra nodes and plugins for mavros, please see it's [README][exrm].
+This package contains some extra nodes and plugins for mavros, please see its [README][exrm].
 
 
 libmavconn package
 ------------------
 
-This package contain mavconn library, see it's [README][libmc].
+This package contain mavconn library, see its [README][libmc].
 LibMAVConn may be used outside of ROS environment.
 
 
@@ -43,13 +44,13 @@ Please see [README][test] first!
 mavros\_msgs package
 --------------------
 
-This package contain messages and services used in mavros.
+This package contains messages and services used in mavros.
 
 
 Support forums and chats
 ------------------------
 
-Please ask your questions not related to bugs/feauture requests on:
+Please ask your questions not related to bugs/feauture or requests on:
 
 - [px4users Google Group (Mailing List) ](https://groups.google.com/forum/#!forum/px4users)
 - [Mavros on Gitter IM](https://gitter.im/mavlink/mavros)
