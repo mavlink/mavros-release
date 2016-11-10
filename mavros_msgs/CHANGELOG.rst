@@ -2,6 +2,12 @@
 Changelog for package mavros_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.18.4 (2016-11-11)
+-------------------
+* msgs: Fix `#609 <https://github.com/mavlink/mavros/issues/609>`_
+* add hil_actuator_controls mavlink message
+* Contributors: Beat Küng, Vladimir Ermakov
+
 0.18.3 (2016-07-07)
 -------------------
 
