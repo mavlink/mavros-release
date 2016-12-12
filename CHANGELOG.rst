@@ -2,6 +2,9 @@
 Changelog for package test_mavros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.18.5 (2016-12-12)
+-------------------
+
 0.18.4 (2016-11-11)
 -------------------
 * Update README for all packages
