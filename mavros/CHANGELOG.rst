@@ -2,119 +2,23 @@
 Changelog for package mavros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.18.5 (2016-12-12)
+0.17.5 (2017-02-07)
 -------------------
-* lib: update ArduPilot modes
-* Contributors: Randy Mackay
+* Pthread fix for OSX (`#650 <https://github.com/mavlink/mavros/issues/650>`_)
+  * fix pthread and missing defines for osx
+  * adapted their style using tabs
+  * fix elif to else
+* Fixing a typo in HIL_CONTROLS plugin
+* Contributors: Fadri Furrer, Pavel
 
-0.18.4 (2016-11-11)
+0.17.4 (2016-06-23)
 -------------------
-* lib: Add ArduSub modes
-* readme: Fix mavlink rosinstall_generator call
-* mavros: README.md: its -> it's
-  Here "it's" is a short form for "it is".
-* add hil_actuator_controls mavlink message
-* lib: Make cog.py scrips compatioble with Py3
-* plugin:sys_status: Add logging health report
-* Update README for all packages
-* Update README.md
-  Fix instructions: Only the Kinetic distro actually works for MAVLink 2.0
-* Contributors: Beat Küng, Georgii Staroselskii, Lorenz Meier, Vladimir Ermakov
-
-0.18.3 (2016-07-07)
--------------------
-* plugin:param: Use mavlink::set_string() helper
-* Update README.md
-* Update README.md
-  Fix very confusing instructions mixing steps.
-* Update README.md
-* Update README.md
-* python `#569 <https://github.com/mavlink/mavros/issues/569>`_: convert_to_rosmsg() support for 2.0. NO SIGNING.
-* python `#569 <https://github.com/mavlink/mavros/issues/569>`_: Update mavlink.convert_to_bytes()
-* Contributors: Lorenz Meier, Vladimir Ermakov
-
-0.18.2 (2016-06-30)
--------------------
-* plugin:sys_status: Fix STATUSTEXT log prefix
-* Contributors: Vladimir Ermakov
-
-0.18.1 (2016-06-24)
--------------------
-* lib: Fix base mode flag check
-* plugins: Move pluginlib macros.h to tail
-* plugin:param fix `#559 <https://github.com/mavlink/mavros/issues/559>`_: Ignore PX4 _HASH_CHECK param
-* Contributors: Vladimir Ermakov
-
-0.18.0 (2016-06-23)
--------------------
-* lib `#439 <https://github.com/mavlink/mavros/issues/439>`_: MAV_CMD to_string is not required.
-* plugin:sys_status `#458 <https://github.com/mavlink/mavros/issues/458>`_: Hanlde BATTERY_STATUS (PX4)
-* plugin:sys_status fix `#458 <https://github.com/mavlink/mavros/issues/458>`_: Use sensor_msgs/BatteryState message.
-  Minimal data, for all other need to handle BATTERY_STATUS.
-* plugin:command fix `#561 <https://github.com/mavlink/mavros/issues/561>`_: PX4 now sends COMMAND_ACK.
-  And like APM do not check confirmation field. :)
-* readme `#544 <https://github.com/mavlink/mavros/issues/544>`_: add udp-b://@ URL
-* plugin:hil_controls: Update plugin API
-* Merge branch 'feature/hil_controls_plugin' of https://github.com/pvechersky/mavros into pvechersky-feature/hil_controls_plugin
-  * 'feature/hil_controls_plugin' of https://github.com/pvechersky/mavros:
-  Adding anchor to the HIL_CONTROLS message reference link
-  Ran uncrustify on hil_controls plugin
-  Utilizing synchronise_stamp and adding reference to MAVLINK msg documentation
-  Added a plugin that publishes HIL_CONTROLS as ROS messages
-* node: fix subscription message type checks
-* plugin: use mavlink::to_string() for std::array<char, N>
-* readme: update CI, no more MAVLINK_DIALECT
-* plugin:waypoint: Fix target id's on MISSION_ITEM
-* node: Add ~fcu_protocol parameter
 * Ran uncrustify on hil_controls plugin
 * Utilizing synchronise_stamp and adding reference to MAVLINK msg documentation
-* node: set gcs_url on internal GCS bridge diag hardware Id
-* plugins: Use UAS::msg_set_target()
 * Added a plugin that publishes HIL_CONTROLS as ROS messages
-* lib: PX4 add AUTO.FOLLOW_TARGET
-* mavros: Update tests
-* extras: Update UAS
-* UAS: Update plugins for FTF module
-* UAS: move enum stringify functions
-* lib: Generate MAV_SENSOR_ORIENTATION
-* UAS: move MAV_SENSOR_ORIENTATION out
-* UAS: Move transformation utilities to ftf module
-* plugin:rc_io: Fix log printf-format warning
-* make GCC 4.8 happy. (travis)
-* gcs_bridge: done
-* param:ftp: Update API
-* plugin:param: Works. Tested on APM
-* plugin:param: Update, almost work
-* plugin:waypoint: Fix Item - ROS binding
-* Message type mismatch code do not work
-* plugin:waypoint: Update API
-* plugin:sys_time: Update API
-* plugin:sys_status: Update API
-* plugin:setpoint_raw: Update API
-* plugin:setpoint_attitude: Update API
-* plugin:setpoint_accel: Update API
-* plugin:setpoint_velocity: Update API
-* plugin:setpoint_position: Update API
-* plugin:vfr_hud: Update API
-* plugin:safety_area: Update API
-* plugin:rc_io: Update API
-* plugin:manual_control: Update API, fix uas init
-* plugin:local_position: Update API
-* plugin:imu_pub: Update API
-* plugin:global_position: Update API
-* mavros: make_handle() this shouldn't be const
-* plugin:common: Update API
-* plugin:altitude: uncrustify
-* plugins: Rutine sed + fix misprint
-* plugin:altitude: Update API
-* plugins: Automatic replacement of routine API changes (sed)
-* plugin:actuator_control: Update API
-* plugin:3dr_radio: Update API
-* node: Update plugin loading and message routing
-* node: type_info -> SIGSEGV
-* node: prepare new plugin loading
-* node: Rename plugib base class - API incompatible to old class
-* labmavconn: finding sigsegv
+* Revert "readme: update CI, no more MAVLINK_DIALECT"
+  This reverts commit 1510deb2c5db12441cf9e44175fdb8a8889a8af6.
+* readme: update CI, no more MAVLINK_DIALECT
 * Contributors: Pavel, Vladimir Ermakov
 
 0.17.3 (2016-05-20)

@@ -15,61 +15,63 @@
  */
 
 #include <mavros/mavros_plugin.h>
+#include <pluginlib/class_list_macros.h>
 
 #include <mavros_msgs/Altitude.h>
 
-namespace mavros {
-namespace std_plugins {
+namespace mavplugin {
 /**
  * @brief Altitude plugin.
  */
-class AltitudePlugin : public plugin::PluginBase {
+class AltitudePlugin : public MavRosPlugin {
 public:
-	AltitudePlugin() : PluginBase(),
-		nh("~")
-	{ }
+    AltitudePlugin() :
+        nh("~"),
+        uas(nullptr)
+    { }
 
-	/**
-	 * Plugin initializer. Constructor should not do this.
-	 */
-	void initialize(UAS &uas_)
-	{
-		PluginBase::initialize(uas_);
+    /**
+     * Plugin initializer. Constructor should not do this.
+     */
+    void initialize(UAS &uas_)
+    {
+        uas = &uas_;
+        nh.param<std::string>("frame_id", frame_id, "map");
+        altitude_pub = nh.advertise<mavros_msgs::Altitude>("altitude", 10);
+    }
 
-		nh.param<std::string>("frame_id", frame_id, "map");
-		altitude_pub = nh.advertise<mavros_msgs::Altitude>("altitude", 10);
-	}
-
-	Subscriptions get_subscriptions()
-	{
-		return {
-			make_handler(&AltitudePlugin::handle_altitude),
-		};
-	}
+    const message_map get_rx_handlers() {
+        return {
+                   MESSAGE_HANDLER(MAVLINK_MSG_ID_ALTITUDE, &AltitudePlugin::handle_altitude),
+        };
+    }
 
 private:
-	ros::NodeHandle nh;
-	std::string frame_id;
+    ros::NodeHandle nh;
+    UAS *uas;
+    std::string frame_id;
 
-	ros::Publisher altitude_pub;
+    ros::Publisher altitude_pub;
 
-	void handle_altitude(const mavlink::mavlink_message_t *msg, mavlink::common::msg::ALTITUDE &altitude)
-	{
-		auto ros_msg = boost::make_shared<mavros_msgs::Altitude>();
-		ros_msg->header = m_uas->synchronized_header(frame_id, altitude.time_usec);
+    void handle_altitude(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+        mavlink_altitude_t altitude;
+        mavlink_msg_altitude_decode(msg, &altitude);
 
-		ros_msg->monotonic = altitude.altitude_monotonic;
-		ros_msg->amsl = altitude.altitude_amsl;
-		ros_msg->local = altitude.altitude_local;
-		ros_msg->relative = altitude.altitude_relative;
-		ros_msg->terrain = altitude.altitude_terrain;
-		ros_msg->bottom_clearance = altitude.bottom_clearance;
+        auto ros_msg = boost::make_shared<mavros_msgs::Altitude>();
+        ros_msg->header = uas->synchronized_header(frame_id, altitude.time_usec);
+        
+        ros_msg->monotonic = altitude.altitude_monotonic;
+        ros_msg->amsl = altitude.altitude_amsl;
+        ros_msg->local = altitude.altitude_local;
+        ros_msg->relative = altitude.altitude_relative;
+        ros_msg->terrain = altitude.altitude_terrain;
+        ros_msg->bottom_clearance = altitude.bottom_clearance;
 
-		altitude_pub.publish(ros_msg);
-	}
+        altitude_pub.publish(ros_msg);
+    }
+
 };
-}	// namespace std_plugins
-}	// namespace mavros
+};  // namespace mavplugin
 
-#include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(mavros::std_plugins::AltitudePlugin, mavros::plugin::PluginBase)
+PLUGINLIB_EXPORT_CLASS(mavplugin::AltitudePlugin, mavplugin::MavRosPlugin)
+

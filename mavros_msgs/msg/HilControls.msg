@@ -1,7 +1,6 @@
 # HilControls.msg
 #
 # ROS representation of MAVLink HIL_CONTROLS
-# (deprecated, use HIL_ACTUATOR_CONTROLS instead)
 # See mavlink message documentation here:
 # https://pixhawk.ethz.ch/mavlink/#HIL_CONTROLS
 

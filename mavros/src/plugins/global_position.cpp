@@ -9,7 +9,7 @@
  */
 /*
  * Copyright 2014 Nuno Marques.
- * Copyright 2015,2016 Vladimir Ermakov.
+ * Copyright 2015 Vladimir Ermakov.
  *
  * This file is part of the mavros package and subject to the license terms
  * in the top-level LICENSE file of the mavros repository.
@@ -19,6 +19,7 @@
 #include <angles/angles.h>
 #include <mavros/mavros_plugin.h>
 #include <mavros/gps_conversions.h>
+#include <pluginlib/class_list_macros.h>
 #include <eigen_conversions/eigen_msg.h>
 
 #include <std_msgs/Float64.h>
@@ -28,8 +29,7 @@
 #include <geometry_msgs/TwistStamped.h>
 #include <geometry_msgs/TransformStamped.h>
 
-namespace mavros {
-namespace std_plugins {
+namespace mavplugin {
 
 
 /**
@@ -39,17 +39,18 @@ namespace std_plugins {
  * publishing local position to TF and PoseWithCovarianceStamped.
  *
  */
-class GlobalPositionPlugin : public plugin::PluginBase {
+class GlobalPositionPlugin : public MavRosPlugin {
 public:
-	GlobalPositionPlugin() : PluginBase(),
+	GlobalPositionPlugin() :
 		gp_nh("~global_position"),
+		uas(nullptr),
 		tf_send(false),
 		rot_cov(99999.0)
-	{ }
+	{ };
 
 	void initialize(UAS &uas_)
 	{
-		PluginBase::initialize(uas_);
+		uas = &uas_;
 
 		// general params
 		gp_nh.param<std::string>("frame_id", frame_id, "map");
@@ -59,7 +60,7 @@ public:
 		gp_nh.param<std::string>("tf/frame_id", tf_frame_id, "map");
 		gp_nh.param<std::string>("tf/child_frame_id", tf_child_frame_id, "base_link");
 
-		UAS_DIAG(m_uas).add("GPS", this, &GlobalPositionPlugin::gps_diag_run);
+		UAS_DIAG(uas).add("GPS", this, &GlobalPositionPlugin::gps_diag_run);
 
 		// gps data
 		raw_fix_pub = gp_nh.advertise<sensor_msgs::NavSatFix>("raw/fix", 10);
@@ -72,17 +73,17 @@ public:
 		gp_hdg_pub = gp_nh.advertise<std_msgs::Float64>("compass_hdg", 10);
 	}
 
-	Subscriptions get_subscriptions()
-	{
+	const message_map get_rx_handlers() {
 		return {
-				make_handler(&GlobalPositionPlugin::handle_gps_raw_int),
-				// GPS_STATUS: there no corresponding ROS message, and it is not supported by APM
-				make_handler(&GlobalPositionPlugin::handle_global_position_int)
+				MESSAGE_HANDLER(MAVLINK_MSG_ID_GPS_RAW_INT, &GlobalPositionPlugin::handle_gps_raw_int),
+				// MAVLINK_MSG_ID_GPS_STATUS: there no corresponding ROS message, and it is not supported by APM
+				MESSAGE_HANDLER(MAVLINK_MSG_ID_GLOBAL_POSITION_INT, &GlobalPositionPlugin::handle_global_position_int)
 		};
 	}
 
 private:
 	ros::NodeHandle gp_nh;
+	UAS *uas;
 
 	ros::Publisher raw_fix_pub;
 	ros::Publisher raw_vel_pub;
@@ -113,11 +114,13 @@ private:
 
 	/* -*- message handlers -*- */
 
-	void handle_gps_raw_int(const mavlink::mavlink_message_t *msg, mavlink::common::msg::GPS_RAW_INT &raw_gps)
-	{
+	void handle_gps_raw_int(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+		mavlink_gps_raw_int_t raw_gps;
+		mavlink_msg_gps_raw_int_decode(msg, &raw_gps);
+
 		auto fix = boost::make_shared<sensor_msgs::NavSatFix>();
 
-		fix->header = m_uas->synchronized_header(frame_id, raw_gps.time_usec);
+		fix->header = uas->synchronized_header(frame_id, raw_gps.time_usec);
 
 		fix->status.service = sensor_msgs::NavSatStatus::SERVICE_GPS;
 		if (raw_gps.fix_type > 2)
@@ -147,7 +150,7 @@ private:
 		}
 
 		// store & publish
-		m_uas->update_gps_fix_epts(fix, eph, epv, raw_gps.fix_type, raw_gps.satellites_visible);
+		uas->update_gps_fix_epts(fix, eph, epv, raw_gps.fix_type, raw_gps.satellites_visible);
 		raw_fix_pub.publish(fix);
 
 		if (raw_gps.vel != UINT16_MAX &&
@@ -170,14 +173,16 @@ private:
 
 	/** @todo Handler for GLOBAL_POSITION_INT_COV */
 
-	void handle_global_position_int(const mavlink::mavlink_message_t *msg, mavlink::common::msg::GLOBAL_POSITION_INT &gpos)
-	{
+	void handle_global_position_int(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+		mavlink_global_position_int_t gpos;
+		mavlink_msg_global_position_int_decode(msg, &gpos);
+
 		auto odom = boost::make_shared<nav_msgs::Odometry>();
 		auto fix = boost::make_shared<sensor_msgs::NavSatFix>();
 		auto relative_alt = boost::make_shared<std_msgs::Float64>();
 		auto compass_heading = boost::make_shared<std_msgs::Float64>();
 
-		auto header = m_uas->synchronized_header(frame_id, gpos.time_boot_ms);
+		auto header = uas->synchronized_header(frame_id, gpos.time_boot_ms);
 
 		// Global position fix
 		fix->header = header;
@@ -185,7 +190,7 @@ private:
 		fill_lla(gpos, fix);
 
 		// fill GPS status fields using GPS_RAW data
-		auto raw_fix = m_uas->get_gps_fix();
+		auto raw_fix = uas->get_gps_fix();
 		if (raw_fix) {
 			fix->status.service = raw_fix->status.service;
 			fix->status.status = raw_fix->status.status;
@@ -215,14 +220,14 @@ private:
 		 * VZ: altitude vel m/s
 		 */
 		odom->header = header;
-
+		
 		// Velocity
 		tf::vectorEigenToMsg(
 				Eigen::Vector3d(gpos.vx, gpos.vy, gpos.vz) / 1E2,
 				odom->twist.twist.linear);
 
 		// Velocity covariance unknown
-		ftf::EigenMapCovariance6d vel_cov_out(odom->twist.covariance.data());
+		UAS::EigenMapCovariance6d vel_cov_out(odom->twist.covariance.data());
 		vel_cov_out.fill(0.0);
 		vel_cov_out(0) = -1.0;
 
@@ -238,11 +243,11 @@ private:
 		odom->pose.pose.position.x = easting;
 		odom->pose.pose.position.y = northing;
 		odom->pose.pose.position.z = relative_alt->data;
-		odom->pose.pose.orientation = m_uas->get_attitude_orientation();
+		odom->pose.pose.orientation = uas->get_attitude_orientation();
 
 		// Use ENU covariance to build XYZRPY covariance
-		ftf::EigenMapConstCovariance3d gps_cov(fix->position_covariance.data());
-		ftf::EigenMapCovariance6d pos_cov_out(odom->pose.covariance.data());
+		UAS::EigenMapConstCovariance3d gps_cov(fix->position_covariance.data());
+		UAS::EigenMapCovariance6d pos_cov_out(odom->pose.covariance.data());
 		pos_cov_out <<
 			gps_cov(0, 0) , gps_cov(0, 1) , gps_cov(0, 2) , 0.0     , 0.0     , 0.0     ,
 			gps_cov(1, 0) , gps_cov(1, 1) , gps_cov(1, 2) , 0.0     , 0.0     , 0.0     ,
@@ -273,17 +278,16 @@ private:
 			transform.transform.translation.y = odom->pose.pose.position.y;
 			transform.transform.translation.z = odom->pose.pose.position.z;
 
-			m_uas->tf2_broadcaster.sendTransform(transform);
+			uas->tf2_broadcaster.sendTransform(transform);
 		}
 	}
 
 	/* -*- diagnostics -*- */
-	void gps_diag_run(diagnostic_updater::DiagnosticStatusWrapper &stat)
-	{
+	void gps_diag_run(diagnostic_updater::DiagnosticStatusWrapper &stat) {
 		int fix_type, satellites_visible;
 		float eph, epv;
 
-		m_uas->get_gps_epts(eph, epv, fix_type, satellites_visible);
+		uas->get_gps_epts(eph, epv, fix_type, satellites_visible);
 
 		if (satellites_visible <= 0)
 			stat.summary(2, "No satellites");
@@ -308,8 +312,6 @@ private:
 			stat.add("EPV (m)", "Unknown");
 	}
 };
-}	// namespace std_plugins
-}	// namespace mavros
+};	// namespace mavplugin
 
-#include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(mavros::std_plugins::GlobalPositionPlugin, mavros::plugin::PluginBase)
+PLUGINLIB_EXPORT_CLASS(mavplugin::GlobalPositionPlugin, mavplugin::MavRosPlugin)

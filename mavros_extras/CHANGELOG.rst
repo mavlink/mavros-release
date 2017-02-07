@@ -2,42 +2,11 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.18.5 (2016-12-12)
+0.17.5 (2017-02-07)
 -------------------
 
-0.18.4 (2016-11-11)
+0.17.4 (2016-06-23)
 -------------------
-* Code clean-up
-* code style fix
-* markup changes
-* Fake gps plugin
-* Update README for all packages
-* Contributors: Vilhjalmur, Vladimir Ermakov, vilhjalmur89
-
-0.18.3 (2016-07-07)
--------------------
-
-0.18.2 (2016-06-30)
--------------------
-
-0.18.1 (2016-06-24)
--------------------
-
-0.18.0 (2016-06-23)
--------------------
-* extras `#560 <https://github.com/mavlink/mavros/issues/560>`_: remove cv_bridge and image_transport deps
-* extras: Update UAS
-* extras:vision_speed_estimate: Update API
-* extras:vision_pose_estimate: Update API
-* extras:px4flow: Update API
-* extras:mocap_pose_estimate: Update API
-* extras:distance_sensor: Update API
-* extras:cam_imu_sync: Update API
-* extras: Automatic update by sed
-* extras: prepare to update
-* extras `#560 <https://github.com/mavlink/mavros/issues/560>`_: Remove image streaming over mavlink support.
-  Use external RTP streamer, e.g. https://github.com/ProjectArtemis/gst_video_server
-* Contributors: Vladimir Ermakov
 
 0.17.3 (2016-05-20)
 -------------------

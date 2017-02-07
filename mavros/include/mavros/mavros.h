@@ -47,33 +47,32 @@ private:
 	ros::Publisher mavlink_pub;
 	ros::Subscriber mavlink_sub;
 
-	diagnostic_updater::Updater gcs_diag_updater;
 	MavlinkDiag fcu_link_diag;
 	MavlinkDiag gcs_link_diag;
 
-	pluginlib::ClassLoader<plugin::PluginBase> plugin_loader;
-	std::vector<plugin::PluginBase::Ptr> loaded_plugins;
-
-	//! FCU link -> router -> plugin handler
-	std::unordered_map<mavlink::msgid_t, plugin::PluginBase::Subscriptions> plugin_subscriptions;
-
+	pluginlib::ClassLoader<mavplugin::MavRosPlugin> plugin_loader;
+	std::vector<mavplugin::MavRosPlugin::Ptr> loaded_plugins;
+	//! fcu link interface -> router -> plugin callback
+	std::array<mavconn::MAVConnInterface::MessageSig, 256> message_route_table;
 	//! UAS object passed to all plugins
 	UAS mav_uas;
 
 	//! fcu link -> ros
-	void mavlink_pub_cb(const mavlink::mavlink_message_t *mmsg, const mavconn::Framing framing);
+	void mavlink_pub_cb(const mavlink_message_t *mmsg, uint8_t sysid, uint8_t compid);
 	//! ros -> fcu link
 	void mavlink_sub_cb(const mavros_msgs::Mavlink::ConstPtr &rmsg);
 
 	//! message router
-	void plugin_route_cb(const mavlink::mavlink_message_t *mmsg, const mavconn::Framing framing);
+	void plugin_route_cb(const mavlink_message_t *mmsg, uint8_t sysid, uint8_t compid);
 
-	//! load plugin
+	bool is_blacklisted(std::string &pl_name, ros::V_string &blacklist, ros::V_string &whitelist);
 	void add_plugin(std::string &pl_name, ros::V_string &blacklist, ros::V_string &whitelist);
 
+	//! fcu link termination callback
+	void terminate_cb();
 	//! start mavlink app on USB
-	void startup_px4_usb_quirk();
+	void startup_px4_usb_quirk(void);
 	void log_connect_change(bool connected);
 };
-}	// namespace mavros
+};	// namespace mavros
 

@@ -7,23 +7,22 @@
  * @{
  */
 /*
- * Copyright 2015,2016 Vladimir Ermakov.
+ * Copyright 2015 Vladimir Ermakov.
  *
  * This file is part of the mavros package and subject to the license terms
  * in the top-level LICENSE file of the mavros repository.
  * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
-#include <mavros/frame_tf.h>
+#include <mavros/mavros_uas.h>
 
-namespace mavros {
-namespace ftf {
+using namespace mavros;
 
 /*
  * Note: order of axis are match tf2::LinearMath (bullet).
  * Compatibility checked by unittests.
  */
 
-Eigen::Quaterniond quaternion_from_rpy(const Eigen::Vector3d &rpy)
+Eigen::Quaterniond UAS::quaternion_from_rpy(const Eigen::Vector3d &rpy)
 {
 	// YPR - ZYX
 	return Eigen::Quaterniond(
@@ -33,13 +32,13 @@ Eigen::Quaterniond quaternion_from_rpy(const Eigen::Vector3d &rpy)
 			);
 }
 
-Eigen::Vector3d quaternion_to_rpy(const Eigen::Quaterniond &q)
+Eigen::Vector3d UAS::quaternion_to_rpy(const Eigen::Quaterniond &q)
 {
 	// YPR - ZYX
 	return q.toRotationMatrix().eulerAngles(2, 1, 0).reverse();
 }
 
-double quaternion_get_yaw(const Eigen::Quaterniond &q)
+double UAS::quaternion_get_yaw(const Eigen::Quaterniond &q)
 {
 	// to match equation from:
 	// https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
@@ -50,6 +49,3 @@ double quaternion_get_yaw(const Eigen::Quaterniond &q)
 
 	return std::atan2(2. * (q0*q3 + q1*q2), 1. - 2. * (q2*q2 + q3*q3));
 }
-
-}	// namesapace ftf
-}	// namesapace mavros

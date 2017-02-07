@@ -19,13 +19,11 @@
 #include <mavros/px4_custom_mode.h>
 
 using namespace mavros;
-using utils::enum_value;
-
 
 UAS::UAS() :
 	tf2_listener(tf2_buffer, true),
-	type(enum_value(MAV_TYPE::GENERIC)),
-	autopilot(enum_value(MAV_AUTOPILOT::GENERIC)),
+	type(MAV_TYPE_GENERIC),
+	autopilot(MAV_AUTOPILOT_GENERIC),
 	base_mode(0),
 	target_system(1),
 	target_component(1),
@@ -38,6 +36,10 @@ UAS::UAS() :
 	fcu_caps_known(false),
 	fcu_capabilities(0)
 {}
+
+void UAS::stop(void)
+{}
+
 
 /* -*- heartbeat handlers -*- */
 
@@ -59,7 +61,7 @@ void UAS::update_connection_status(bool conn_)
 
 /* -*- autopilot version -*- */
 
-static uint64_t get_default_caps(UAS::MAV_AUTOPILOT ap_type)
+static uint64_t get_default_caps(uint8_t ap_type)
 {
 	// TODO: return default caps mask for known FCU's
 	return 0;

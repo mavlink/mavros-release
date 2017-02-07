@@ -16,13 +16,12 @@
 #include <unordered_map>
 #include <mavros/utils.h>
 #include <mavros/mavros_plugin.h>
+#include <pluginlib/class_list_macros.h>
 #include <eigen_conversions/eigen_msg.h>
 
 #include <sensor_msgs/Range.h>
 
-namespace mavros {
-namespace extra_plugins{
-using utils::enum_value;
+namespace mavplugin {
 class DistanceSensorPlugin;
 
 /**
@@ -67,20 +66,16 @@ private:
 	std::vector<float> data;	//!< array allocation for measurements
 	size_t data_index;		//!< array index
 
-	static constexpr size_t ACC_SIZE = 50;
-
 	/**
 	 * Calculate measurements variance to send to the FCU.
 	 */
 	float calculate_variance(float range) {
-		if (data.size() < ACC_SIZE) {
+		if (data.size() < 50)
 			// limits the size of the array to 50 elements
-			data.reserve(ACC_SIZE);
 			data.push_back(range);
-		}
 		else {
 			data[data_index] = range;	// it starts rewriting the values from 1st element
-			if (++data_index > ACC_SIZE - 1)
+			if (++data_index > 49)
 				data_index = 0;		// restarts the index when achieves the last element
 		}
 
@@ -108,15 +103,16 @@ private:
  * This plugin allows publishing distance sensor data, which is connected to
  * an offboard/companion computer through USB/Serial, to the FCU or vice-versa.
  */
-class DistanceSensorPlugin : public plugin::PluginBase {
+class DistanceSensorPlugin : public MavRosPlugin {
 public:
-	DistanceSensorPlugin() : PluginBase(),
-		dist_nh("~distance_sensor")
-	{ }
+	DistanceSensorPlugin() :
+		dist_nh("~distance_sensor"),
+		uas(nullptr)
+	{ };
 
 	void initialize(UAS &uas_)
 	{
-		PluginBase::initialize(uas_);
+		uas = &uas_;
 
 		XmlRpc::XmlRpcValue map_dict;
 		if (!dist_nh.getParam("", map_dict)) {
@@ -137,10 +133,9 @@ public:
 		}
 	}
 
-	Subscriptions get_subscriptions()
-	{
+	const message_map get_rx_handlers() {
 		return {
-			       make_handler(&DistanceSensorPlugin::handle_distance_sensor),
+			       MESSAGE_HANDLER(MAVLINK_MSG_ID_DISTANCE_SENSOR, &DistanceSensorPlugin::handle_distance_sensor)
 		};
 	}
 
@@ -148,6 +143,7 @@ private:
 	friend class DistanceSensorItem;
 
 	ros::NodeHandle dist_nh;
+	UAS *uas;
 
 	std::unordered_map<uint8_t, DistanceSensorItem::Ptr> sensor_map;
 
@@ -157,32 +153,18 @@ private:
 			uint32_t max_distance,
 			uint32_t current_distance,
 			uint8_t type, uint8_t id,
-			uint8_t orientation, uint8_t covariance)
-	{
-		mavlink::common::msg::DISTANCE_SENSOR ds;
-
-		// [[[cog:
-		// for f in ('time_boot_ms',
-		//     'min_distance',
-		//     'max_distance',
-		//     'current_distance',
-		//     'type',
-		//     'id',
-		//     'orientation',
-		//     'covariance'):
-		//     cog.outl("ds.%s = %s;" % (f, f))
-		// ]]]
-		ds.time_boot_ms = time_boot_ms;
-		ds.min_distance = min_distance;
-		ds.max_distance = max_distance;
-		ds.current_distance = current_distance;
-		ds.type = type;
-		ds.id = id;
-		ds.orientation = orientation;
-		ds.covariance = covariance;
-		// [[[end]]] (checksum: 6f6f9449d926ab618a3293e2091c7035)
-
-		UAS_FCU(m_uas)->send_message_ignore_drop(ds);
+			uint8_t orientation, uint8_t covariance) {
+		mavlink_message_t msg;
+		mavlink_msg_distance_sensor_pack_chan(UAS_PACK_CHAN(uas), &msg,
+				time_boot_ms,
+				min_distance,
+				max_distance,
+				current_distance,
+				type,
+				id,
+				orientation,
+				covariance);
+		UAS_FCU(uas)->send_message(&msg);
 	}
 
 	/* -*- mid-level helpers -*- */
@@ -190,10 +172,9 @@ private:
 	/**
 	 * Receive distance sensor data from FCU.
 	 */
-	void handle_distance_sensor(const mavlink::mavlink_message_t *msg, mavlink::common::msg::DISTANCE_SENSOR &dist_sen)
-	{
-		using mavlink::common::MAV_SENSOR_ORIENTATION;
-		using mavlink::common::MAV_DISTANCE_SENSOR;
+	void handle_distance_sensor(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+		mavlink_distance_sensor_t dist_sen;
+		mavlink_msg_distance_sensor_decode(msg, &dist_sen);
 
 		auto it = sensor_map.find(dist_sen.id);
 		if (it == sensor_map.end()) {
@@ -215,22 +196,22 @@ private:
 			ROS_ERROR_NAMED("distance_sensor",
 					"DS: %s: received sensor data has different orientation (%s) than in config (%s)!",
 					sensor->topic_name.c_str(),
-					utils::to_string_enum<MAV_SENSOR_ORIENTATION>(dist_sen.orientation).c_str(),
-					utils::to_string_enum<MAV_SENSOR_ORIENTATION>(sensor->orientation).c_str());
+					UAS::str_sensor_orientation(static_cast<MAV_SENSOR_ORIENTATION>(dist_sen.orientation)).c_str(),
+					UAS::str_sensor_orientation(static_cast<MAV_SENSOR_ORIENTATION>(sensor->orientation)).c_str());
 		}
 
 		auto range = boost::make_shared<sensor_msgs::Range>();
 
-		range->header = m_uas->synchronized_header(sensor->frame_id, dist_sen.time_boot_ms);
+		range->header = uas->synchronized_header(sensor->frame_id, dist_sen.time_boot_ms);
 
 		range->min_range = dist_sen.min_distance * 1E-2; // in meters
 		range->max_range = dist_sen.max_distance * 1E-2;
 		range->field_of_view = sensor->field_of_view;
 
-		if (dist_sen.type == enum_value(MAV_DISTANCE_SENSOR::LASER)) {
+		if (dist_sen.type == MAV_DISTANCE_SENSOR_LASER) {
 			range->radiation_type = sensor_msgs::Range::INFRARED;
 		}
-		else if (dist_sen.type == enum_value(MAV_DISTANCE_SENSOR::ULTRASOUND)) {
+		else if (dist_sen.type == MAV_DISTANCE_SENSOR_ULTRASOUND) {
 			range->radiation_type = sensor_msgs::Range::ULTRASOUND;
 		}
 		else {
@@ -244,11 +225,11 @@ private:
 
 		if (sensor->send_tf) {
 			/* variables init */
-			auto q = utils::sensor_orientation_matching(static_cast<MAV_SENSOR_ORIENTATION>(dist_sen.orientation));
+			auto q = UAS::sensor_orientation_matching(static_cast<MAV_SENSOR_ORIENTATION>(dist_sen.orientation));
 
 			geometry_msgs::TransformStamped transform;
 
-			transform.header = m_uas->synchronized_header("fcu", dist_sen.time_boot_ms);
+			transform.header = uas->synchronized_header("fcu", dist_sen.time_boot_ms);
 			transform.child_frame_id = sensor->frame_id;
 
 			/* rotation and position set */
@@ -256,7 +237,7 @@ private:
 			tf::vectorEigenToMsg(sensor->position, transform.transform.translation);
 
 			/* transform broadcast */
-			m_uas->tf2_broadcaster.sendTransform(transform);
+			uas->tf2_broadcaster.sendTransform(transform);
 		}
 
 		sensor->pub.publish(range);
@@ -265,22 +246,19 @@ private:
 
 void DistanceSensorItem::range_cb(const sensor_msgs::Range::ConstPtr &msg)
 {
-	using mavlink::common::MAV_DISTANCE_SENSOR;
-
 	uint8_t type = 0;
 	uint8_t covariance_ = 0;
 
 	if (covariance > 0) covariance_ = covariance;
 	else covariance_ = uint8_t(calculate_variance(msg->range) * 1E2);	// in cm
-
 	/** @todo Propose changing covarince from uint8_t to float */
 	ROS_DEBUG_NAMED("distance_sensor", "DS: %d: sensor variance: %f", sensor_id, calculate_variance(msg->range) * 1E2);
 
 	// current mapping, may change later
 	if (msg->radiation_type == sensor_msgs::Range::INFRARED)
-		type = enum_value(MAV_DISTANCE_SENSOR::LASER);
+		type = MAV_DISTANCE_SENSOR_LASER;
 	else if (msg->radiation_type == sensor_msgs::Range::ULTRASOUND)
-		type = enum_value(MAV_DISTANCE_SENSOR::ULTRASOUND);
+		type = MAV_DISTANCE_SENSOR_ULTRASOUND;
 
 	owner->distance_sensor(
 			msg->header.stamp.toNSec() / 1000000,
@@ -320,7 +298,7 @@ DistanceSensorItem::Ptr DistanceSensorItem::create_item(DistanceSensorPlugin *ow
 		p->orientation = -1;	// not set
 	else
 		// lookup for numeric value
-		p->orientation = utils::sensor_orientation_from_str(orientation_str);
+		p->orientation = UAS::orientation_from_str(orientation_str);
 
 
 	if (!p->is_subscriber) {
@@ -377,8 +355,6 @@ DistanceSensorItem::Ptr DistanceSensorItem::create_item(DistanceSensorPlugin *ow
 
 	return p;
 }
-}	// namespace extra_plugins
-}	// namespace mavros
+}; // namespace mavplugin
 
-#include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(mavros::extra_plugins::DistanceSensorPlugin, mavros::plugin::PluginBase)
+PLUGINLIB_EXPORT_CLASS(mavplugin::DistanceSensorPlugin, mavplugin::MavRosPlugin)

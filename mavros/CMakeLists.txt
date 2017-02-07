@@ -38,15 +38,6 @@ endif()
 include(EnableCXX11)
 include(MavrosMavlink)
 
-# detect if sensor_msgs has BatteryState.msg
-# http://answers.ros.org/question/223769/how-to-check-that-message-exists-with-catkin-for-conditional-compilation-sensor_msgsbatterystate/
-list(FIND sensor_msgs_MESSAGE_FILES "msg/BatteryState.msg" BATTERY_STATE_MSG_IDX)
-if(${BATTERY_STATE_MSG_IDX} GREATER -1)
-  add_definitions(
-    -DHAVE_SENSOR_MSGS_BATTERYSTATE_MSG
-  )
-endif()
-
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
@@ -85,10 +76,9 @@ add_library(mavros
   src/lib/uas_data.cpp
   src/lib/uas_stringify.cpp
   src/lib/uas_timesync.cpp
-  src/lib/enum_to_string.cpp
-  src/lib/enum_sensor_orientation.cpp
-  src/lib/ftf_frame_conversions.cpp
-  src/lib/ftf_quaternion_utils.cpp
+  src/lib/uas_sensor_orientation.cpp
+  src/lib/uas_frame_conversions.cpp
+  src/lib/uas_quaternion_utils.cpp
   src/lib/mavros.cpp
   src/lib/mavlink_diag.cpp
   src/lib/rosconsole_bridge.cpp
@@ -123,7 +113,6 @@ add_library(mavros_plugins
   src/plugins/manual_control.cpp
   src/plugins/altitude.cpp
   src/plugins/hil_controls.cpp
-  src/plugins/hil_actuator_controls.cpp
 )
 add_dependencies(mavros_plugins
   mavros
