@@ -8,7 +8,7 @@
  */
 /*
  * libmavconn
- * Copyright 2013,2014,2015 Vladimir Ermakov, All rights reserved.
+ * Copyright 2013,2014,2015,2016 Vladimir Ermakov, All rights reserved.
  *
  * This file is part of the mavros package and subject to the license terms
  * in the top-level LICENSE file of the mavros repository.
@@ -17,21 +17,27 @@
 
 #pragma once
 
-#include <list>
 #include <atomic>
 #include <boost/asio.hpp>
 #include <mavconn/interface.h>
 #include <mavconn/msgbuffer.h>
 
 namespace mavconn {
-
 /**
  * @brief UDP interface
  *
  * @note IPv4 only
  */
-class MAVConnUDP : public MAVConnInterface {
+class MAVConnUDP : public MAVConnInterface,
+	public std::enable_shared_from_this<MAVConnUDP> {
 public:
+	static constexpr auto DEFAULT_BIND_HOST = "localhost";
+	static constexpr auto DEFAULT_BIND_PORT = 14555;
+	static constexpr auto DEFAULT_REMOTE_HOST = "";
+	static constexpr auto DEFAULT_REMOTE_PORT = 14550;
+	//! Marker for boardcast mode. Not valid domain name.
+	static constexpr auto BROADCAST_REMOTE_HOST = "***i want broadcast***";
+
 	/**
 	 * @param[id] bind_host    bind host
 	 * @param[id] bind_port    bind port
@@ -39,17 +45,19 @@ public:
 	 * @param[id] remote_port  remote port (optional)
 	 */
 	MAVConnUDP(uint8_t system_id = 1, uint8_t component_id = MAV_COMP_ID_UDP_BRIDGE,
-			std::string bind_host = "localhost", unsigned short bind_port = 14555,
-			std::string remote_host = "", unsigned short remote_port = 14550);
+			std::string bind_host = DEFAULT_BIND_HOST, unsigned short bind_port = DEFAULT_BIND_PORT,
+			std::string remote_host = DEFAULT_REMOTE_HOST, unsigned short remote_port = DEFAULT_REMOTE_PORT);
 	~MAVConnUDP();
 
-	void close();
+	void close() override;
 
-	using MAVConnInterface::send_message;
-	void send_message(const mavlink_message_t *message, uint8_t sysid, uint8_t compid);
-	void send_bytes(const uint8_t *bytes, size_t length);
+	void send_message(const mavlink::mavlink_message_t *message) override;
+	void send_message(const mavlink::Message &message) override;
+	void send_bytes(const uint8_t *bytes, size_t length) override;
 
-	inline bool is_open() { return socket.is_open(); };
+	inline bool is_open() override {
+		return socket.is_open();
+	}
 
 private:
 	boost::asio::io_service io_service;
@@ -63,15 +71,12 @@ private:
 	boost::asio::ip::udp::endpoint bind_ep;
 
 	std::atomic<bool> tx_in_progress;
-	std::list<MsgBuffer*> tx_q;
-	uint8_t rx_buf[MsgBuffer::MAX_SIZE];
+	std::deque<MsgBuffer> tx_q;
+	std::array<uint8_t, MsgBuffer::MAX_SIZE> rx_buf;
 	std::recursive_mutex mutex;
 
 	void do_recvfrom();
-	void async_receive_end(boost::system::error_code, size_t bytes_transferred);
 	void do_sendto(bool check_tx_state);
-	void async_sendto_end(boost::system::error_code, size_t bytes_transferred);
 };
-
-}; // namespace mavconn
+}	// namespace mavconn
 

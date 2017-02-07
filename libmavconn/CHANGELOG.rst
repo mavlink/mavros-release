@@ -2,16 +2,80 @@
 Changelog for package libmavconn
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.17.5 (2017-02-07)
+0.18.6 (2017-02-07)
 -------------------
-* Pthread fix for OSX (`#650 <https://github.com/mavlink/mavros/issues/650>`_)
-  * fix pthread and missing defines for osx
-  * adapted their style using tabs
-  * fix elif to else
+* lib `#626 <https://github.com/mavlink/mavros/issues/626>`_: Porting of PR `#650 <https://github.com/mavlink/mavros/issues/650>`_ - Fix OSX pthread set name.
 * Contributors: Fadri Furrer
 
-0.17.4 (2016-06-23)
+0.18.5 (2016-12-12)
 -------------------
+
+0.18.4 (2016-11-11)
+-------------------
+* Update README for all packages
+* Contributors: Vladimir Ermakov
+
+0.18.3 (2016-07-07)
+-------------------
+* libmavconn: Enable autoquad dialect. It fixed in mavlink 2016.7.7
+* Contributors: Vladimir Ermakov
+
+0.18.2 (2016-06-30)
+-------------------
+* Revert "libmavconn: Update console_bridge macroses."
+  This reverts commit 73fd7f755ed919bc3c170574f514ba6525cd31a2.
+  It breaks Travis builds for Indigo and Jade.
+* libmavconn: Update console_bridge macroses.
+  https://github.com/ros/console_bridge/issues/18
+* libmavconn: tcp: enable_shared_from_this
+* libmavconn: udp: enable_shared_from_this
+* libmavconn: serial: enable_shared_from_this
+* libmavconn: std::deque automatically free buffers
+* libmavconn fix `#567 <https://github.com/mavlink/mavros/issues/567>`_: Fix tcp server stat calculation
+* libmavconn: Fix debug log conn_id
+* Contributors: Vladimir Ermakov
+
+0.18.1 (2016-06-24)
+-------------------
+
+0.18.0 (2016-06-23)
+-------------------
+* libmavconn: Fix _KiB literal
+* readme `#544 <https://github.com/mavlink/mavros/issues/544>`_: add udp-b://@ URL
+* libmavconn fix `#544 <https://github.com/mavlink/mavros/issues/544>`_: New URL for UDP Broadcast (for GCS discovery)
+  Broadcast v4 address used until GCS respond.
+  udp-b://[bind_host][:bind_port]@[:remote_port]
+* libmavconn: fix context.py.in
+* libmavconn: Add protocol version selection helpers
+* libmavconn: Use monotonic id for logging. Looks better than this ptr.
+* node: Update plugin loading and message routing
+* node: Rename plugib base class - API incompatible to old class
+* labmavconn: remove set_thread_name(), add utils::format()
+* libmavconn: APM dialect should be second
+* libmavconn fix `#522 <https://github.com/mavlink/mavros/issues/522>`_: place generated files in source tree.
+* libmavconn: Use EmPy to generate dialect-enabling files
+* libmavconn: update copyright year
+* libmavconn: update unit test
+* libmavconn: Replace sig-slot with simple std::function() callbacks
+* libmavconn: Limit send_message() queue maximum size.
+* libmavconn:udp: try to make STL container handle allocations
+* libmavconn: Use std::call_once() for init
+* libmavconn: Leak in send_message() when it called from self IO thread (such as message_received event)
+* libmavconn: update unit test
+* libmavconn: support C++ serialization. Warn: RX leaks somewhere.
+* libmavconn: Use MAVLink2 C++11
+* labmavconn: trying to merge all dialects
+* libmavconn: std::thread are invalidated before set_thread_name() called. Result is SIGSEGV
+* labmavconn: finding sigsegv
+* libmavconn: uncrustify
+* libmavconn `#543 <https://github.com/mavlink/mavros/issues/543>`_: remove boost::signals2 (TCP)
+* libmavconn `#543 <https://github.com/mavlink/mavros/issues/543>`_: remove boost::signals2 (UDP)
+* libmavconn `#543 <https://github.com/mavlink/mavros/issues/543>`_: remove boost.signals2 (serial)
+* libmavconn: uncrustify all
+* mavconn: Import Simple Signal library (with some minor modifications).
+  Source file can be found here:
+  https://testbit.eu/cpp11-signal-system-performance/
+* Contributors: Vladimir Ermakov
 
 0.17.3 (2016-05-20)
 -------------------
