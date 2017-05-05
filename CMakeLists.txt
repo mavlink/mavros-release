@@ -66,7 +66,7 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES mavros
   CATKIN_DEPENDS diagnostic_msgs diagnostic_updater pluginlib roscpp sensor_msgs nav_msgs std_msgs tf2_ros geometry_msgs libmavconn message_runtime eigen_conversions mavros_msgs
-  DEPENDS Boost Eigen
+  DEPENDS Boost EIGEN3
 )
 
 ###########
@@ -124,6 +124,7 @@ add_library(mavros_plugins
   src/plugins/altitude.cpp
   src/plugins/hil_controls.cpp
   src/plugins/hil_actuator_controls.cpp
+  src/plugins/home_position.cpp
 )
 add_dependencies(mavros_plugins
   mavros
