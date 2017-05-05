@@ -20,6 +20,7 @@ sys:
 # sys_time
 time:
   time_ref_source: "fcu"  # time_reference source
+  timesync_mode: MAVLINK
   timesync_avg_alpha: 0.6 # timesync averaging factor
 
 # --- mavros plugins (alphabetical order) ---
@@ -173,5 +174,8 @@ vision_speed:
 # vibration
 vibration:
   frame_id: "vibration"
+
+# adsb
+# None
 
 # vim:set ts=2 sw=2 et:
