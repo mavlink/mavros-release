@@ -1,0 +1,12 @@
+Source: ros-lunar-test-mavros
+Section: misc
+Priority: extra
+Maintainer: Vladimir Ermakov <vooon341@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), libeigen3-dev, ros-lunar-angles, ros-lunar-catkin, ros-lunar-cmake-modules, ros-lunar-control-toolbox, ros-lunar-eigen-conversions, ros-lunar-geometry-msgs, ros-lunar-mavros, ros-lunar-mavros-extras, ros-lunar-roscpp, ros-lunar-std-msgs, ros-lunar-tf2-ros
+Homepage: 
+Standards-Version: 3.9.2
+
+Package: ros-lunar-test-mavros
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libeigen3-dev, ros-lunar-control-toolbox, ros-lunar-eigen-conversions, ros-lunar-geometry-msgs, ros-lunar-mavros, ros-lunar-mavros-extras, ros-lunar-roscpp, ros-lunar-std-msgs, ros-lunar-tf2-ros
+Description: Tests for MAVROS package
