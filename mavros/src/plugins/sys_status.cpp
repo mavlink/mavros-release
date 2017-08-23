@@ -242,7 +242,9 @@ public:
 			stat.add("Motors are reversed", (last_st.onboard_control_sensors_health & enum_value(STS::REVERSE_MOTOR)) ? "Ok" : "Fail");
 		if (last_st.onboard_control_sensors_enabled & enum_value(STS::LOGGING))
 			stat.add("Logging", (last_st.onboard_control_sensors_health & enum_value(STS::LOGGING)) ? "Ok" : "Fail");
-		// [[[end]]] (checksum: ff583cfb8c621a8f7ac2f20aaf2e0ba9)
+		if (last_st.onboard_control_sensors_enabled & enum_value(STS::BATTERY))
+			stat.add("Battery", (last_st.onboard_control_sensors_health & enum_value(STS::BATTERY)) ? "Ok" : "Fail");
+		// [[[end]]] (checksum: 423cc585db6f8869fb5f0358d381a0d0)
 
 		stat.addf("CPU Load (%)", "%.1f", last_st.load / 10.0);
 		stat.addf("Drop rate (%)", "%.1f", last_st.drop_rate_comm / 10.0);
@@ -928,7 +930,7 @@ private:
 
 		if (req.custom_mode != "") {
 			if (!m_uas->cmode_from_str(req.custom_mode, custom_mode)) {
-				res.success = false;
+				res.mode_sent = false;
 				return true;
 			}
 
@@ -948,7 +950,7 @@ private:
 		sm.custom_mode = custom_mode;
 
 		UAS_FCU(m_uas)->send_message_ignore_drop(sm);
-		res.success = true;
+		res.mode_sent = true;
 		return true;
 	}
 };
