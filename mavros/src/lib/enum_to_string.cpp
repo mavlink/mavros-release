@@ -23,8 +23,10 @@ namespace utils {
 using mavlink::common::MAV_AUTOPILOT;
 using mavlink::common::MAV_TYPE;
 using mavlink::common::MAV_STATE;
+using mavlink::common::MAV_ESTIMATOR_TYPE;
 using mavlink::common::ADSB_ALTITUDE_TYPE;
 using mavlink::common::ADSB_EMITTER_TYPE;
+using mavlink::common::GPS_FIX_TYPE;
 
 // [[[cog:
 // import pymavlink.dialects.v20.common as common
@@ -79,7 +81,7 @@ using mavlink::common::ADSB_EMITTER_TYPE;
 // to_string_outl(ename)
 // ]]]
 //! MAV_AUTOPILOT values
-static const std::array<const std::string, 18> mav_autopilot_strings{{
+static const std::array<const std::string, 19> mav_autopilot_strings{{
 /*  0 */ "Generic autopilot",             // Generic autopilot, full support for everything
 /*  1 */ "Reserved for future use",       // Reserved for future use.
 /*  2 */ "SLUGS autopilot",               // SLUGS autopilot, http://slugsuav.soe.ucsc.edu
@@ -98,6 +100,7 @@ static const std::array<const std::string, 18> mav_autopilot_strings{{
 /* 15 */ "Armazila",                      // Armazila -- http://armazila.com
 /* 16 */ "Aerob",                         // Aerob -- http://aerob.ru
 /* 17 */ "ASLUAV autopilot",              // ASLUAV autopilot -- http://www.asl.ethz.ch
+/* 18 */ "SmartAP Autopilot",             // SmartAP Autopilot - http://sky-drones.com
 }};
 
 std::string to_string(MAV_AUTOPILOT e)
@@ -108,7 +111,7 @@ std::string to_string(MAV_AUTOPILOT e)
 
 	return mav_autopilot_strings[idx];
 }
-// [[[end]]] (checksum: c0f450ce84a31ce0f86d439c007cf805)
+// [[[end]]] (checksum: 5b451ba6ab334d133765faaa33a18c6a)
 
 // [[[cog:
 // ename = 'MAV_TYPE'
@@ -125,7 +128,7 @@ std::string to_string(MAV_AUTOPILOT e)
 // to_string_outl(ename)
 // ]]]
 //! MAV_TYPE values
-static const std::array<const std::string, 28> mav_type_strings{{
+static const std::array<const std::string, 29> mav_type_strings{{
 /*  0 */ "Generic micro air vehicle",     // Generic micro air vehicle.
 /*  1 */ "Fixed wing aircraft",           // Fixed wing aircraft.
 /*  2 */ "Quadrotor",                     // Quadrotor
@@ -154,6 +157,7 @@ static const std::array<const std::string, 28> mav_type_strings{{
 /* 25 */ "VTOL reserved 5",               // VTOL reserved 5
 /* 26 */ "Onboard gimbal",                // Onboard gimbal
 /* 27 */ "Onboard ADSB peripheral",       // Onboard ADSB peripheral
+/* 28 */ "Dodecarotor",                   // Dodecarotor
 }};
 
 std::string to_string(MAV_TYPE e)
@@ -164,7 +168,7 @@ std::string to_string(MAV_TYPE e)
 
 	return mav_type_strings[idx];
 }
-// [[[end]]] (checksum: ff3fd0c445310aef4a3cfb14a18178e0)
+// [[[end]]] (checksum: f601204a93c9d0253a5c02ad77e60662)
 
 // [[[cog:
 // ename = 'MAV_STATE'
@@ -172,7 +176,7 @@ std::string to_string(MAV_TYPE e)
 //
 // array_outl(ename, enum)
 // for k, e in enum:
-//     value = e.name[10:].title()
+//     value = e.name[len(ename) + 1:].title()
 //     sp = make_whitespace(30, value)
 //     cog.outl("""/* {k:>2} */ "{value}",{sp}// {e.description}""".format(**locals()))
 //
@@ -246,19 +250,25 @@ timesync_mode timesync_mode_from_str(const std::string &mode)
 }
 
 // [[[cog:
+// def enum_name_is_value_outl(ename):
+//     enum = get_enum(ename)
+//
+//     array_outl(ename, enum)
+//     for k, e in enum:
+//         name_short =  e.name[len(ename) + 1:]
+//         sp = make_whitespace(30, name_short)
+//         if e.description:
+//             cog.outl("""/* {k:>2} */ "{name_short}",{sp}// {e.description}""".format(**locals()))
+//         else:
+//             cog.outl("""/* {k:>2} */ "{name_short}",""".format(**locals()))
+//
+//     cog.outl("}};")
+//     cog.outl()
+//     to_string_outl(ename)
+//
+//
 // ename = 'ADSB_ALTITUDE_TYPE'
-// enum = get_enum(ename)
-// pfx2 = 'ADSB_ALTITUDE_TYPE_'
-//
-// array_outl(ename, enum)
-// for k, e in enum:
-//     name_short =  e.name[len(pfx2):]
-//     sp = make_whitespace(30, name_short)
-//     cog.outl("""/* {k:>2} */ "{name_short}",{sp}// {e.description}""".format(**locals()))
-//
-// cog.outl("}};")
-// cog.outl()
-// to_string_outl(ename)
+// enum_name_is_value_outl(ename)
 // ]]]
 //! ADSB_ALTITUDE_TYPE values
 static const std::array<const std::string, 2> adsb_altitude_type_strings{{
@@ -278,17 +288,7 @@ std::string to_string(ADSB_ALTITUDE_TYPE e)
 
 // [[[cog:
 // ename = 'ADSB_EMITTER_TYPE'
-// enum = get_enum(ename)
-// pfx2 = 'ADSB_EMITTER_TYPE_'
-//
-// array_outl(ename, enum)
-// for k, e in enum:
-//     name_short =  e.name[len(pfx2):]
-//     cog.outl("""/* {k:>2} */ "{name_short}",""".format(**locals()))
-//
-// cog.outl("}};")
-// cog.outl()
-// to_string_outl(ename)
+// enum_name_is_value_outl(ename)
 // ]]]
 //! ADSB_EMITTER_TYPE values
 static const std::array<const std::string, 20> adsb_emitter_type_strings{{
@@ -323,6 +323,55 @@ std::string to_string(ADSB_EMITTER_TYPE e)
 	return adsb_emitter_type_strings[idx];
 }
 // [[[end]]] (checksum: 713e0304603321e421131d8552d0f8e0)
+
+// [[[cog:
+// ename = 'MAV_ESTIMATOR_TYPE'
+// enum_name_is_value_outl(ename)
+// ]]]
+//! MAV_ESTIMATOR_TYPE values
+static const std::array<const std::string, 5> mav_estimator_type_strings{{
+/*  1 */ "NAIVE",                         // This is a naive estimator without any real covariance feedback.
+/*  2 */ "VISION",                        // Computer vision based estimate. Might be up to scale.
+/*  3 */ "VIO",                           // Visual-inertial estimate.
+/*  4 */ "GPS",                           // Plain GPS estimate.
+/*  5 */ "GPS_INS",                       // Estimator integrating GPS and inertial sensing.
+}};
+
+std::string to_string(MAV_ESTIMATOR_TYPE e)
+{
+	size_t idx = enum_value(e);
+	if (idx >= mav_estimator_type_strings.size())
+		return std::to_string(idx);
+
+	return mav_estimator_type_strings[idx];
+}
+// [[[end]]] (checksum: 47674f004bf6c515fdf999987b99e806)
+
+// [[[cog:
+// ename = 'GPS_FIX_TYPE'
+// enum_name_is_value_outl(ename)
+// ]]]
+//! GPS_FIX_TYPE values
+static const std::array<const std::string, 8> gps_fix_type_strings{{
+/*  0 */ "NO_GPS",                        // No GPS connected
+/*  1 */ "NO_FIX",                        // No position information, GPS is connected
+/*  2 */ "2D_FIX",                        // 2D position
+/*  3 */ "3D_FIX",                        // 3D position
+/*  4 */ "DGPS",                          // DGPS/SBAS aided 3D position
+/*  5 */ "RTK_FLOAT",                     // RTK float, 3D position
+/*  6 */ "RTK_FIXED",                     // RTK Fixed, 3D position
+/*  7 */ "STATIC",                        // Static fixed, typically used for base stations
+}};
+
+std::string to_string(GPS_FIX_TYPE e)
+{
+	size_t idx = enum_value(e);
+	if (idx >= gps_fix_type_strings.size())
+		return std::to_string(idx);
+
+	return gps_fix_type_strings[idx];
+}
+// [[[end]]] (checksum: 984346c7986a0742d45d9c1a5ca322ed)
 
 }	// namespace utils
 }	// namespace mavros
