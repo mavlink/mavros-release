@@ -2,6 +2,9 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.20.1 (2017-08-28)
+-------------------
+
 0.20.0 (2017-08-23)
 -------------------
 * Extras: Distance sensors add RADAR and UNKNOWN type
