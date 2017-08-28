@@ -1,0 +1,15 @@
+plugin_blacklist:
+# common
+- actuator_control
+- ftp
+- safety_area
+# extras
+- image_pub
+- mocap_pose_estimate
+- px4flow
+- 'vision_*'
+- vibration
+- altitude
+
+plugin_whitelist: []
+#- 'sys_*'
