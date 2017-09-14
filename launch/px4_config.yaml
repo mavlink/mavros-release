@@ -44,18 +44,18 @@ cmd:
 
 # global_position
 global_position:
-  frame_id: "fcu"           # pose and fix frame_id
+  frame_id: "map"           # pose and fix frame_id
   rot_covariance: 99999.0   # covariance for attitude?
   use_relative_alt: true    # use relative altitude for local coordinates
   tf:
     send: false               # send TF?
-    frame_id: "local_origin"  # TF frame_id
+    frame_id: "map"  # TF frame_id
     global_frame_id: "earth"  # TF earth frame_id
-    child_frame_id: "fcu_utm" # TF child_frame_id
+    child_frame_id: "base_link" # TF child_frame_id
 
 # imu_pub
 imu:
-  frame_id: "fcu"
+  frame_id: "base_link"
   # need find actual values
   linear_acceleration_stdev: 0.0003
   angular_velocity_stdev: !degrees 0.02
@@ -64,11 +64,11 @@ imu:
 
 # local_position
 local_position:
-  frame_id: "fcu"
+  frame_id: "map"
   tf:
     send: false
-    frame_id: "local_origin"
-    child_frame_id: "fcu"
+    frame_id: "map"
+    child_frame_id: "base_link"
     send_fcu: false
 
 # param
@@ -171,6 +171,7 @@ fake_gps:
   satellites_visible: 5   # virtual number of visible satellites
   fix_type: 3             # type of GPS fix (default: 3D)
   tf:
+    listen: false
     send: false           # send TF?
     frame_id: "map"       # TF frame_id
     child_frame_id: "fix" # TF child_frame_id
@@ -181,7 +182,7 @@ fake_gps:
 # px4flow
 px4flow:
   frame_id: "px4flow"
-  ranger_fov: !degrees 0.0  # XXX TODO
+  ranger_fov: !degrees 6.8  # 6.8 degreens at 5 meters, 31 degrees at 1 meter
   ranger_min_range: 0.3     # meters
   ranger_max_range: 5.0     # meters
 
@@ -199,7 +200,7 @@ vision_speed:
 
 # vibration
 vibration:
-  frame_id: "vibration"
+  frame_id: "base_link"
 
 # adsb
 # None
