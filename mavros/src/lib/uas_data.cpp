@@ -50,6 +50,9 @@ UAS::UAS() :
 			" | Run install_geographiclib_dataset.sh script in order to install Geoid Model dataset!");
 		ros::shutdown();
 	}
+
+	// send static transform from "local_origin" (ENU) to "local_origin_ned" (NED)
+	publish_static_transform("local_origin", "local_origin_ned", Eigen::Affine3d(ftf::quaternion_from_rpy(M_PI, 0, M_PI_2)));
 }
 
 /* -*- heartbeat handlers -*- */
@@ -214,4 +217,19 @@ sensor_msgs::NavSatFix::Ptr UAS::get_gps_fix()
 {
 	lock_guard lock(mutex);
 	return gps_fix;
+}
+
+/* -*- transform -*- */
+
+//! Publishes static transform
+void UAS::publish_static_transform(const std::string &frame_id, const std::string &child_id, const Eigen::Affine3d &tr)
+{
+	geometry_msgs::TransformStamped static_transformStamped;
+
+	static_transformStamped.header.stamp = ros::Time::now();
+	static_transformStamped.header.frame_id = frame_id;
+	static_transformStamped.child_frame_id = child_id;
+	tf::transformEigenToMsg(tr, static_transformStamped.transform);
+
+	tf2_static_broadcaster.sendTransform(static_transformStamped);
 }
