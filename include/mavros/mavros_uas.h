@@ -20,8 +20,10 @@
 #include <array>
 #include <mutex>
 #include <atomic>
+#include <eigen_conversions/eigen_msg.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/static_transform_broadcaster.h>
 #include <diagnostic_updater/diagnostic_updater.h>
 #include <mavconn/interface.h>
 #include <mavros/utils.h>
@@ -267,6 +269,16 @@ public:
 	tf2_ros::Buffer tf2_buffer;
 	tf2_ros::TransformListener tf2_listener;
 	tf2_ros::TransformBroadcaster tf2_broadcaster;
+	tf2_ros::StaticTransformBroadcaster tf2_static_broadcaster;
+
+	/**
+	 * @brief Publishes static transform.
+	 *
+	 * @param frame_id    parent frame for transform
+	 * @param child_id    child frame for transform
+	 * @param tr          transform
+	 */
+	void publish_static_transform(const std::string &frame_id, const std::string &child_id, const Eigen::Affine3d &tr);
 
 	/* -*- time sync -*- */
 
