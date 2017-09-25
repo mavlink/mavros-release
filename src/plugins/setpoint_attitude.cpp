@@ -30,8 +30,10 @@
 namespace mavros {
 namespace std_plugins {
 
-using SyncPoseThrust = message_filters::sync_policies::ApproximateTime<geometry_msgs::PoseStamped, mavros_msgs::Thrust>;
-using SyncTwistThrust = message_filters::sync_policies::ApproximateTime<geometry_msgs::TwistStamped, mavros_msgs::Thrust>;
+using SyncPoseThrustPolicy = message_filters::sync_policies::ApproximateTime<geometry_msgs::PoseStamped, mavros_msgs::Thrust>;
+using SyncTwistThrustPolicy = message_filters::sync_policies::ApproximateTime<geometry_msgs::TwistStamped, mavros_msgs::Thrust>;
+using SyncPoseThrust = message_filters::Synchronizer<SyncPoseThrustPolicy>;
+using SyncTwistThrust = message_filters::Synchronizer<SyncTwistThrustPolicy>;
 
 /**
  * @brief Setpoint attitude plugin
@@ -83,13 +85,13 @@ public:
 			 * @brief Matches messages, even if they have different time stamps,
 			 * by using an adaptative algorithm <http://wiki.ros.org/message_filters/ApproximateTime>
 			 */
-			message_filters::Synchronizer<SyncPoseThrust> sync(SyncPoseThrust(10), pose_sub, th_sub);
-			sync.registerCallback(boost::bind(&SetpointAttitudePlugin::attitude_pose_cb, this, _1, _2));
+			sync_pose.reset(new SyncPoseThrust(SyncPoseThrustPolicy(10), pose_sub, th_sub));
+			sync_pose->registerCallback(boost::bind(&SetpointAttitudePlugin::attitude_pose_cb, this, _1, _2));
 		}
 		else {
 			twist_sub.subscribe(sp_nh, "cmd_vel", 1);
-			message_filters::Synchronizer<SyncTwistThrust> sync(SyncTwistThrust(10), twist_sub, th_sub);
-			sync.registerCallback(boost::bind(&SetpointAttitudePlugin::attitude_twist_cb, this, _1, _2));
+			sync_twist.reset(new SyncTwistThrust(SyncTwistThrustPolicy(10), twist_sub, th_sub));
+			sync_twist->registerCallback(boost::bind(&SetpointAttitudePlugin::attitude_twist_cb, this, _1, _2));
 		}
 	}
 
@@ -106,6 +108,9 @@ private:
 	message_filters::Subscriber<mavros_msgs::Thrust> th_sub;
 	message_filters::Subscriber<geometry_msgs::PoseStamped> pose_sub;
 	message_filters::Subscriber<geometry_msgs::TwistStamped> twist_sub;
+
+	std::unique_ptr<SyncPoseThrust> sync_pose;
+	std::unique_ptr<SyncTwistThrust> sync_twist;
 
 	std::string tf_frame_id;
 	std::string tf_child_frame_id;
