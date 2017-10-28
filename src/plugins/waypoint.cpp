@@ -23,6 +23,8 @@
 #include <mavros_msgs/WaypointClear.h>
 #include <mavros_msgs/WaypointPull.h>
 #include <mavros_msgs/WaypointPush.h>
+#include <mavros_msgs/WaypointReached.h>
+
 
 namespace mavros {
 namespace std_plugins {
@@ -155,6 +157,7 @@ public:
 		wp_nh.param("pull_after_gcs", do_pull_after_gcs, true);
 
 		wp_list_pub = wp_nh.advertise<mavros_msgs::WaypointList>("waypoints", 2, true);
+		wp_reached_pub = wp_nh.advertise<mavros_msgs::WaypointReached>("reached", 10, true);
 		pull_srv = wp_nh.advertiseService("pull", &WaypointPlugin::pull_cb, this);
 		push_srv = wp_nh.advertiseService("push", &WaypointPlugin::push_cb, this);
 		clear_srv = wp_nh.advertiseService("clear", &WaypointPlugin::clear_cb, this);
@@ -186,10 +189,12 @@ private:
 	ros::NodeHandle wp_nh;
 
 	ros::Publisher wp_list_pub;
+	ros::Publisher wp_reached_pub;
 	ros::ServiceServer pull_srv;
 	ros::ServiceServer push_srv;
 	ros::ServiceServer clear_srv;
 	ros::ServiceServer set_cur_srv;
+
 
 	std::vector<WaypointItem> waypoints;
 	std::vector<WaypointItem> send_waypoints;
@@ -403,6 +408,13 @@ private:
 	{
 		/* in QGC used as informational message */
 		ROS_INFO_NAMED("wp", "WP: reached #%d", mitr.seq);
+
+		auto wpr = boost::make_shared<mavros_msgs::WaypointReached>();
+
+		wpr->header.stamp = ros::Time::now();
+		wpr->wp_seq = mitr.seq;
+
+		wp_reached_pub.publish(wpr);
 	}
 
 	/**
