@@ -2,6 +2,12 @@
 Changelog for package mavros_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.21.3 (2017-10-28)
+-------------------
+* plugin waypoints: Use stamped message
+* add debug plugin
+* Contributors: TSC21, Vladimir Ermakov
+
 0.21.2 (2017-09-25)
 -------------------
 
