@@ -15,14 +15,15 @@ add_message_files(
   BatteryStatus.msg
   CamIMUStamp.msg
   CommandCode.msg
+  DebugValue.msg
   ExtendedState.msg
   FileEntry.msg
   GlobalPositionTarget.msg
   HilActuatorControls.msg
   HilControls.msg
+  HilGPS.msg
   HilSensor.msg
   HilStateQuaternion.msg
-  HilGPS.msg
   HomePosition.msg
   ManualControl.msg
   Mavlink.msg
@@ -39,6 +40,7 @@ add_message_files(
   Vibration.msg
   Waypoint.msg
   WaypointList.msg
+  WaypointReached.msg
 )
 
 add_service_files(
