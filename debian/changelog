@@ -1,0 +1,246 @@
+ros-kinetic-test-mavros (0.21.3-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Sat, 28 Oct 2017 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.21.2-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Mon, 25 Sep 2017 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.21.1-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Fri, 22 Sep 2017 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.21.0-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Thu, 14 Sep 2017 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.20.1-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Mon, 28 Aug 2017 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.20.0-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Wed, 23 Aug 2017 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.19.0-0xenial) xenial; urgency=high
+
+  * cmake: remove Eigen warning
+  * Contributors: Vladimir Ermakov
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Fri, 05 May 2017 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.18.7-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Fri, 24 Feb 2017 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.18.6-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Tue, 07 Feb 2017 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.18.5-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Mon, 12 Dec 2016 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.18.4-0xenial) xenial; urgency=high
+
+  * Update README for all packages
+  * Contributors: Vladimir Ermakov
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Fri, 11 Nov 2016 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.18.3-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Thu, 07 Jul 2016 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.18.2-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Thu, 30 Jun 2016 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.18.1-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Fri, 24 Jun 2016 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.18.0-0xenial) xenial; urgency=high
+
+  * Test_mavros : fix compilation on gcc6.1
+  * Contributors: khancyr
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Thu, 23 Jun 2016 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.17.3-0xenial) xenial; urgency=high
+
+  * test #546 <https://github.com/mavlink/mavros/issues/546>: Added check of control_toolbox version (1.14.0)
+    In Kinetic control_toolbox changed API of Pid::initPid().
+  * Contributors: Vladimir Ermakov
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Fri, 20 May 2016 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.17.2-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Fri, 29 Apr 2016 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.17.1-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Mon, 28 Mar 2016 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.17.0-0xenial) xenial; urgency=high
+
+  * rebased with master
+  * Contributors: francois
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Tue, 09 Feb 2016 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.16.6-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Thu, 04 Feb 2016 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.16.5-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Mon, 11 Jan 2016 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.16.4-0xenial) xenial; urgency=high
+
+  * updated local position subscription topic
+  * Contributors: Andreas Antener
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Mon, 14 Dec 2015 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.16.3-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Thu, 19 Nov 2015 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.16.2-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Tue, 17 Nov 2015 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.16.1-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Fri, 13 Nov 2015 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.16.0-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Mon, 09 Nov 2015 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.15.0-0xenial) xenial; urgency=high
+
+  * test: update readme
+  * test: add required plugins
+  * test: new test for local_position + SSP (#387 <https://github.com/mavlink/mavros/issues/387>) + URDF
+  * test: add schematic plane urdf
+  * Contributors: Vladimir Ermakov
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Thu, 17 Sep 2015 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.14.2-0xenial) xenial; urgency=high
+
+  * test: fix depend on angles, fix catkin lint warnings
+  * Contributors: Vladimir Ermakov
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Thu, 20 Aug 2015 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.14.1-0xenial) xenial; urgency=high
+
+
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Wed, 19 Aug 2015 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.14.0-0xenial) xenial; urgency=high
+
+  * test fix #368 <https://github.com/mavlink/mavros/issues/368>: use mavros.setpoint module in demo
+  * test: #368 <https://github.com/mavlink/mavros/issues/368>: initial import of setpoint_demo.py
+  * test: Fix library name.
+  * test_mavros: pid_controller: declare PID variables as local
+  * test_mavros: move headers to include/test_mavros and setup for install
+  * test_mavros: removed pid_controller as lib; instantiate object so to use on offboard test
+  * test_mavros: CMakeLists: small ident correction
+  * test_mavros: pid_controller: include <array> so to make Travis happy
+  * test_mavros: added PID controller utility for velocity control on tests
+  * test_mavros: changed test_type to test_setup; namespace also
+  * Contributors: TSC21, Vladimir Ermakov
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Mon, 17 Aug 2015 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.13.1-0xenial) xenial; urgency=high
+
+  * test: add link to APM sitl video
+  * test_mavros: put acceleration note out of title
+  * Minor titles correction
+  * test_mavros: update README.md with tutorial to use PX4 ROS SITL
+  * Contributors: TSC21, Vladimir Ermakov
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Wed, 05 Aug 2015 00:00:00 -0000
+
+ros-kinetic-test-mavros (0.13.0-0xenial) xenial; urgency=high
+
+  * Update iris_empty_world_offboard_ctl.launch
+  * test: fix prerelease building
+  * test: move launch
+  * sitl_tests: turn pos_setpoint code more elegant
+  * sitl_tests: minor code tweak; use angles.h package
+  * sitl_tests: offboard_control: included array lib; init threshold in constructor
+  * sitl_tests: added normal distribution position error threshold generator
+  * sitl_tests: add eigen dependency to CMakeLists and package.xml
+  * sitl_tests: "eigenize" offboard_control code; generalize offb control launch file
+  * sitl_tests: added px4 and rotors_simulator packages to package.xml dependencies
+  * sitl_tests: define sitl_tests group; change tgt_component to 1
+  * sitl_tests: offboard_mode: minor code refining
+  * sitl_tests: code cleaning
+  * sitl_tests: uncrustify code
+  * sitl_tests: offboard_control: velocity: added eight and ellipse-shaped paths
+  * sitl_tests: offboard_control: velocity: added circle-shaped path
+  * sitl_tests: added offboard velocity control - square shaped path for now
+  * sitl_tests: offboard_control: added ellipse-shaped path
+  * sitl_tests: offboard_control: added circle-shaped path
+  * sitl_tests: generalize offboard posctl so it can handle vel/accel control; added support to "eight" sphaped path
+  * sitl_tests: added base node
+  * sitl_test: added integrated launch file for OFFB POSCTL square shape
+  * sitl_tests: turn sitl_test_node as generic node to both APM and PX4
+  * sitl_tests: test structure definition; first working test routine
+  * test: import launch for imu testing
+  * test: apm sitl and imu test reproduction steps
+  * test: Add test_marvros package stub
+  * Contributors: TSC21, Vladimir Ermakov, wangsen1312
+
+ -- Vladimir Ermakov <vooon341@gmail.com>  Sat, 01 Aug 2015 00:00:00 -0000
+
+
