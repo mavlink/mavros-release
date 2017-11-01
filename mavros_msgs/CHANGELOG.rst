@@ -2,6 +2,9 @@
 Changelog for package mavros_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.21.4 (2017-11-01)
+-------------------
+
 0.21.3 (2017-10-28)
 -------------------
 * plugin waypoints: Use stamped message
@@ -164,7 +167,7 @@ Changelog for package mavros_msgs
 -------------------
 * msgs: Fix `#609 <https://github.com/mavlink/mavros/issues/609>`_
 * add hil_actuator_controls mavlink message
-* Contributors: Beat Küng, Vladimir Ermakov
+* Contributors: Beat Kung, Vladimir Ermakov
 
 0.18.3 (2016-07-07)
 -------------------
