@@ -2,6 +2,15 @@
 Changelog for package mavros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.21.4 (2017-11-01)
+-------------------
+* lib ftf: update dox, uncrustify
+* ENU<->ECEF transforms fix. (`#847 <https://github.com/mavlink/mavros/issues/847>`_)
+  * ENU<->ECEF transforms fix.
+  * Changes after review. Unit tests added.
+* test: fix copy-paste error in frame_tf
+* Contributors: Vladimir Ermakov, pavloblindnology
+
 0.21.3 (2017-10-28)
 -------------------
 * Update geographiclib script to work with zsh
@@ -27,7 +36,7 @@ Changelog for package mavros
   * Update waypoint.cpp
 * launch: sync APM and PX4 configs
 * add debug plugin
-* Contributors: Jonas Vautherin, Patrick José Pereira, TSC21, Vladimir Ermakov, gui2dev
+* Contributors: Jonas Vautherin, Patrick Jose Pereira, TSC21, Vladimir Ermakov, gui2dev
 
 0.21.2 (2017-09-25)
 -------------------
@@ -340,7 +349,7 @@ Changelog for package mavros
 * Update README for all packages
 * Update README.md
   Fix instructions: Only the Kinetic distro actually works for MAVLink 2.0
-* Contributors: Beat Küng, Georgii Staroselskii, Lorenz Meier, Vladimir Ermakov
+* Contributors: Beat Kung, Georgii Staroselskii, Lorenz Meier, Vladimir Ermakov
 
 0.18.3 (2016-07-07)
 -------------------
