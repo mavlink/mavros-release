@@ -2,18 +2,25 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.21.4 (2017-11-01)
+-------------------
+* ENU<->ECEF transforms fix. (`#847 <https://github.com/mavlink/mavros/issues/847>`_)
+  * ENU<->ECEF transforms fix.
+  * Changes after review. Unit tests added.
+* Contributors: pavloblindnology
+
 0.21.3 (2017-10-28)
 -------------------
 * mavteleop: Move from iteritems to items for python3 support
   Items work with python3 and python2.7
-  Signed-off-by: Patrick José Pereira <patrickelectric@gmail.com>
+  Signed-off-by: Patrick Jose Pereira <patrickelectric@gmail.com>
 * extras: Configurable base frame id on distance_sensor
   Fix `#835 <https://github.com/mavlink/mavros/issues/835>`_
 * debug_msgs: fix typo
 * debug_msgs: fix typo
 * extras: Use cog to reduce common msg filler code
 * add debug plugin
-* Contributors: Nuno Marques, Patrick José Pereira, TSC21, Vladimir Ermakov
+* Contributors: Nuno Marques, Patrick Jose Pereira, TSC21, Vladimir Ermakov
 
 0.21.2 (2017-09-25)
 -------------------
