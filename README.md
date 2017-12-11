@@ -1,3 +1,31 @@
+## mavros (kinetic) - 0.22.0-0
+
+The packages in the `mavros` repository were released into the `kinetic` distro by running `/usr/bin/bloom-release --rosdistro kinetic --track kinetic mavros` on `Mon, 11 Dec 2017 14:55:12 -0000`
+
+These packages were released:
+- `libmavconn`
+- `mavros`
+- `mavros_extras`
+- `mavros_msgs`
+- `test_mavros`
+
+Version of package(s) in repository `mavros`:
+
+- upstream repository: https://github.com/mavlink/mavros.git
+- release repository: https://github.com/mavlink/mavros-release.git
+- rosdistro version: `0.21.5-0`
+- old version: `0.21.5-0`
+- new version: `0.22.0-0`
+
+Versions of tools used:
+
+- bloom version: `0.6.1`
+- catkin_pkg version: `0.3.9`
+- rosdep version: `0.11.8`
+- rosdistro version: `0.6.2`
+- vcstools version: `0.1.39`
+
+
 ## mavros (lunar) - 0.21.5-0
 
 The packages in the `mavros` repository were released into the `lunar` distro by running `/usr/bin/bloom-release --rosdistro lunar --track lunar mavros` on `Thu, 16 Nov 2017 20:31:50 -0000`
