@@ -223,23 +223,23 @@ Load order always:
 *Note*: `MAVLINK_DIALECT` not used anymore.
 
 
-Contributing
+Troubleshooting
 ------------
 
-1. Fork the repo:
-![fork](http://s24.postimg.org/pfvt9sdv9/Fork_mavros.png)
-2. Clone the repo (`git clone https://github.com/mavlink/mavros.git`);
-3. Create a remote connection to your repo (`git remote add <remote_repo> git@github.com:<YourGitUser>/mavros.git`);
-4. Create a feature/dev branch (`git checkout -b <feature_branch>`);
-5. Add the changes;
-6. Apply the changes by committing (`git commit -m "<message>"` or `git commit -a` and then write message; if adding new files: `git add <path/to/file.ext>`);
-7. Check code style `uncrustify -c ${ROS_WORKSPACE}/mavros/mavros/tools/uncrustify-cpp.cfg --replace --no-backup <path/to/file.ext>`;
-8. Fix small code style errors and typos;
-9. Commit with description like "uncrustify" or "code style fix". Please avoid changes in program logic (separate commit are better than mix of style and bug fix);
-10. Run tests:
- - with `catkin_make`, issue `catkin_make tests` and then `catkin_make run_tests`;
- - with `catkin tools`, issue `catkin run_tests`;
-11. If everything goes as planned, push the changes (`git push -u <remote_repo> <feature_branch>`) and issue a pull request.
+### Error: serial0: receive: End of file
+
+The full error description can be found on [issue #856][iss856]. Follow these steps:
+1. disconnect flight controller USB
+2. disable USB driver with `sudo modprobe -r usbhid cdc_acm`
+3. re-enable the driver with `sudo modprobe usbhid cdc_acm`
+4. reconnect flight controller USB
+5. try again running mavros launch file for your flight controller
+
+
+
+Contributing
+------------
+See [CONTRIBUTING.md][contr].
 
 
 Glossary
@@ -277,6 +277,7 @@ Links
 [iss319]: https://github.com/mavlink/mavros/issues/319
 [iss321]: https://github.com/mavlink/mavros/issues/321
 [iss473]: https://github.com/mavlink/mavros/issues/473
+[iss856]: https://github.com/mavlink/mavros/issues/856
 [wiki]: http://wiki.ros.org/mavros
 [mrext]: https://github.com/mavlink/mavros/tree/master/mavros_extras
 [mlwiki]: http://wiki.ros.org/mavlink
@@ -285,3 +286,4 @@ Links
 [iss473rfc]: https://docs.google.com/document/d/1bDhaozrUu9F915T58WGzZeOM-McyU20dwxX-NRum1KA/edit
 [iss473table]: https://docs.google.com/spreadsheets/d/1LnsWTblU92J5_SMinTvBvHJWx6sqvzFa8SKbn8TXlnU/edit#gid=0
 [geolib]: https://geographiclib.sourceforge.io/
+[contr]: https://github.com/mavlink/mavros/blob/master/CONTRIBUTING.md
