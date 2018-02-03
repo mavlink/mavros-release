@@ -2,6 +2,9 @@
 Changelog for package mavros_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.23.0 (2018-02-03)
+-------------------
+
 0.22.0 (2017-12-11)
 -------------------
 * SetMavFrame.srv: add FRAME\_ prefix
