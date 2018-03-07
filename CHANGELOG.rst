@@ -2,6 +2,11 @@
 Changelog for package mavros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.23.2 (2018-03-07)
+-------------------
+* launch: add optional respawn_mavros arg
+* Contributors: Anthony Lamping
+
 0.23.1 (2018-02-27)
 -------------------
 * lib: Update to_string
