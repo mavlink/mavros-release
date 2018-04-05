@@ -21,6 +21,10 @@
 #include <mavconn/thread_utils.h>
 #include <mavconn/serial.h>
 
+#if defined(__linux__)
+#include <linux/serial.h>
+#endif
+
 namespace mavconn {
 using boost::system::error_code;
 using boost::asio::io_service;
@@ -61,24 +65,41 @@ MAVConnSerial::MAVConnSerial(uint8_t system_id, uint8_t component_id,
 		// Workaround to set some options for the port manually. This is done in
 		// Boost.ASIO, but until v1.12.0 (Boost 1.66) there was a bug which doesn't enable relevant
 		// code. Fixed by commit: https://github.com/boostorg/asio/commit/619cea4356
-		int fd = serial_dev.native_handle();
-		termios tio;
-		tcgetattr(fd, &tio);
+		{
+			int fd = serial_dev.native_handle();
 
-		// Set hardware flow control settings
-		if (hwflow) {
-			tio.c_iflag &= ~(IXOFF | IXON);
-			tio.c_cflag |= CRTSCTS;
-		} else {
-			tio.c_iflag &= ~(IXOFF | IXON);
-			tio.c_cflag &= ~CRTSCTS;
+			termios tio;
+			tcgetattr(fd, &tio);
+
+			// Set hardware flow control settings
+			if (hwflow) {
+				tio.c_iflag &= ~(IXOFF | IXON);
+				tio.c_cflag |= CRTSCTS;
+			} else {
+				tio.c_iflag &= ~(IXOFF | IXON);
+				tio.c_cflag &= ~CRTSCTS;
+			}
+
+			// Set serial port to "raw" mode to prevent EOF exit.
+			cfmakeraw(&tio);
+
+			// Commit settings
+			tcsetattr(fd, TCSANOW, &tio);
 		}
+#endif
 
-		// Set serial port to "raw" mode to prevent EOF exit.
-		cfmakeraw(&tio);
+#if defined(__linux__)
+		// Enable low latency mode on Linux
+		{
+			int fd = serial_dev.native_handle();
 
-		// Commit settings
-		tcsetattr(fd, TCSANOW, &tio);
+			struct serial_struct ser_info;
+			ioctl(fd, TIOCGSERIAL, &ser_info);
+
+			ser_info.flags |= ASYNC_LOW_LATENCY;
+
+			ioctl(fd, TIOCSSERIAL, &ser_info);
+		}
 #endif
 	}
 	catch (boost::system::system_error &err) {
