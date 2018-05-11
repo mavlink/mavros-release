@@ -26,6 +26,7 @@
 #endif
 
 namespace mavconn {
+
 using boost::system::error_code;
 using boost::asio::io_service;
 using boost::asio::buffer;
@@ -47,7 +48,7 @@ MAVConnSerial::MAVConnSerial(uint8_t system_id, uint8_t component_id,
 {
 	using SPB = boost::asio::serial_port_base;
 
-	logInform(PFXd "device: %s @ %d bps", conn_id, device.c_str(), baudrate);
+	CONSOLE_BRIDGE_logInform(PFXd "device: %s @ %d bps", conn_id, device.c_str(), baudrate);
 
 	try {
 		serial_dev.open(device);
@@ -146,7 +147,7 @@ void MAVConnSerial::close()
 void MAVConnSerial::send_bytes(const uint8_t *bytes, size_t length)
 {
 	if (!is_open()) {
-		logError(PFXd "send: channel closed!", conn_id);
+		CONSOLE_BRIDGE_logError(PFXd "send: channel closed!", conn_id);
 		return;
 	}
 
@@ -166,7 +167,7 @@ void MAVConnSerial::send_message(const mavlink_message_t *message)
 	assert(message != nullptr);
 
 	if (!is_open()) {
-		logError(PFXd "send: channel closed!", conn_id);
+		CONSOLE_BRIDGE_logError(PFXd "send: channel closed!", conn_id);
 		return;
 	}
 
@@ -186,7 +187,7 @@ void MAVConnSerial::send_message(const mavlink_message_t *message)
 void MAVConnSerial::send_message(const mavlink::Message &message)
 {
 	if (!is_open()) {
-		logError(PFXd "send: channel closed!", conn_id);
+		CONSOLE_BRIDGE_logError(PFXd "send: channel closed!", conn_id);
 		return;
 	}
 
@@ -210,7 +211,7 @@ void MAVConnSerial::do_read(void)
 			buffer(rx_buf),
 			[sthis] (error_code error, size_t bytes_transferred) {
 				if (error) {
-					logError(PFXd "receive: %s", sthis->conn_id, error.message().c_str());
+					CONSOLE_BRIDGE_logError(PFXd "receive: %s", sthis->conn_id, error.message().c_str());
 					sthis->close();
 					return;
 				}
@@ -238,7 +239,7 @@ void MAVConnSerial::do_write(bool check_tx_state)
 				assert(bytes_transferred <= buf_ref.len);
 
 				if (error) {
-					logError(PFXd "write: %s", sthis->conn_id, error.message().c_str());
+					CONSOLE_BRIDGE_logError(PFXd "write: %s", sthis->conn_id, error.message().c_str());
 					sthis->close();
 					return;
 				}
