@@ -1,3 +1,31 @@
+## mavros (melodic) - 0.25.0-0
+
+The packages in the `mavros` repository were released into the `melodic` distro by running `/usr/bin/bloom-release -t melodic -r melodic mavros` on `Fri, 11 May 2018 18:13:51 -0000`
+
+These packages were released:
+- `libmavconn`
+- `mavros`
+- `mavros_extras`
+- `mavros_msgs`
+- `test_mavros`
+
+Version of package(s) in repository `mavros`:
+
+- upstream repository: https://github.com/mavlink/mavros.git
+- release repository: https://github.com/mavlink/mavros-release.git
+- rosdistro version: `0.24.0-0`
+- old version: `0.24.0-0`
+- new version: `0.25.0-0`
+
+Versions of tools used:
+
+- bloom version: `0.6.4`
+- catkin_pkg version: `0.4.2`
+- rosdep version: `0.12.2`
+- rosdistro version: `0.6.8`
+- vcstools version: `0.1.40`
+
+
 ## mavros (lunar) - 0.25.0-0
 
 The packages in the `mavros` repository were released into the `lunar` distro by running `/usr/bin/bloom-release -t lunar -r lunar mavros` on `Fri, 11 May 2018 18:08:19 -0000`
