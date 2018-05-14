@@ -1,128 +1,77 @@
-MAVROS test package
-===================
+MAVROS
+======
 
-This package consists hand-tests with FCU SITL environment.
-I hope later we will do automatic tests too.
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/mavlink/mavros?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-PX4 ROS SITL
-------------
-Follow the instructions presented on [PX4 ROS SITL Setup][px4-sitl-wiki].
+MAVLink extendable communication node for ROS.
 
-To test the simulation environment all you have to do is launch the proper ROS launch file. Right now, the current available one is `iris_empty_world_offboard_ctl.launch`, which allows to test the offboard control routines of the Firmware, together with the MAVROS API.
-
-### Available tests
-
-#### Offboard position and velocity control
-Note: acceleration control still not supported on PX4 Firmware side.
-
-##### Tested in launch files
-
-- `iris_empty_world_offboard_ctl.launch`
-
-##### Description
-
-Allows testing the offboard control routines of the PX4 firmware by issuing setpoint commands through MAVROS plugins. Current test implements code to send:
-
-- position setpoints
-- velocity setpoints
-
-The tests are implemented by issuing some kind of shaped path. Current shapes are:
-
-- square/rectangle
-- circle
-- eight
-- ellipse (3D)
-
-##### How to use
-
-To test the different behaviors, edit `iris_empty_world_offboard_ctl.launch`. At the bottom of this file, you will find:
-
-```xml
-	<!-- SITL test base node launcher -->
-    <arg name="mode" default="position" />    <!-- position ctl mode -->
-    <arg name="shape" default="square" />    <!-- square shaped path -->
-```
-
-Just change the default value of them and issue `roslaunch test_mavros iris_empty_world_offboard_ctl.launch`
-
-Or, you can just issue the roslaunch passing the parameter values on the command line, p.e. `roslaunch test_mavros iris_empty_world_offboard_ctl.launch mode:=position shape:=square`.
-
-##### TODO
-
-- Implement acceleration setpoint sending, when this is implemented on Firmware side
-- Give possibility to users to define the amplitude of movement
-- Implement a PID controller for velocity to avoid overshoots in the onboard controller
+- Since 2014-08-11 this repository contains several packages.
+- Since 2014-11-02 hydro support separated from master to hydro-devel branch.
+- Since 2015-03-04 all packages also dual licensed under terms of BSD license.
+- Since 2015-08-10 all messages moved to mavros\_msgs package
+- Since 2016-02-05 (v0.17) frame conversion changed again
+- Since 2016-06-22 (pre v0.18) Indigo and Jade separated from master to indigo-devel branch.
+- Since 2016-06-23 (0.18.0) support MAVLink 2.0 without signing.
+- Since 2017-08-23 (0.20.0) [GeographicLib][geolib] and it's datasets are required. Used to convert AMSL (FCU) and WGS84 (ROS) altitudes.
 
 
+mavros package
+--------------
 
-APM SITL
---------
-
-All what you need described in [ardupilot wiki][apm-sitl-wiki].
-
-
-### Preparation
-
-```sh
-# this is for zsh, but bash should be similar
-function add-dir-to-path() {
-    PATH+=":$1"
-}
-
-# get sources
-cd ~/ros/src
-wstool set imu_tools --git https://github.com/ccny-ros-pkg/imu_tools.git -v indigo
-wstool update -j2
-catkin build
-
-cd ~/src/UAV
-git clone https://github.com/diydrones/ardupilot.git
-git checkout ArduPlane-3.3.0 -b ArduPlane-3.3.0
-git clone https://github.com/tridge/jsbsim.git
-
-# compile JSBSim
-cd jsbsim
-./autogen.sh --enable-libraries
-make -j4
-
-# also look ardupliot wiki
-
-# add path to jsbsim binaries
-add-dir-to-path $PWD/src
-
-# path to sim_vehicle.sh
-cd ../ardupilot/Tools/autotest
-add-dir-to-path $PWD
-
-# build APM and load default params
-cd ../../ArduPlane
-sim_vehicle.sh -w
-```
+It is the main package, please see its [README][mrrm].
+Here you may read [installation instructions][inst].
 
 
-### How to use
+mavros\_extras package
+----------------------
 
-```
-# shell 1: in ArduPlane folder
-sim_vehicle.sh --out udp:localhost:15550 --map
-
-# shell 2: imu test
-roslaunch test_mavros apm_imu_test.launch
-
-# shell 2: URDF model + local_position
-roslaunch test_mavros apm_local_position_test.launch
-```
+This package contains some extra nodes and plugins for mavros, please see its [README][exrm].
 
 
-### Screen capture for IMU test (youtube video)
+libmavconn package
+------------------
 
-[![APM SITL imu test video](http://img.youtube.com/vi/mUIptiNbmS4/0.jpg)](http://www.youtube.com/watch?v=mUIptiNbmS4)
-
-
-### Screen capture for URDF model test
-
-[![APM SITL urdf test video](http://img.youtube.com/vi/r_IOGkmy5ZY/0.jpg)](https://www.youtube.com/watch?v=r_IOGkmy5ZY)
+This package contain mavconn library, see its [README][libmc].
+LibMAVConn may be used outside of ROS environment.
 
 
-[apm-sitl-wiki]: http://dev.ardupilot.com/wiki/setting-up-sitl-on-linux/
-[px4-sitl-wiki]: https://pixhawk.org/dev/ros/sitl
+test\_mavros package
+--------------------
+
+This package contain hand-tests and [manual page][test] for APM and PX4 SITL.
+Please see [README][test] first!
+
+
+mavros\_msgs package
+--------------------
+
+This package contains messages and services used in mavros.
+
+
+Support forums and chats
+------------------------
+
+Please ask your questions not related to bugs/feauture or requests on:
+
+- [px4users Google Group (Mailing List) ](https://groups.google.com/forum/#!forum/px4users)
+- [Mavros on Gitter IM](https://gitter.im/mavlink/mavros)
+- [PX4/Firmware on Gitter IM](https://gitter.im/PX4/Firmware)
+- [ArduPilot/VisionProjects on Gitter IM](https://gitter.im/ArduPilot/ardupilot/VisionProjects)
+
+We'd like to keep the project bugtracker as free as possible, so please contact via the above methods. You can also PM us via Gitter.
+
+
+CI Statuses
+-----------
+
+  - ROS Kinetic: [![Build Status](http://build.ros.org/buildStatus/icon?job=Kdev__mavros__ubuntu_xenial_amd64)](http://build.ros.org/job/Kdev__mavros__ubuntu_xenial_amd64/)
+  - ROS Lunar: [![Build Status](http://build.ros.org/buildStatus/icon?job=Ldev__mavros__ubuntu_xenial_amd64)](http://build.ros.org/job/Ldev__mavros__ubuntu_xenial_amd64/)
+  - Travis master on Indigo & Jade: [![travis status](https://travis-ci.org/mavlink/mavros.svg?branch=master)](https://travis-ci.org/mavlink/mavros)
+
+
+[mrrm]: https://github.com/mavlink/mavros/blob/master/mavros/README.md
+[exrm]: https://github.com/mavlink/mavros/blob/master/mavros_extras/README.md
+[libmc]: https://github.com/mavlink/mavros/blob/master/libmavconn/README.md
+[test]: https://github.com/mavlink/mavros/blob/master/test_mavros/README.md
+[inst]: https://github.com/mavlink/mavros/blob/master/mavros/README.md#installation
+[geolib]: https://geographiclib.sourceforge.io/
