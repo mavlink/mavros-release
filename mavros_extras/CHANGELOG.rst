@@ -2,6 +2,11 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.26.0 (2018-06-06)
+-------------------
+* odom: fix mapping for body frame
+* Contributors: TSC21
+
 0.25.1 (2018-05-14)
 -------------------
 
