@@ -2,6 +2,12 @@
 Changelog for package libmavconn
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.26.0 (2018-06-06)
+-------------------
+* libmavconn: add scheme for permanent UDP broadcasting
+* test python 3 f-string formatting
+* Contributors: Oleg Kalachev, Vladimir Ermakov
+
 0.25.1 (2018-05-14)
 -------------------
 * lib `#1026 <https://github.com/mavlink/mavros/issues/1026>`_: fix logInform compat
