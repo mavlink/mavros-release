@@ -2,6 +2,11 @@
 Changelog for package mavros_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.26.0 (2018-06-06)
+-------------------
+* mavros_msgs : add timesync status message
+* Contributors: Mohammed Kabir
+
 0.25.1 (2018-05-14)
 -------------------
 
