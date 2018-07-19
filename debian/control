@@ -1,0 +1,12 @@
+Source: ros-melodic-mavros
+Section: misc
+Priority: extra
+Maintainer: Vladimir Ermakov <vooon341@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), geographiclib-tools, libboost-all-dev, libeigen3-dev, libgeographic-dev, libgtest-dev, ros-melodic-angles, ros-melodic-catkin, ros-melodic-cmake-modules, ros-melodic-diagnostic-msgs, ros-melodic-diagnostic-updater, ros-melodic-eigen-conversions, ros-melodic-geographic-msgs, ros-melodic-geometry-msgs, ros-melodic-libmavconn, ros-melodic-mavlink, ros-melodic-mavros-msgs, ros-melodic-nav-msgs, ros-melodic-pluginlib, ros-melodic-rosconsole-bridge, ros-melodic-roscpp, ros-melodic-sensor-msgs, ros-melodic-std-msgs, ros-melodic-std-srvs, ros-melodic-tf2-eigen, ros-melodic-tf2-ros
+Homepage: http://wiki.ros.org/mavros
+Standards-Version: 3.9.2
+
+Package: ros-melodic-mavros
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, geographiclib-tools, libboost-all-dev, libeigen3-dev, libgeographic-dev, ros-melodic-diagnostic-msgs, ros-melodic-diagnostic-updater, ros-melodic-eigen-conversions, ros-melodic-geographic-msgs, ros-melodic-geometry-msgs, ros-melodic-libmavconn, ros-melodic-mavlink, ros-melodic-mavros-msgs, ros-melodic-message-runtime, ros-melodic-nav-msgs, ros-melodic-pluginlib, ros-melodic-rosconsole-bridge, ros-melodic-roscpp, ros-melodic-rospy, ros-melodic-sensor-msgs, ros-melodic-std-msgs, ros-melodic-std-srvs, ros-melodic-tf2-eigen, ros-melodic-tf2-ros
+Description: MAVROS -- MAVLink extendable communication node for ROS with proxy for Ground Control Station.
