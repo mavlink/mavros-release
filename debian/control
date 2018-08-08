@@ -1,0 +1,12 @@
+Source: ros-melodic-mavros-extras
+Section: misc
+Priority: extra
+Maintainer: Vladimir Ermakov <vooon341@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), ros-melodic-catkin, ros-melodic-cmake-modules, ros-melodic-geometry-msgs, ros-melodic-mavros, ros-melodic-mavros-msgs, ros-melodic-roscpp, ros-melodic-sensor-msgs, ros-melodic-std-msgs, ros-melodic-tf, ros-melodic-urdf, ros-melodic-visualization-msgs
+Homepage: http://wiki.ros.org/mavros_extras
+Standards-Version: 3.9.2
+
+Package: ros-melodic-mavros-extras
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-melodic-geometry-msgs, ros-melodic-mavros, ros-melodic-mavros-msgs, ros-melodic-roscpp, ros-melodic-sensor-msgs, ros-melodic-std-msgs, ros-melodic-tf, ros-melodic-urdf, ros-melodic-visualization-msgs
+Description: Extra nodes and plugins for MAVROS.
