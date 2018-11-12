@@ -2,6 +2,12 @@
 Changelog for package mavros_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.27.0 (2018-11-12)
+-------------------
+* Add service to send mavlink TRIGG_INTERVAL commands
+  Adapt trigger_control service to current mavlink cmd spec. Add a new service to change trigger interval and integration time
+* Contributors: Moritz Zimmermann
+
 0.26.3 (2018-08-21)
 -------------------
 * fixup! 5a4344a2dcedc157f93b620cebd2e0b273ec24be
