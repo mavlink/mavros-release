@@ -2,6 +2,11 @@
 Changelog for package libmavconn
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.27.0 (2018-11-12)
+-------------------
+* bind should be called after reuse_address is set
+* Contributors: Shahar Kosti
+
 0.26.3 (2018-08-21)
 -------------------
 * Prevent MAVConnTCPClient::do_recv and MAVConnTCPServer::do_accept from running after destruction has begun
