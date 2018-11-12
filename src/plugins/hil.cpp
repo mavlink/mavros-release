@@ -39,6 +39,8 @@ static constexpr double PASCAL_TO_MILLIBAR = 1.0e-2;
  */
 class HilPlugin : public plugin::PluginBase {
 public:
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
 	HilPlugin() : PluginBase(),
 		hil_nh("~hil")
 	{ }
