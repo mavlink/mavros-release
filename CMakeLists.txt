@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   visualization_msgs
   urdf
   tf
+  tf2_eigen
 )
 
 ## System dependencies are found with CMake's conventions
@@ -78,6 +79,7 @@ add_library(mavros_extras
   src/plugins/px4flow.cpp
   src/plugins/rangefinder.cpp
   src/plugins/trajectory.cpp
+  src/plugins/wheel_odometry.cpp
   src/plugins/vibration.cpp
   src/plugins/vision_pose_estimate.cpp
   src/plugins/vision_speed_estimate.cpp
