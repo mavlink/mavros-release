@@ -2,6 +2,11 @@
 Changelog for package test_mavros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.29.0 (2019-02-02)
+-------------------
+* Merge branch 'master' into param-timeout
+* Contributors: Vladimir Ermakov
+
 0.28.0 (2019-01-03)
 -------------------
 
