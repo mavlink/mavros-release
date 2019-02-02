@@ -50,6 +50,7 @@ add_message_files(
   Waypoint.msg
   WaypointList.msg
   WaypointReached.msg
+  WheelOdomStamped.msg
 )
 
 add_service_files(
@@ -76,6 +77,7 @@ add_service_files(
   LogRequestData.srv
   LogRequestEnd.srv
   LogRequestList.srv
+  MessageInterval.srv
   ParamGet.srv
   ParamPull.srv
   ParamPush.srv
