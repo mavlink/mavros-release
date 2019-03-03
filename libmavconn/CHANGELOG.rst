@@ -2,6 +2,11 @@
 Changelog for package libmavconn
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.29.1 (2019-03-03)
+-------------------
+* All: catkin lint files
+* Contributors: Pierre Kancir
+
 0.29.0 (2019-02-02)
 -------------------
 * Merge branch 'master' into param-timeout
