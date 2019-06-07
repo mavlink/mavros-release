@@ -32,6 +32,7 @@ using mavlink::common::GPS_FIX_TYPE;
 using mavlink::common::MAV_MISSION_RESULT;
 using mavlink::common::MAV_FRAME;
 using mavlink::common::MAV_DISTANCE_SENSOR;
+using mavlink::common::LANDING_TARGET_TYPE;
 
 // [[[cog:
 // import pymavlink.dialects.v20.common as common
@@ -70,7 +71,7 @@ using mavlink::common::MAV_DISTANCE_SENSOR;
 // 	size_t idx = enum_value(e);
 // 	if (idx >= {array}.size())
 // 		return std::to_string(idx);
-// 
+//
 // 	return {array}[idx];
 // }}""")
 //
@@ -588,6 +589,7 @@ std::string to_string(MAV_COMPONENT e)
 
 	return it->second;
 }
+// [[[end]]] (checksum: 849fca3985365a416a5a242b9af0ff7c)
 
 MAV_FRAME mav_frame_from_str(const std::string &mav_frame)
 {
@@ -636,6 +638,40 @@ std::string to_string(MAV_DISTANCE_SENSOR e)
 	return mav_distance_sensor_strings[idx];
 }
 // [[[end]]] (checksum: 3f792ad01cdb3f2315a8907f578ab5b3)
+
+// [[[cog:
+// ename = 'LANDING_TARGET_TYPE'
+// enum_name_is_value_outl(ename)
+// ]]]
+//! LANDING_TARGET_TYPE values
+static const std::array<const std::string, 4> landing_target_type_strings{{
+/*  0 */ "LIGHT_BEACON",                  // Landing target signaled by light beacon (ex: IR-LOCK)
+/*  1 */ "RADIO_BEACON",                  // Landing target signaled by radio beacon (ex: ILS, NDB)
+/*  2 */ "VISION_FIDUCIAL",               // Landing target represented by a fiducial marker (ex: ARTag)
+/*  3 */ "VISION_OTHER",                  // Landing target represented by a pre-defined visual shape/feature (ex: X-marker, H-marker, square)
+}};
+
+std::string to_string(LANDING_TARGET_TYPE e)
+{
+	size_t idx = enum_value(e);
+	if (idx >= landing_target_type_strings.size())
+		return std::to_string(idx);
+
+	return landing_target_type_strings[idx];
+}
+// [[[end]]] (checksum: a42789c10cbebd5bc253abca2a07289b)
+
+LANDING_TARGET_TYPE landing_target_type_from_str(const std::string &landing_target_type)
+{
+	for (size_t idx = 0; idx < landing_target_type_strings.size(); idx++) {
+		if (landing_target_type_strings[idx] == landing_target_type) {
+			std::underlying_type<LANDING_TARGET_TYPE>::type rv = idx;
+			return static_cast<LANDING_TARGET_TYPE>(rv);
+		}
+	}
+	ROS_ERROR_STREAM_NAMED("uas", "TYPE: Unknown LANDING_TARGET_TYPE: " << landing_target_type << ". Defaulting to LIGHT_BEACON");
+	return LANDING_TARGET_TYPE::LIGHT_BEACON;
+}
 
 }	// namespace utils
 }	// namespace mavros
