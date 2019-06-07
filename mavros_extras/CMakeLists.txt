@@ -72,6 +72,7 @@ add_library(mavros_extras
   src/plugins/distance_sensor.cpp
   src/plugins/fake_gps.cpp
   src/plugins/gps_rtk.cpp
+  src/plugins/landing_target.cpp
   src/plugins/log_transfer.cpp
   src/plugins/mocap_pose_estimate.cpp
   src/plugins/obstacle_distance.cpp
@@ -93,10 +94,10 @@ target_link_libraries(mavros_extras
 )
 
 ## Declare a cpp executable
-add_executable(copter_visualization
-  src/copter_visualization.cpp
+add_executable(visualization
+  src/visualization.cpp
 )
-target_link_libraries(copter_visualization
+target_link_libraries(visualization
   ${catkin_LIBRARIES}
 )
 
@@ -123,7 +124,7 @@ install(PROGRAMS
 )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS copter_visualization mavros_extras servo_state_publisher
+install(TARGETS mavros_extras visualization servo_state_publisher
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
