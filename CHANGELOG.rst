@@ -2,6 +2,9 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.32.1 (2019-08-08)
+-------------------
+
 0.32.0 (2019-07-06)
 -------------------
 * use direclty radians in yaml files
