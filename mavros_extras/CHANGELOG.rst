@@ -2,6 +2,16 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.33.3 (2019-11-13)
+-------------------
+* package: fix 6fa58e59 - main package depends on trajectory_msgs, not extras
+* Contributors: Vladimir Ermakov
+
+0.33.2 (2019-11-13)
+-------------------
+* Add trajectory_msg as dependency
+* Contributors: Jaeyoung-Lim
+
 0.33.1 (2019-11-11)
 -------------------
 * Merge pull request `#1297 <https://github.com/mavlink/mavros/issues/1297>`_ from dayjaby/feature/mount_orientation
