@@ -2,6 +2,14 @@
 Changelog for package mavros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.33.3 (2019-11-13)
+-------------------
+* package: fix 6fa58e59 - main package depends on trajectory_msgs, not extras
+* Contributors: Vladimir Ermakov
+
+0.33.2 (2019-11-13)
+-------------------
+
 0.33.1 (2019-11-11)
 -------------------
 * Add mutex
