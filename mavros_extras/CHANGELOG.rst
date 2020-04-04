@@ -2,6 +2,13 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.1.0 (2020-04-04)
+------------------
+* Setting the same transparency for all elements
+* Visualization of the direction of the device
+* add support for bezier
+* Contributors: Alamoris, Martina Rivizzigno
+
 1.0.0 (2020-01-01)
 ------------------
 * Change odometry subscription queue to 1 to avoid buffering.
