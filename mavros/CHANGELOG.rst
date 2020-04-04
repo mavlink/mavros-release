@@ -2,6 +2,16 @@
 Changelog for package mavros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.1.0 (2020-04-04)
+------------------
+* fixed styling
+* fixed indent from using spaces
+* updates apmrover2 modes and allows for arduboat mode changes
+* mavsafety kill feature for emergency stop
+* Include trajectory_msgs in CMakeLists.txt
+  This allows build to complete successfully.
+* Contributors: Anthony Goeckner, Matt Koos, aykutkabaoglu
+
 1.0.0 (2020-01-01)
 ------------------
 
