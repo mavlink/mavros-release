@@ -85,11 +85,15 @@ static const cmode_map arducopter_cmode_map{{
  */
 static const cmode_map apmrover2_cmode_map{{
 	{ 0, "MANUAL" },
-	{ 2, "LEARNING" },
+	{ 1, "ACRO" },
 	{ 3, "STEERING" },
 	{ 4, "HOLD" },
+	{ 5, "LOITER" },
+	{ 6, "FOLLOW" },
+	{ 7, "SIMPLE" },
 	{ 10, "AUTO" },
 	{ 11, "RTL" },
+	{ 12, "SMART_RTL" },
 	{ 15, "GUIDED" },
 	{ 16, "INITIALISING" }
 }};
@@ -260,6 +264,8 @@ bool UAS::cmode_from_str(std::string cmode_str, uint32_t &custom_mode)
 		else if (type == MAV_TYPE::FIXED_WING)
 			return cmode_find_cmap(arduplane_cmode_map, cmode_str, custom_mode);
 		else if (type == MAV_TYPE::GROUND_ROVER)
+			return cmode_find_cmap(apmrover2_cmode_map, cmode_str, custom_mode);
+		else if (type == MAV_TYPE::SURFACE_BOAT)
 			return cmode_find_cmap(apmrover2_cmode_map, cmode_str, custom_mode);
 		else if (type == MAV_TYPE::SUBMARINE)
 			return cmode_find_cmap(ardusub_cmode_map, cmode_str, custom_mode);
