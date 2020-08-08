@@ -2,6 +2,11 @@
 Changelog for package libmavconn
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.3.0 (2020-08-08)
+------------------
+* allow mavros to compile in CI environment
+* Contributors: Marcelino
+
 1.2.0 (2020-05-22)
 ------------------
 
