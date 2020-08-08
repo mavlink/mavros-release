@@ -158,8 +158,11 @@ image:
 fake_gps:
   # select data source
   use_mocap: true         # ~mocap/pose
-  mocap_transform: true   # ~mocap/tf instead of pose
+  mocap_transform: false  # ~mocap/tf instead of pose
+  mocap_withcovariance: false  # ~mocap/pose uses PoseWithCovarianceStamped Message
   use_vision: false       # ~vision (pose)
+  use_hil_gps: true
+  gps_id: 4
   # origin (default: Zürich)
   geo_origin:
     lat: 47.3667          # latitude [degrees]
@@ -167,7 +170,10 @@ fake_gps:
     alt: 408.0            # altitude (height over the WGS-84 ellipsoid) [meters]
   eph: 2.0
   epv: 2.0
-  satellites_visible: 5   # virtual number of visible satellites
+  horiz_accuracy: 0.5
+  vert_accuracy: 0.5
+  speed_accuracy: 0.0
+  satellites_visible: 6   # virtual number of visible satellites
   fix_type: 3             # type of GPS fix (default: 3D)
   tf:
     listen: false
