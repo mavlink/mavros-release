@@ -18,10 +18,16 @@ add_message_files(
   CompanionProcessStatus.msg
   OnboardComputerStatus.msg
   DebugValue.msg
+  ESCInfo.msg
+  ESCInfoItem.msg
+  ESCStatus.msg
+  ESCStatusItem.msg
   EstimatorStatus.msg
   ExtendedState.msg
   FileEntry.msg
   GlobalPositionTarget.msg
+  GPSRAW.msg
+  GPSRTK.msg
   HilActuatorControls.msg
   HilControls.msg
   HilGPS.msg
@@ -43,6 +49,7 @@ add_message_files(
   RCOut.msg
   RTCM.msg
   RadioStatus.msg
+  RTKBaseline.msg
   State.msg
   StatusText.msg
   Thrust.msg
