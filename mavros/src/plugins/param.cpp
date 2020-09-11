@@ -891,6 +891,8 @@ private:
 				to_send.param_value = static_cast<int>(req.value.integer);
 			else if (req.value.real != 0.0)
 				to_send.param_value = req.value.real;
+			else if (param_it->second.param_value.getType() == XmlRpc::XmlRpcValue::Type::TypeDouble)
+				to_send.param_value = req.value.real;
 			else
 				to_send.param_value = 0;
 
