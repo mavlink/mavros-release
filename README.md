@@ -1,3 +1,31 @@
+## mavros (kinetic) - 1.5.1-1
+
+The packages in the `mavros` repository were released into the `kinetic` distro by running `/usr/bin/bloom-release -r kinetic mavros` on `Mon, 04 Jan 2021 13:09:44 -0000`
+
+These packages were released:
+- `libmavconn`
+- `mavros`
+- `mavros_extras`
+- `mavros_msgs`
+- `test_mavros`
+
+Version of package(s) in repository `mavros`:
+
+- upstream repository: https://github.com/mavlink/mavros.git
+- release repository: https://github.com/mavlink/mavros-release.git
+- rosdistro version: `1.5.0-1`
+- old version: `1.5.0-1`
+- new version: `1.5.1-1`
+
+Versions of tools used:
+
+- bloom version: `0.10.0`
+- catkin_pkg version: `0.4.23`
+- rosdep version: `0.20.0`
+- rosdistro version: `0.8.3`
+- vcstools version: `0.1.42`
+
+
 ## mavros (noetic) - 1.5.0-1
 
 The packages in the `mavros` repository were released into the `noetic` distro by running `/usr/bin/bloom-release -r noetic mavros` on `Wed, 11 Nov 2020 15:45:56 -0000`
