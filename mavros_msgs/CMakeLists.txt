@@ -1,124 +1,173 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5)
 project(mavros_msgs)
 
-find_package(catkin REQUIRED COMPONENTS geographic_msgs geometry_msgs message_generation sensor_msgs std_msgs)
+# Default to C++14
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  # we dont use add_compile_options with pedantic in message packages
+  # because the Python C extensions dont comply with it
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
+endif()
 
-include_directories(include)
+find_package(ament_cmake REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+find_package(builtin_interfaces REQUIRED)
+find_package(rcl_interfaces REQUIRED)
+find_package(geographic_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
-add_message_files(
-  DIRECTORY msg
-  FILES
-  ADSBVehicle.msg
-  ActuatorControl.msg
-  Altitude.msg
-  AttitudeTarget.msg
-  BatteryStatus.msg
-  CamIMUStamp.msg
-  CommandCode.msg
-  CompanionProcessStatus.msg
-  OnboardComputerStatus.msg
-  DebugValue.msg
-  ESCInfo.msg
-  ESCInfoItem.msg
-  ESCStatus.msg
-  ESCStatusItem.msg
-  EstimatorStatus.msg
-  ExtendedState.msg
-  FileEntry.msg
-  GlobalPositionTarget.msg
-  GPSRAW.msg
-  GPSRTK.msg
-  HilActuatorControls.msg
-  HilControls.msg
-  HilGPS.msg
-  HilSensor.msg
-  HilStateQuaternion.msg
-  HomePosition.msg
-  LandingTarget.msg
-  LogData.msg
-  LogEntry.msg
-  ManualControl.msg
-  Mavlink.msg
-  MountControl.msg
-  OpticalFlowRad.msg
-  OverrideRCIn.msg
-  Param.msg
-  ParamValue.msg
-  PlayTuneV2.msg
-  PositionTarget.msg
-  RCIn.msg
-  RCOut.msg
-  RTCM.msg
-  RadioStatus.msg
-  RTKBaseline.msg
-  State.msg
-  StatusText.msg
-  Thrust.msg
-  TimesyncStatus.msg
-  Trajectory.msg
-  VFR_HUD.msg
-  VehicleInfo.msg
-  Vibration.msg
-  Waypoint.msg
-  WaypointList.msg
-  WaypointReached.msg
-  WheelOdomStamped.msg
+# include_directories(include)
+
+# [[[cog:
+# import mavros_cog
+# ]]]
+# [[[end]]] (checksum: d41d8cd98f00b204e9800998ecf8427e)
+
+set(msg_files
+  # [[[cog:
+  # mavros_cog.outl_glob_files('msg', '*.msg')
+  # ]]]
+  msg/ADSBVehicle.msg
+  msg/ActuatorControl.msg
+  msg/Altitude.msg
+  msg/AttitudeTarget.msg
+  msg/CamIMUStamp.msg
+  msg/CommandCode.msg
+  msg/CompanionProcessStatus.msg
+  msg/DebugValue.msg
+  msg/ESCInfo.msg
+  msg/ESCInfoItem.msg
+  msg/ESCStatus.msg
+  msg/ESCStatusItem.msg
+  msg/EstimatorStatus.msg
+  msg/ExtendedState.msg
+  msg/FileEntry.msg
+  msg/GPSRAW.msg
+  msg/GPSRTK.msg
+  msg/GlobalPositionTarget.msg
+  msg/HilActuatorControls.msg
+  msg/HilControls.msg
+  msg/HilGPS.msg
+  msg/HilSensor.msg
+  msg/HilStateQuaternion.msg
+  msg/HomePosition.msg
+  msg/LandingTarget.msg
+  msg/LogData.msg
+  msg/LogEntry.msg
+  msg/ManualControl.msg
+  msg/Mavlink.msg
+  msg/MountControl.msg
+  msg/OnboardComputerStatus.msg
+  msg/OpticalFlowRad.msg
+  msg/OverrideRCIn.msg
+  msg/Param.msg
+  msg/ParamEvent.msg
+  msg/ParamValue.msg
+  msg/PlayTuneV2.msg
+  msg/PositionTarget.msg
+  msg/RCIn.msg
+  msg/RCOut.msg
+  msg/RTCM.msg
+  msg/RTKBaseline.msg
+  msg/RadioStatus.msg
+  msg/State.msg
+  msg/StatusText.msg
+  msg/Thrust.msg
+  msg/TimesyncStatus.msg
+  msg/Trajectory.msg
+  msg/VehicleInfo.msg
+  msg/VfrHud.msg
+  msg/Vibration.msg
+  msg/Waypoint.msg
+  msg/WaypointList.msg
+  msg/WaypointReached.msg
+  msg/WheelOdomStamped.msg
+  # [[[end]]] (checksum: f2efaa67b6ea895e5dc49374e3d2ac09)
 )
 
-add_service_files(
-  DIRECTORY srv
-  FILES
-  CommandBool.srv
-  CommandHome.srv
-  CommandInt.srv
-  CommandLong.srv
-  CommandTOL.srv
-  CommandTriggerControl.srv
-  CommandTriggerInterval.srv
-  CommandVtolTransition.srv
-  FileChecksum.srv
-  FileClose.srv
-  FileList.srv
-  FileMakeDir.srv
-  FileOpen.srv
-  FileRead.srv
-  FileRemove.srv
-  FileRemoveDir.srv
-  FileRename.srv
-  FileTruncate.srv
-  FileWrite.srv
-  LogRequestData.srv
-  LogRequestEnd.srv
-  LogRequestList.srv
-  MountConfigure.srv
-  MessageInterval.srv
-  ParamGet.srv
-  ParamPull.srv
-  ParamPush.srv
-  ParamSet.srv
-  SetMavFrame.srv
-  SetMode.srv
-  StreamRate.srv
-  VehicleInfoGet.srv
-  WaypointClear.srv
-  WaypointPull.srv
-  WaypointPush.srv
-  WaypointSetCurrent.srv
+set(srv_files
+  # [[[cog:
+  # mavros_cog.outl_glob_files('srv', '*.srv')
+  # ]]]
+  srv/CommandBool.srv
+  srv/CommandHome.srv
+  srv/CommandInt.srv
+  srv/CommandLong.srv
+  srv/CommandTOL.srv
+  srv/CommandTriggerControl.srv
+  srv/CommandTriggerInterval.srv
+  srv/CommandVtolTransition.srv
+  srv/EndpointAdd.srv
+  srv/EndpointDel.srv
+  srv/FileChecksum.srv
+  srv/FileClose.srv
+  srv/FileList.srv
+  srv/FileMakeDir.srv
+  srv/FileOpen.srv
+  srv/FileRead.srv
+  srv/FileRemove.srv
+  srv/FileRemoveDir.srv
+  srv/FileRename.srv
+  srv/FileTruncate.srv
+  srv/FileWrite.srv
+  srv/LogRequestData.srv
+  srv/LogRequestEnd.srv
+  srv/LogRequestList.srv
+  srv/MessageInterval.srv
+  srv/MountConfigure.srv
+  srv/ParamGet.srv
+  srv/ParamPull.srv
+  srv/ParamPush.srv
+  srv/ParamSet.srv
+  srv/ParamSetV2.srv
+  srv/SetMavFrame.srv
+  srv/SetMode.srv
+  srv/StreamRate.srv
+  srv/VehicleInfoGet.srv
+  srv/WaypointClear.srv
+  srv/WaypointPull.srv
+  srv/WaypointPush.srv
+  srv/WaypointSetCurrent.srv
+  # [[[end]]] (checksum: 21ebf12a8840f2be3b7b7654c0bd9429)
 )
 
-# add_action_files(
-#   DIRECTORY action
-#   FILES
-#   Action1.action
-#   Action2.action
-# )
+rosidl_generate_interfaces(${PROJECT_NAME}
+  ${msg_files}
+  ${srv_files}
+  DEPENDENCIES
+  builtin_interfaces
+  rcl_interfaces
+  geographic_msgs
+  geometry_msgs
+  sensor_msgs
+  std_msgs
+)
 
-generate_messages(DEPENDENCIES geographic_msgs geometry_msgs sensor_msgs std_msgs)
+ament_export_dependencies(rosidl_default_runtime)
 
-catkin_package(
-  INCLUDE_DIRS include
-  CATKIN_DEPENDS geographic_msgs geometry_msgs message_runtime sensor_msgs std_msgs)
+install(
+  FILES mavros_msgs_mapping_rule.yaml
+  DESTINATION share/${PROJECT_NAME}
+)
 
-install(DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  FILES_MATCHING PATTERN "*.h")
+install(
+  DIRECTORY include/
+  DESTINATION include
+  FILES_MATCHING PATTERN "*.hpp"
+)
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+
+  # NOTE(vooon): Does not support our custom triple-license, tiered to make it to work.
+  list(APPEND AMENT_LINT_AUTO_EXCLUDE ament_cmake_copyright)
+
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+ament_package()
+# vim: ts=2 sw=2 et:

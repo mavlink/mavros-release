@@ -14,263 +14,312 @@
  * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
 
-#include <mavros/mavros_plugin.h>
-#include <mavros/setpoint_mixin.h>
-#include <eigen_conversions/eigen_msg.h>
+#include <tf2_eigen/tf2_eigen.h>
 
-#include <mavros_msgs/AttitudeTarget.h>
-#include <mavros_msgs/PositionTarget.h>
-#include <mavros_msgs/GlobalPositionTarget.h>
+#include <algorithm>
 
-namespace mavros {
-namespace std_plugins {
+#include "rcpputils/asserts.hpp"
+#include "mavros/mavros_uas.hpp"
+#include "mavros/plugin.hpp"
+#include "mavros/plugin_filter.hpp"
+#include "mavros/setpoint_mixin.hpp"
+
+#include "mavros_msgs/msg/attitude_target.hpp"
+#include "mavros_msgs/msg/position_target.hpp"
+#include "mavros_msgs/msg/global_position_target.hpp"
+
+namespace mavros
+{
+namespace std_plugins
+{
+using namespace std::placeholders;      // NOLINT
+
 /**
  * @brief Setpoint RAW plugin
+ * @plugin setpoint_raw
  *
  * Send position setpoints and publish current state (return loop).
  * User can decide what set of filed needed for operation via IGNORE bits.
  */
-class SetpointRawPlugin : public plugin::PluginBase,
-	private plugin::SetPositionTargetLocalNEDMixin<SetpointRawPlugin>,
-	private plugin::SetPositionTargetGlobalIntMixin<SetpointRawPlugin>,
-	private plugin::SetAttitudeTargetMixin<SetpointRawPlugin> {
+class SetpointRawPlugin : public plugin::Plugin,
+  private plugin::SetPositionTargetLocalNEDMixin<SetpointRawPlugin>,
+  private plugin::SetPositionTargetGlobalIntMixin<SetpointRawPlugin>,
+  private plugin::SetAttitudeTargetMixin<SetpointRawPlugin>
+{
 public:
-	SetpointRawPlugin() : PluginBase(),
-		sp_nh("~setpoint_raw")
-	{ }
+  explicit SetpointRawPlugin(plugin::UASPtr uas_)
+  : Plugin(uas_, "setpoint_raw")
+  {
+    auto sensor_qos = rclcpp::SensorDataQoS();
 
-	void initialize(UAS &uas_) override
-	{
-		PluginBase::initialize(uas_);
+    node->declare_parameter("thrust_scaling");
+    // node->declare_parameter("thrust_scaling", 1.0);
 
-		bool tf_listen;
+    local_sub = node->create_subscription<mavros_msgs::msg::PositionTarget>(
+      "~/local", sensor_qos, std::bind(
+        &SetpointRawPlugin::local_cb, this,
+        _1));
+    global_sub = node->create_subscription<mavros_msgs::msg::GlobalPositionTarget>(
+      "~/global",
+      sensor_qos, std::bind(
+        &SetpointRawPlugin::global_cb, this,
+        _1));
+    attitude_sub = node->create_subscription<mavros_msgs::msg::AttitudeTarget>(
+      "~/attitude",
+      sensor_qos, std::bind(
+        &SetpointRawPlugin::attitude_cb, this, _1));
 
-		local_sub = sp_nh.subscribe("local", 10, &SetpointRawPlugin::local_cb, this);
-		global_sub = sp_nh.subscribe("global", 10, &SetpointRawPlugin::global_cb, this);
-		attitude_sub = sp_nh.subscribe("attitude", 10, &SetpointRawPlugin::attitude_cb, this);
-		target_local_pub = sp_nh.advertise<mavros_msgs::PositionTarget>("target_local", 10);
-		target_global_pub = sp_nh.advertise<mavros_msgs::GlobalPositionTarget>("target_global", 10);
-		target_attitude_pub = sp_nh.advertise<mavros_msgs::AttitudeTarget>("target_attitude", 10);
-	}
+    target_local_pub = node->create_publisher<mavros_msgs::msg::PositionTarget>(
+      "~/target_local",
+      sensor_qos);
+    target_global_pub = node->create_publisher<mavros_msgs::msg::GlobalPositionTarget>(
+      "~/target_global", sensor_qos);
+    target_attitude_pub = node->create_publisher<mavros_msgs::msg::AttitudeTarget>(
+      "~/target_attitude", sensor_qos);
+  }
 
-	Subscriptions get_subscriptions() override
-	{
-		return {
-				make_handler(&SetpointRawPlugin::handle_position_target_local_ned),
-				make_handler(&SetpointRawPlugin::handle_position_target_global_int),
-				make_handler(&SetpointRawPlugin::handle_attitude_target),
-		};
-	}
+  Subscriptions get_subscriptions() override
+  {
+    return {
+      make_handler(&SetpointRawPlugin::handle_position_target_local_ned),
+      make_handler(&SetpointRawPlugin::handle_position_target_global_int),
+      make_handler(&SetpointRawPlugin::handle_attitude_target),
+    };
+  }
 
 private:
-	friend class SetPositionTargetLocalNEDMixin;
-	friend class SetPositionTargetGlobalIntMixin;
-	friend class SetAttitudeTargetMixin;
-	ros::NodeHandle sp_nh;
+  friend class plugin::SetPositionTargetLocalNEDMixin<SetpointRawPlugin>;
+  friend class plugin::SetPositionTargetGlobalIntMixin<SetpointRawPlugin>;
+  friend class plugin::SetAttitudeTargetMixin<SetpointRawPlugin>;
 
-	ros::Subscriber local_sub, global_sub, attitude_sub;
-	ros::Publisher target_local_pub, target_global_pub, target_attitude_pub;
+  rclcpp::Subscription<mavros_msgs::msg::PositionTarget>::SharedPtr local_sub;
+  rclcpp::Subscription<mavros_msgs::msg::GlobalPositionTarget>::SharedPtr global_sub;
+  rclcpp::Subscription<mavros_msgs::msg::AttitudeTarget>::SharedPtr attitude_sub;
 
-	/* -*- message handlers -*- */
-	void handle_position_target_local_ned(const mavlink::mavlink_message_t *msg, mavlink::common::msg::POSITION_TARGET_LOCAL_NED &tgt)
-	{
-		// Transform desired position,velocities,and accels from ENU to NED frame
-		auto position = ftf::transform_frame_ned_enu(Eigen::Vector3d(tgt.x, tgt.y, tgt.z));
-		auto velocity = ftf::transform_frame_ned_enu(Eigen::Vector3d(tgt.vx, tgt.vy, tgt.vz));
-		auto af = ftf::transform_frame_ned_enu(Eigen::Vector3d(tgt.afx, tgt.afy, tgt.afz));
-		float yaw = ftf::quaternion_get_yaw(
-					ftf::transform_orientation_aircraft_baselink(
-						ftf::transform_orientation_ned_enu(
-							ftf::quaternion_from_rpy(0.0, 0.0, tgt.yaw))));
-		Eigen::Vector3d ang_vel_ned(0.0, 0.0, tgt.yaw_rate);
-		auto ang_vel_enu = ftf::transform_frame_ned_enu(ang_vel_ned);
-		float yaw_rate = ang_vel_enu.z();
+  rclcpp::Publisher<mavros_msgs::msg::PositionTarget>::SharedPtr target_local_pub;
+  rclcpp::Publisher<mavros_msgs::msg::GlobalPositionTarget>::SharedPtr target_global_pub;
+  rclcpp::Publisher<mavros_msgs::msg::AttitudeTarget>::SharedPtr target_attitude_pub;
 
-		auto target = boost::make_shared<mavros_msgs::PositionTarget>();
+  /* -*- message handlers -*- */
+  void handle_position_target_local_ned(
+    const mavlink::mavlink_message_t * msg [[maybe_unused]],
+    mavlink::common::msg::POSITION_TARGET_LOCAL_NED & tgt,
+    plugin::filter::SystemAndOk filter [[maybe_unused]])
+  {
+    // Transform desired position,velocities,and accels from ENU to NED frame
+    auto position = ftf::transform_frame_ned_enu(Eigen::Vector3d(tgt.x, tgt.y, tgt.z));
+    auto velocity = ftf::transform_frame_ned_enu(Eigen::Vector3d(tgt.vx, tgt.vy, tgt.vz));
+    auto af = ftf::transform_frame_ned_enu(Eigen::Vector3d(tgt.afx, tgt.afy, tgt.afz));
+    float yaw = ftf::quaternion_get_yaw(
+      ftf::transform_orientation_aircraft_baselink(
+        ftf::transform_orientation_ned_enu(
+          ftf::quaternion_from_rpy(0.0, 0.0, tgt.yaw))));
+    Eigen::Vector3d ang_vel_ned(0.0, 0.0, tgt.yaw_rate);
+    auto ang_vel_enu = ftf::transform_frame_ned_enu(ang_vel_ned);
+    float yaw_rate = ang_vel_enu.z();
 
-		target->header.stamp = m_uas->synchronise_stamp(tgt.time_boot_ms);
-		target->coordinate_frame = tgt.coordinate_frame;
-		target->type_mask = tgt.type_mask;
-		tf::pointEigenToMsg(position, target->position);
-		tf::vectorEigenToMsg(velocity, target->velocity);
-		tf::vectorEigenToMsg(af, target->acceleration_or_force);
-		target->yaw = yaw;
-		target->yaw_rate = yaw_rate;
+    auto target = mavros_msgs::msg::PositionTarget();
+    target.header.stamp = uas->synchronise_stamp(tgt.time_boot_ms);
+    target.coordinate_frame = tgt.coordinate_frame;
+    target.type_mask = tgt.type_mask;
+    target.position = tf2::toMsg(position);
+    tf2::toMsg(velocity, target.velocity);
+    tf2::toMsg(af, target.acceleration_or_force);
+    target.yaw = yaw;
+    target.yaw_rate = yaw_rate;
 
-		target_local_pub.publish(target);
-	}
+    target_local_pub->publish(target);
+  }
 
-	void handle_position_target_global_int(const mavlink::mavlink_message_t *msg, mavlink::common::msg::POSITION_TARGET_GLOBAL_INT &tgt)
-	{
-		// Transform desired velocities from ENU to NED frame
-		auto velocity = ftf::transform_frame_ned_enu(Eigen::Vector3d(tgt.vx, tgt.vy, tgt.vz));
-		auto af = ftf::transform_frame_ned_enu(Eigen::Vector3d(tgt.afx, tgt.afy, tgt.afz));
-		float yaw = ftf::quaternion_get_yaw(
-					ftf::transform_orientation_aircraft_baselink(
-						ftf::transform_orientation_ned_enu(
-							ftf::quaternion_from_rpy(0.0, 0.0, tgt.yaw))));
-		Eigen::Vector3d ang_vel_ned(0.0, 0.0, tgt.yaw_rate);
-		auto ang_vel_enu = ftf::transform_frame_ned_enu(ang_vel_ned);
-		float yaw_rate = ang_vel_enu.z();
+  void handle_position_target_global_int(
+    const mavlink::mavlink_message_t * msg [[maybe_unused]],
+    mavlink::common::msg::POSITION_TARGET_GLOBAL_INT & tgt,
+    plugin::filter::SystemAndOk filter [[maybe_unused]])
+  {
+    // Transform desired velocities from ENU to NED frame
+    auto velocity = ftf::transform_frame_ned_enu(Eigen::Vector3d(tgt.vx, tgt.vy, tgt.vz));
+    auto af = ftf::transform_frame_ned_enu(Eigen::Vector3d(tgt.afx, tgt.afy, tgt.afz));
+    float yaw = ftf::quaternion_get_yaw(
+      ftf::transform_orientation_aircraft_baselink(
+        ftf::transform_orientation_ned_enu(
+          ftf::quaternion_from_rpy(0.0, 0.0, tgt.yaw))));
+    Eigen::Vector3d ang_vel_ned(0.0, 0.0, tgt.yaw_rate);
+    auto ang_vel_enu = ftf::transform_frame_ned_enu(ang_vel_ned);
+    float yaw_rate = ang_vel_enu.z();
 
-		auto target = boost::make_shared<mavros_msgs::GlobalPositionTarget>();
+    auto target = mavros_msgs::msg::GlobalPositionTarget();
+    target.header.stamp = uas->synchronise_stamp(tgt.time_boot_ms);
+    target.coordinate_frame = tgt.coordinate_frame;
+    target.type_mask = tgt.type_mask;
+    target.latitude = tgt.lat_int / 1e7;
+    target.longitude = tgt.lon_int / 1e7;
+    target.altitude = tgt.alt;
+    tf2::toMsg(velocity, target.velocity);
+    tf2::toMsg(af, target.acceleration_or_force);
+    target.yaw = yaw;
+    target.yaw_rate = yaw_rate;
 
-		target->header.stamp = m_uas->synchronise_stamp(tgt.time_boot_ms);
-		target->coordinate_frame = tgt.coordinate_frame;
-		target->type_mask = tgt.type_mask;
-		target->latitude = tgt.lat_int / 1e7;
-		target->longitude = tgt.lon_int / 1e7;
-		target->altitude = tgt.alt;
-		tf::vectorEigenToMsg(velocity, target->velocity);
-		tf::vectorEigenToMsg(af, target->acceleration_or_force);
-		target->yaw = yaw;
-		target->yaw_rate = yaw_rate;
+    target_global_pub->publish(target);
+  }
 
-		target_global_pub.publish(target);
-	}
+  void handle_attitude_target(
+    const mavlink::mavlink_message_t * msg [[maybe_unused]],
+    mavlink::common::msg::ATTITUDE_TARGET & tgt,
+    plugin::filter::SystemAndOk filter [[maybe_unused]])
+  {
+    // Transform orientation from baselink -> ENU
+    // to aircraft -> NED
+    auto orientation = ftf::transform_orientation_ned_enu(
+      ftf::transform_orientation_baselink_aircraft(
+        Eigen::Quaterniond(tgt.q[0], tgt.q[1], tgt.q[2], tgt.q[3])));
 
-	void handle_attitude_target(const mavlink::mavlink_message_t *msg, mavlink::common::msg::ATTITUDE_TARGET &tgt)
-	{
-		// Transform orientation from baselink -> ENU
-		// to aircraft -> NED
-		auto orientation = ftf::transform_orientation_ned_enu(
-					ftf::transform_orientation_baselink_aircraft(
-						Eigen::Quaterniond(tgt.q[0], tgt.q[1], tgt.q[2], tgt.q[3])));
+    auto body_rate =
+      ftf::transform_frame_baselink_aircraft(
+      Eigen::Vector3d(
+        tgt.body_roll_rate,
+        tgt.body_pitch_rate, tgt.body_yaw_rate));
 
-		auto body_rate = ftf::transform_frame_baselink_aircraft(Eigen::Vector3d(tgt.body_roll_rate, tgt.body_pitch_rate, tgt.body_yaw_rate));
+    auto target = mavros_msgs::msg::AttitudeTarget();
+    target.header.stamp = uas->synchronise_stamp(tgt.time_boot_ms);
+    target.type_mask = tgt.type_mask;
+    target.orientation = tf2::toMsg(orientation);
+    tf2::toMsg(body_rate, target.body_rate);
+    target.thrust = tgt.thrust;
 
-		auto target = boost::make_shared<mavros_msgs::AttitudeTarget>();
+    target_attitude_pub->publish(target);
+  }
 
-		target->header.stamp = m_uas->synchronise_stamp(tgt.time_boot_ms);
-		target->type_mask = tgt.type_mask;
-		tf::quaternionEigenToMsg(orientation, target->orientation);
-		tf::vectorEigenToMsg(body_rate, target->body_rate);
-		target->thrust = tgt.thrust;
+  /* -*- callbacks -*- */
 
-		target_attitude_pub.publish(target);
-	}
+  void local_cb(const mavros_msgs::msg::PositionTarget::SharedPtr req)
+  {
+    using mavros_msgs::msg::PositionTarget;
 
-	/* -*- callbacks -*- */
+    Eigen::Vector3d position, velocity, af;
+    float yaw, yaw_rate;
 
-	void local_cb(const mavros_msgs::PositionTarget::ConstPtr &req)
-	{
-		Eigen::Vector3d position, velocity, af;
-		float yaw, yaw_rate;
+    tf2::fromMsg(req->position, position);
+    tf2::fromMsg(req->velocity, velocity);
+    tf2::fromMsg(req->acceleration_or_force, af);
 
-		tf::pointMsgToEigen(req->position, position);
-		tf::vectorMsgToEigen(req->velocity, velocity);
-		tf::vectorMsgToEigen(req->acceleration_or_force, af);
+    // Transform frame ENU->NED
+    if (req->coordinate_frame == PositionTarget::FRAME_BODY_NED ||
+      req->coordinate_frame == PositionTarget::FRAME_BODY_OFFSET_NED)
+    {
+      position = ftf::transform_frame_baselink_aircraft(position);
+      velocity = ftf::transform_frame_baselink_aircraft(velocity);
+      af = ftf::transform_frame_baselink_aircraft(af);
+      yaw = ftf::quaternion_get_yaw(
+        ftf::transform_orientation_absolute_frame_aircraft_baselink(
+          ftf::quaternion_from_rpy(0.0, 0.0, req->yaw)));
+    } else {
+      position = ftf::transform_frame_enu_ned(position);
+      velocity = ftf::transform_frame_enu_ned(velocity);
+      af = ftf::transform_frame_enu_ned(af);
+      yaw = ftf::quaternion_get_yaw(
+        ftf::transform_orientation_aircraft_baselink(
+          ftf::transform_orientation_ned_enu(
+            ftf::quaternion_from_rpy(0.0, 0.0, req->yaw))));
+    }
 
-		// Transform frame ENU->NED
-		if (req->coordinate_frame == mavros_msgs::PositionTarget::FRAME_BODY_NED || req->coordinate_frame == mavros_msgs::PositionTarget::FRAME_BODY_OFFSET_NED) {
-			position = ftf::transform_frame_baselink_aircraft(position);
-			velocity = ftf::transform_frame_baselink_aircraft(velocity);
-			af = ftf::transform_frame_baselink_aircraft(af);
-			yaw = ftf::quaternion_get_yaw(
-					ftf::transform_orientation_absolute_frame_aircraft_baselink(
-							ftf::quaternion_from_rpy(0.0, 0.0, req->yaw)));
-		} else {
-			position = ftf::transform_frame_enu_ned(position);
-			velocity = ftf::transform_frame_enu_ned(velocity);
-			af = ftf::transform_frame_enu_ned(af);
-			yaw = ftf::quaternion_get_yaw(
-					ftf::transform_orientation_aircraft_baselink(
-						ftf::transform_orientation_ned_enu(
-							ftf::quaternion_from_rpy(0.0, 0.0, req->yaw))));
-		}
+    Eigen::Vector3d ang_vel_enu(0.0, 0.0, req->yaw_rate);
+    auto ang_vel_ned = ftf::transform_frame_ned_enu(ang_vel_enu);
+    yaw_rate = ang_vel_ned.z();
 
-		Eigen::Vector3d ang_vel_enu(0.0, 0.0, req->yaw_rate);
-		auto ang_vel_ned = ftf::transform_frame_ned_enu(ang_vel_enu);
-		yaw_rate = ang_vel_ned.z();
+    set_position_target_local_ned(
+      get_time_boot_ms(
+        req->header.stamp),
+      req->coordinate_frame,
+      req->type_mask,
+      position,
+      velocity,
+      af,
+      yaw, yaw_rate);
+  }
 
-		set_position_target_local_ned(
-					req->header.stamp.toNSec() / 1000000,
-					req->coordinate_frame,
-					req->type_mask,
-					position,
-					velocity,
-					af,
-					yaw, yaw_rate);
-	}
+  void global_cb(const mavros_msgs::msg::GlobalPositionTarget::SharedPtr req)
+  {
+    Eigen::Vector3d velocity, af;
+    float yaw, yaw_rate;
 
-	void global_cb(const mavros_msgs::GlobalPositionTarget::ConstPtr &req)
-	{
-		Eigen::Vector3d velocity, af;
-		float yaw, yaw_rate;
+    tf2::fromMsg(req->velocity, velocity);
+    tf2::fromMsg(req->acceleration_or_force, af);
 
-		tf::vectorMsgToEigen(req->velocity, velocity);
-		tf::vectorMsgToEigen(req->acceleration_or_force, af);
+    // Transform frame ENU->NED
+    velocity = ftf::transform_frame_enu_ned(velocity);
+    af = ftf::transform_frame_enu_ned(af);
+    yaw = ftf::quaternion_get_yaw(
+      ftf::transform_orientation_aircraft_baselink(
+        ftf::transform_orientation_ned_enu(
+          ftf::quaternion_from_rpy(0.0, 0.0, req->yaw))));
+    Eigen::Vector3d ang_vel_enu(0.0, 0.0, req->yaw_rate);
+    auto ang_vel_ned = ftf::transform_frame_ned_enu(ang_vel_enu);
+    yaw_rate = ang_vel_ned.z();
 
-		// Transform frame ENU->NED
-		velocity = ftf::transform_frame_enu_ned(velocity);
-		af = ftf::transform_frame_enu_ned(af);
-		yaw = ftf::quaternion_get_yaw(
-					ftf::transform_orientation_aircraft_baselink(
-						ftf::transform_orientation_ned_enu(
-							ftf::quaternion_from_rpy(0.0, 0.0, req->yaw))));
-		Eigen::Vector3d ang_vel_enu(0.0, 0.0, req->yaw_rate);
-		auto ang_vel_ned = ftf::transform_frame_ned_enu(ang_vel_enu);
-		yaw_rate = ang_vel_ned.z();
+    set_position_target_global_int(
+      get_time_boot_ms(req->header.stamp),
+      req->coordinate_frame,
+      req->type_mask,
+      req->latitude * 1e7,
+      req->longitude * 1e7,
+      req->altitude,
+      velocity,
+      af,
+      yaw, yaw_rate);
+  }
 
-		set_position_target_global_int(
-					req->header.stamp.toNSec() / 1000000,
-					req->coordinate_frame,
-					req->type_mask,
-					req->latitude * 1e7,
-					req->longitude * 1e7,
-					req->altitude,
-					velocity,
-					af,
-					yaw, yaw_rate);
-	}
+  void attitude_cb(const mavros_msgs::msg::AttitudeTarget::SharedPtr req)
+  {
+    double thrust_scaling;
+    Eigen::Quaterniond desired_orientation;
+    Eigen::Vector3d baselink_angular_rate;
+    Eigen::Vector3d body_rate;
+    double thrust;
 
-	void attitude_cb(const mavros_msgs::AttitudeTarget::ConstPtr &req)
-	{
-		double thrust_scaling;
-		Eigen::Quaterniond desired_orientation;
-		Eigen::Vector3d baselink_angular_rate;
-		Eigen::Vector3d body_rate;
-		double thrust;
+    // Set Thrust scaling in px4_config.yaml, setpoint_raw block.
+    // ignore thrust is false by default, unless no thrust scalling is set or thrust is zero
+    auto ignore_thrust = req->thrust != 0.0 &&
+      !node->get_parameter("thrust_scaling", thrust_scaling);
 
-		// Set Thrust scaling in px4_config.yaml, setpoint_raw block.
-		// ignore thrust is false by default, unless no thrust scalling is set or thrust is zero
-		auto ignore_thrust = req->thrust != 0.0 && !sp_nh.getParam("thrust_scaling", thrust_scaling);
+    if (ignore_thrust) {
+      // I believe it's safer without sending zero thrust, but actually ignoring the actuation.
+      RCLCPP_ERROR_THROTTLE(
+        get_logger(), *get_clock(), 5000,
+        "Recieved thrust, but ignore_thrust is true: "
+        "the most likely cause of this is a failure to specify the thrust_scaling parameters "
+        "on px4/apm_config.yaml. Actuation will be ignored.");
+      return;
+    } else {
+      if (thrust_scaling == 0.0) {
+        RCLCPP_WARN_THROTTLE(
+          get_logger(), *get_clock(), 5000,
+          "thrust_scaling parameter is set to zero.");
+      }
+      thrust = std::min(1.0, std::max(0.0, req->thrust * thrust_scaling));
+    }
 
-		if (ignore_thrust) {
-			// I believe it's safer without sending zero thrust, but actually ignoring the actuation.
-			ROS_FATAL_THROTTLE_NAMED(5, "setpoint_raw", "Recieved thrust, but ignore_thrust is true: "
-				"the most likely cause of this is a failure to specify the thrust_scaling parameters "
-				"on px4/apm_config.yaml. Actuation will be ignored.");
-			return;
-		} else {
-			if (thrust_scaling == 0.0) {
-				ROS_WARN_THROTTLE_NAMED(5, "setpoint_raw", "thrust_scaling parameter is set to zero.");
-			}
-			thrust = std::min(1.0, std::max(0.0, req->thrust * thrust_scaling));
-		}
+    // Take care of attitude setpoint
+    desired_orientation = ftf::to_eigen(req->orientation);
 
-		// Take care of attitude setpoint
-		desired_orientation = ftf::to_eigen(req->orientation);
+    // Transform desired orientation to represent aircraft->NED,
+    // MAVROS operates on orientation of base_link->ENU
+    auto ned_desired_orientation = ftf::transform_orientation_enu_ned(
+      ftf::transform_orientation_baselink_aircraft(desired_orientation));
 
-		// Transform desired orientation to represent aircraft->NED,
-		// MAVROS operates on orientation of base_link->ENU
-		auto ned_desired_orientation = ftf::transform_orientation_enu_ned(
-			ftf::transform_orientation_baselink_aircraft(desired_orientation));
+    body_rate = ftf::transform_frame_baselink_aircraft(
+      ftf::to_eigen(req->body_rate));
 
-		body_rate = ftf::transform_frame_baselink_aircraft(
-			ftf::to_eigen(req->body_rate));
-
-		set_attitude_target(
-					req->header.stamp.toNSec() / 1000000,
-					req->type_mask,
-					ned_desired_orientation,
-					body_rate,
-					thrust);
-
-	}
+    set_attitude_target(
+      get_time_boot_ms(req->header.stamp),
+      req->type_mask,
+      ned_desired_orientation,
+      body_rate,
+      thrust);
+  }
 };
-}	// namespace std_plugins
-}	// namespace mavros
 
-#include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(mavros::std_plugins::SetpointRawPlugin, mavros::plugin::PluginBase)
+}       // namespace std_plugins
+}       // namespace mavros
+
+#include <mavros/mavros_plugin_register_macro.hpp>  // NOLINT
+MAVROS_PLUGIN_REGISTER(mavros::std_plugins::SetpointRawPlugin)
