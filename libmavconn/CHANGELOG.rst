@@ -2,6 +2,19 @@
 Changelog for package libmavconn
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.0.1 (2021-06-06)
+------------------
+* Merge branch 'master' into ros2
+  * master:
+  readme: update
+  1.8.0
+  update changelog
+  Create semgrep-analysis.yml
+  Create codeql-analysis.yml
+* 1.8.0
+* update changelog
+* Contributors: Vladimir Ermakov
+
 2.0.0 (2021-05-28)
 ------------------
 * pylib: fix flake8
@@ -35,6 +48,9 @@ Changelog for package libmavconn
 * msgs: start porting to ROS2
 * disable all packages but messages
 * Contributors: Mikael Arguedas, Vladimir Ermakov
+
+1.8.0 (2021-05-05)
+------------------
 
 1.7.1 (2021-04-05)
 ------------------
