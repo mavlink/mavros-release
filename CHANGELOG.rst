@@ -2,6 +2,20 @@
 Changelog for package mavros_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.0.1 (2021-06-06)
+------------------
+* Add rcl_interfaces dependency
+* Merge branch 'master' into ros2
+  * master:
+  readme: update
+  1.8.0
+  update changelog
+  Create semgrep-analysis.yml
+  Create codeql-analysis.yml
+* 1.8.0
+* update changelog
+* Contributors: Rob Clarke, Vladimir Ermakov
+
 2.0.0 (2021-05-28)
 ------------------
 * msgs: update command codes
@@ -52,6 +66,9 @@ Changelog for package mavros_msgs
   add ros1_bridge mapping rule for renamed VfrHud message
 * make mavro_msgs compile in ROS 2
 * Contributors: Mikael Arguedas, Mike Lautman, Vladimir Ermakov
+
+1.8.0 (2021-05-05)
+------------------
 
 1.7.1 (2021-04-05)
 ------------------
