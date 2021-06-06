@@ -2,6 +2,20 @@
 Changelog for package mavros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.0.1 (2021-06-06)
+------------------
+* readme: update source build instruction
+* Merge branch 'master' into ros2
+  * master:
+  readme: update
+  1.8.0
+  update changelog
+  Create semgrep-analysis.yml
+  Create codeql-analysis.yml
+* 1.8.0
+* update changelog
+* Contributors: Vladimir Ermakov
+
 2.0.0 (2021-05-28)
 ------------------
 * pylib: fixing pep257 errors
@@ -209,6 +223,14 @@ Changelog for package mavros
 * msgs: start porting to ROS2
 * disable all packages but messages
 * Contributors: Alexey Rogachevskiy, Mikael Arguedas, Thomas, Vladimir Ermakov
+
+1.8.0 (2021-05-05)
+------------------
+* lib: ftf: allow both Quaterniond and Quaternionf for quaternion_to_mavlink()
+* extras: distance_sensor: rename param for custom orientation, apply uncrustify
+* px4_config: Add distance_sensor parameters
+* convert whole expression to mm
+* Contributors: Alexey Rogachevskiy, Thomas, Vladimir Ermakov
 
 1.7.1 (2021-04-05)
 ------------------
