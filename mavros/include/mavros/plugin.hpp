@@ -78,11 +78,13 @@ public:
   : uas(uas_), node(std::dynamic_pointer_cast<rclcpp::Node>(uas_))
   {}
 
-  explicit Plugin(UASPtr uas_, const std::string & subnode)
+  explicit Plugin(
+    UASPtr uas_, const std::string & subnode,
+    const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
   : uas(uas_),
     // node(std::dynamic_pointer_cast<rclcpp::Node>(uas_)->create_sub_node(subnode))  // https://github.com/ros2/rclcpp/issues/731
     node(rclcpp::Node::make_shared(subnode,
-      std::dynamic_pointer_cast<rclcpp::Node>(uas_)->get_fully_qualified_name()))
+      std::dynamic_pointer_cast<rclcpp::Node>(uas_)->get_fully_qualified_name(), options))
   {}
 
   virtual ~Plugin() = default;
@@ -224,12 +226,16 @@ protected:
   )
   {
     node_watch_parameters[name] = cb;
+
+#ifdef USE_OLD_DECLARE_PARAMETER
     // NOTE(vooon): for Foxy:
     return node->declare_parameter(
       name,
       rclcpp::ParameterValue(), parameter_descriptor, ignore_override);
-    // NOTE(vooon): for master
-    // return node->declare_parameter<ParameterT>(name, parameter_descriptor, ignore_override);
+#else
+    // NOTE(vooon): for Galactic:
+    return node->declare_parameter<ParameterT>(name, parameter_descriptor, ignore_override);
+#endif
   }
 
   template<typename ParameterT>
