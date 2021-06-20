@@ -2,6 +2,9 @@
 Changelog for package libmavconn
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.0.3 (2021-06-20)
+------------------
+
 2.0.2 (2021-06-20)
 ------------------
 * lib: yet another fix of cmake module
