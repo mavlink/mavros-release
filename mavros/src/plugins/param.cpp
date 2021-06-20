@@ -28,10 +28,7 @@
 #include "mavros/plugin.hpp"
 #include "mavros/plugin_filter.hpp"
 
-// #include "mavros_msgs/srv/param_set.hpp"
-// #include "mavros_msgs/srv/param_get.hpp"
 #include "mavros_msgs/srv/param_pull.hpp"
-// #include "mavros_msgs/srv/param_push.hpp"
 #include "mavros_msgs/srv/param_set_v2.hpp"
 #include "mavros_msgs/msg/param_event.hpp"
 
@@ -42,6 +39,20 @@ namespace std_plugins
 using namespace std::placeholders;      // NOLINT
 using namespace std::chrono_literals;   // NOLINT
 using utils::enum_value;
+
+// Copy from rclcpp/src/rclcpp/parameter_service_names.hpp
+// They are not exposed to user's code.
+namespace PSN
+{
+static constexpr const char * get_parameters = "~/get_parameters";
+static constexpr const char * get_parameter_types = "~/get_parameter_types";
+static constexpr const char * set_parameters = "~/set_parameters";
+static constexpr const char * set_parameters_atomically = "~/set_parameters_atomically";
+static constexpr const char * describe_parameters = "~/describe_parameters";
+static constexpr const char * list_parameters = "~/list_parameters";
+
+static constexpr const char * events = "/parameter_events";
+}  // namespace PSN
 
 /**
  * @brief Parameter storage
@@ -305,7 +316,7 @@ public:
       param_id.c_str(), param_index, param_count, pv.c_str());
   }
 
-  mavros_msgs::msg::ParamEvent to_msg() const
+  mavros_msgs::msg::ParamEvent to_event_msg() const
   {
     mavros_msgs::msg::ParamEvent msg{};
     msg.header.stamp = stamp;
@@ -322,12 +333,29 @@ public:
     return {param_id, param_value};
   }
 
+  rcl_interfaces::msg::Parameter to_parameter_msg() const
+  {
+    return to_rcl().to_parameter_msg();
+  }
+
+  rcl_interfaces::msg::ParameterDescriptor to_descriptor() const
+  {
+    rcl_interfaces::msg::ParameterDescriptor msg{};
+    msg.name = param_id;
+    msg.type = param_value.get_type();
+    msg.read_only = check_exclude_param_id(param_id);
+    msg.dynamic_typing = true;
+
+    return msg;
+  }
+
   /**
    * Exclude this parameters from ~param/push
    */
   static bool check_exclude_param_id(const std::string & param_id)
   {
     static const std::set<std::string> exclude_ids{
+      "_HASH_CHECK",
       "SYSID_SW_MREV",
       "SYS_NUM_RESETS",
       "ARSPD_OFFSET",
@@ -342,9 +370,9 @@ public:
       "CMD_TOTAL",
       "CMD_INDEX",
       "LOG_LASTFILE",
+      "MIS_TOTAL",
       "FENCE_TOTAL",
-      "FORMAT_VERSION",
-      "use_sim_time"    // ROS2 Node adds this
+      "FORMAT_VERSION"
     };
 
     return exclude_ids.find(param_id) != exclude_ids.end();
@@ -388,7 +416,8 @@ class ParamPlugin : public plugin::Plugin
 {
 public:
   explicit ParamPlugin(plugin::UASPtr uas_)
-  : Plugin(uas_, "param"),
+  : Plugin(uas_, "param", rclcpp::NodeOptions().start_parameter_services(
+        false).start_parameter_event_publisher(false)),
     BOOTUP_TIME(10s),
     LIST_TIMEOUT(30s),
     PARAM_TIMEOUT(1s),
@@ -398,28 +427,44 @@ public:
     is_timedout(false),
     param_rx_retries(RETRIES_COUNT)
   {
-    enable_node_watch_parameters();
+    auto event_qos = rclcpp::ParameterEventsQoS();
+    auto qos = rclcpp::ParametersQoS().get_rmw_qos_profile();
 
-    auto qos = rclcpp::ParametersQoS();
+    param_event_pub = node->create_publisher<mavros_msgs::msg::ParamEvent>("~/event", event_qos);
+    std_event_pub = node->create_publisher<rcl_interfaces::msg::ParameterEvent>(
+      PSN::events,
+      event_qos);
 
-    param_event_pub = node->create_publisher<mavros_msgs::msg::ParamEvent>("~/event", qos);
-
+    // Custom parameter services
     pull_srv =
       node->create_service<mavros_msgs::srv::ParamPull>(
       "~/pull",
-      std::bind(&ParamPlugin::pull_cb, this, _1, _2));
-    // push_srv =
-    //   node->create_service<mavros_msgs::srv::ParamPush>(
-    //   "~/push",
-    //   std::bind(&ParamPlugin::push_cb, this, _1, _2));
+      std::bind(&ParamPlugin::pull_cb, this, _1, _2), qos);
     set_srv =
       node->create_service<mavros_msgs::srv::ParamSetV2>(
       "~/set",
-      std::bind(&ParamPlugin::set_cb, this, _1, _2));
-    // get_srv =
-    //   node->create_service<mavros_msgs::srv::ParamGet>(
-    //   "~/get",
-    //   std::bind(&ParamPlugin::get_cb, this, _1, _2));
+      std::bind(&ParamPlugin::set_cb, this, _1, _2), qos);
+
+    // Standard parameter services
+    get_parameters_srv = node->create_service<rcl_interfaces::srv::GetParameters>(
+      PSN::get_parameters,
+      std::bind(&ParamPlugin::get_parameters_cb, this, _1, _2), qos);
+    get_parameter_types_srv = node->create_service<rcl_interfaces::srv::GetParameterTypes>(
+      PSN::get_parameter_types,
+      std::bind(&ParamPlugin::get_parameter_types_cb, this, _1, _2), qos);
+    set_parameters_srv = node->create_service<rcl_interfaces::srv::SetParameters>(
+      PSN::set_parameters,
+      std::bind(&ParamPlugin::set_parameters_cb, this, _1, _2), qos);
+    set_parameters_atomically_srv =
+      node->create_service<rcl_interfaces::srv::SetParametersAtomically>(
+      PSN::set_parameters_atomically,
+      std::bind(&ParamPlugin::set_parameters_atomically_cb, this, _1, _2), qos);
+    describe_parameters_srv = node->create_service<rcl_interfaces::srv::DescribeParameters>(
+      PSN::describe_parameters,
+      std::bind(&ParamPlugin::describe_parameters_cb, this, _1, _2), qos);
+    list_parameters_srv = node->create_service<rcl_interfaces::srv::ListParameters>(
+      PSN::list_parameters,
+      std::bind(&ParamPlugin::list_parameters_cb, this, _1, _2), qos);
 
     schedule_timer =
       node->create_wall_timer(BOOTUP_TIME, std::bind(&ParamPlugin::schedule_cb, this));
@@ -450,7 +495,17 @@ private:
   rclcpp::Service<mavros_msgs::srv::ParamSetV2>::SharedPtr set_srv;
   // rclcpp::Service<mavros_msgs::srv::ParamGet>::SharedPtr get_srv;
 
+  // NOTE(vooon): override standard ROS2 parameter services
+  rclcpp::Service<rcl_interfaces::srv::GetParameters>::SharedPtr get_parameters_srv;
+  rclcpp::Service<rcl_interfaces::srv::GetParameterTypes>::SharedPtr get_parameter_types_srv;
+  rclcpp::Service<rcl_interfaces::srv::SetParameters>::SharedPtr set_parameters_srv;
+  rclcpp::Service<rcl_interfaces::srv::SetParametersAtomically>::SharedPtr
+    set_parameters_atomically_srv;
+  rclcpp::Service<rcl_interfaces::srv::DescribeParameters>::SharedPtr describe_parameters_srv;
+  rclcpp::Service<rcl_interfaces::srv::ListParameters>::SharedPtr list_parameters_srv;
+
   rclcpp::Publisher<mavros_msgs::msg::ParamEvent>::SharedPtr param_event_pub;
+  rclcpp::Publisher<rcl_interfaces::msg::ParameterEvent>::SharedPtr std_event_pub;
 
   rclcpp::TimerBase::SharedPtr schedule_timer;   //!< for startup schedule fetch
   rclcpp::TimerBase::SharedPtr timeout_timer;   //!< for timeout resend
@@ -492,7 +547,7 @@ private:
     auto lg = get_logger();
     auto param_id = mavlink::to_string(pmsg.param_id);
 
-    auto update_parameter = [this, &pmsg](Parameter & p) {
+    auto update_parameter = [this, &pmsg](Parameter & p, bool is_new) {
         p.stamp = node->now();
         if (uas->is_ardupilotmega()) {
           p.set_value_apm_quirk(pmsg);
@@ -500,8 +555,19 @@ private:
           p.set_value(pmsg);
         }
 
-        param_event_pub->publish(p.to_msg());
-        rosparam_set_allowed(p);
+        param_event_pub->publish(p.to_event_msg());
+        {
+          rcl_interfaces::msg::ParameterEvent evt{};
+          evt.stamp = p.stamp;
+          evt.node = node->get_fully_qualified_name();
+          if (is_new) {
+            evt.new_parameters.push_back(p.to_parameter_msg());
+          } else {
+            evt.changed_parameters.push_back(p.to_parameter_msg());
+          }
+
+          std_event_pub->publish(evt);
+        }
 
         // check that ack required
         auto set_it = set_parameters.find(p.param_id);
@@ -523,7 +589,7 @@ private:
       // parameter exists
       auto & p = param_it->second;
 
-      update_parameter(p);
+      update_parameter(p, false);
       RCLCPP_DEBUG_STREAM(lg, "PR: Update param " << p.to_string());
 
     } else {
@@ -532,7 +598,7 @@ private:
         parameters.emplace(param_id, Parameter(param_id, pmsg.param_index, pmsg.param_count));
       auto & p = pp.first->second;
 
-      update_parameter(p);
+      update_parameter(p, true);
       RCLCPP_DEBUG_STREAM(lg, "PR: New param " << p.to_string());
     }
 
@@ -649,12 +715,16 @@ private:
 
   void clear_all_parameters()
   {
-    parameters.clear();
+    rcl_interfaces::msg::ParameterEvent evt{};
+    evt.stamp = node->now();
+    evt.node = node->get_fully_qualified_name();
 
-    auto list = node->list_parameters({""}, 1);
-    for (auto name : list.names) {
-      node->undeclare_parameter(name);
+    for (const auto & p : parameters) {
+      evt.deleted_parameters.push_back(p.second.to_parameter_msg());
     }
+
+    parameters.clear();
+    std_event_pub->publish(evt);
   }
 
   void connection_cb(bool connected) override
@@ -828,25 +898,18 @@ private:
     return res;
   }
 
-  //! Set ROS param only if name is good
-  bool rosparam_set_allowed(const Parameter & p)
+  //! Find and copy parameter
+  //  Would return new empty instance for unknown id's
+  Parameter copy_parameter(const std::string & param_id)
   {
-    if (uas->is_px4() && p.param_id == "_HASH_CHECK") {
-      RCLCPP_INFO(
-        get_logger(), "PR: PX4 parameter _HASH_CHECK ignored: 0x%08x",
-        p.param_value.get<int32_t>());
-      return false;
+    unique_lock lock(mutex);
+
+    auto it = parameters.find(param_id);
+    if (it == parameters.end()) {
+      return Parameter(param_id);
     }
 
-    try {
-      node->declare_parameter(
-        p.param_id, p.param_value,
-        rcl_interfaces::msg::ParameterDescriptor(), true);
-    } catch (rclcpp::exceptions::ParameterAlreadyDeclaredException & ex) {
-      node->set_parameter(p.to_rcl());
-    }
-
-    return true;
+    return it->second;
   }
 
   /* -*- ROS callbacks -*- */
@@ -900,64 +963,7 @@ private:
 
     lock.lock();
     res->param_received = parameters.size();
-
-    // for (auto & p : parameters) {
-    //   lock.unlock();
-    //   rosparam_set_allowed(p.second);
-    //   lock.lock();
-    // }
   }
-
-#if 0
-  /**
-   * @brief push all parameter value to device
-   * @service ~param/push
-   */
-  void push_cb(
-    const mavros_msgs::ParamPush::Request::SharedPtr req,
-    mavros_msgs::ParamPush::Response::SharedPtr res)
-  {
-    XmlRpc::XmlRpcValue param_dict;
-    if (!param_nh.getParam("", param_dict)) {
-      return true;
-    }
-
-    ROS_ASSERT(param_dict.getType() == XmlRpc::XmlRpcValue::TypeStruct);
-
-    int tx_count = 0;
-    for (auto & param : param_dict) {
-      if (Parameter::check_exclude_param_id(param.first)) {
-        ROS_DEBUG_STREAM_NAMED("param", "PR: Exclude param: " << param.first);
-        continue;
-      }
-
-      unique_lock lock(mutex);
-      auto param_it = parameters.find(param.first);
-      if (param_it != parameters.end()) {
-        // copy current state of Parameter
-        auto to_send = param_it->second;
-
-        // Update XmlRpcValue
-        to_send.param_value = param.second;
-
-        lock.unlock();
-        bool set_res = send_param_set_and_wait(to_send);
-        lock.lock();
-
-        if (set_res) {
-          tx_count++;
-        }
-      } else {
-        ROS_WARN_STREAM_NAMED("param", "PR: Unknown rosparam: " << param.first);
-      }
-    }
-
-    res.success = true;
-    res.param_transfered = tx_count;
-
-    return true;
-  }
-#endif
 
   /**
    * @brief sets parameter value
@@ -967,119 +973,168 @@ private:
     const mavros_msgs::srv::ParamSetV2::Request::SharedPtr req,
     mavros_msgs::srv::ParamSetV2::Response::SharedPtr res)
   {
-    unique_lock lock(mutex);
-
-    if (param_state == PR::RXLIST || param_state == PR::RXPARAM ||
-      param_state == PR::RXPARAM_TIMEDOUT)
     {
-      RCLCPP_ERROR(get_logger(), "PR: receiving not complete");
-      throw std::runtime_error("receiving in progress");
+      unique_lock lock(mutex);
+
+      if (param_state == PR::RXLIST || param_state == PR::RXPARAM ||
+        param_state == PR::RXPARAM_TIMEDOUT)
+      {
+        RCLCPP_ERROR(get_logger(), "PR: receiving not complete");
+        // throw std::runtime_error("receiving in progress");
+        res->success = false;
+        return;
+      }
+      lock.unlock();
     }
 
     if (Parameter::check_exclude_param_id(req->param_id) && !req->force_set) {
-      RCLCPP_INFO_STREAM(get_logger(), "PR: skipping parameter: " << req->param_id);
+      RCLCPP_INFO_STREAM(get_logger(), "PR: parameter set excluded: " << req->param_id);
+      res->success = false;
+      return;
     }
 
-    auto param_it = parameters.find(req->param_id);
-    if (param_it != parameters.end()) {
-      auto to_send = param_it->second;
-
-      to_send.param_value = rclcpp::ParameterValue(req->value);
-
-      lock.unlock();
-      auto sres = send_param_set_and_wait(to_send);
-      lock.lock();
-
-      res->value = sres.param.param_value.to_value_msg();
-
-      // lock.unlock();
-      // rosparam_set_allowed(param_it->second);
-
-    } else if (req->force_set) {
-      auto to_send = Parameter(rclcpp::Parameter(req->param_id, req->value));
-
-      lock.unlock();
-      auto sres = send_param_set_and_wait(to_send);
-      lock.lock();
-
-      res->value = sres.param.param_value.to_value_msg();
-
-    } else {
+    auto to_send = copy_parameter(req->param_id);
+    if (to_send.param_value.get_type() == rclcpp::PARAMETER_NOT_SET && !req->force_set) {
       RCLCPP_ERROR_STREAM(get_logger(), "PR: Unknown parameter to set: " << req->param_id);
       res->success = false;
+      return;
     }
+
+    to_send.param_value = rclcpp::ParameterValue(req->value);
+    auto sres = send_param_set_and_wait(to_send);
+    res->success = sres.success;
+    res->value = sres.param.param_value.to_value_msg();
   }
 
-#if 0
   /**
-   * @brief get parameter
-   * @service ~param/get
+   * @brief Get parameters (std)
    */
-  void get_cb(
-    mavros_msgs::srv::ParamGet::Request::SharedPtr req,
-    mavros_msgs::srv::ParamGet::Response::SharedPtr res)
+  void get_parameters_cb(
+    const rcl_interfaces::srv::GetParameters::Request::SharedPtr req,
+    rcl_interfaces::srv::GetParameters::Response::SharedPtr res)
   {
-    lock_guard lock(mutex);
+    unique_lock lock(mutex);
 
-    auto param_it = parameters.find(req.param_id);
-    if (param_it != parameters.end()) {
-      res.success = true;
-
-      res.value.integer = param_it->second.to_integer();
-      res.value.real = param_it->second.to_real();
-    } else {
-      ROS_ERROR_STREAM_NAMED("param", "PR: Unknown parameter to get: " << req.param_id);
-      res.success = false;
-    }
-
-    return true;
-  }
-#endif
-
-  Plugin::SetParametersResult node_on_set_parameters_cb(
-    const std::vector<rclcpp::Parameter> & set_parameters) override
-  {
-    SetParametersResult result;
-
-    // XXX: test me!
-
-    result.successful = true;
-
-    auto is_changed = [this](const rclcpp::Parameter & p) {
-        unique_lock lock(mutex);
-
-        auto param_it = parameters.find(p.get_name());
-        if (param_it == parameters.end()) {
-          return true;
-        }
-
-        return param_it->second.param_value != p.get_parameter_value();
-      };
-
-    for (auto & p : set_parameters) {
-      auto req = std::make_shared<mavros_msgs::srv::ParamSetV2::Request>();
-      auto res = std::make_shared<mavros_msgs::srv::ParamSetV2::Response>();
-
-      req->param_id = p.get_name();
-      req->value = p.get_parameter_value().to_value_msg();
-
-      if (!is_changed(p)) {
+    for (auto name : req->names) {
+      auto it = parameters.find(name);
+      if (it == parameters.end()) {
+        RCLCPP_WARN_STREAM(get_logger(), "PR: Failed to get parameter type: " << name);
+        // return PARAMETER_NOT_SET
+        res->values.emplace_back();
         continue;
       }
 
-      try {
-        set_cb(req, res);
-      } catch (std::exception & ex) {
-        RCLCPP_ERROR_STREAM(get_logger(), "PR: error: " << ex.what());
-      }
-
-      if (!res->success) {
-        RCLCPP_ERROR(get_logger(), "PR: Failed to set parameter: %s", req->param_id.c_str());
-        // result.successful = false;
-      }
+      res->values.push_back(it->second.param_value.to_value_msg());
     }
+  }
 
-    return result;
+  /**
+   * @brief Get parameter types (std)
+   */
+  void get_parameter_types_cb(
+    const rcl_interfaces::srv::GetParameterTypes::Request::SharedPtr req,
+    rcl_interfaces::srv::GetParameterTypes::Response::SharedPtr res)
+  {
+    unique_lock lock(mutex);
+
+    for (auto name : req->names) {
+      auto it = parameters.find(name);
+      if (it == parameters.end()) {
+        RCLCPP_WARN_STREAM(get_logger(), "PR: Failed to get parameter type: " << name);
+        res->types.emplace_back(rclcpp::PARAMETER_NOT_SET);
+        continue;
+      }
+
+      res->types.emplace_back(it->second.param_value.get_type());
+    }
+  }
+
+  /**
+   * @brief Set parameters (std)
+   */
+  void set_parameters_cb(
+    const rcl_interfaces::srv::SetParameters::Request::SharedPtr req,
+    rcl_interfaces::srv::SetParameters::Response::SharedPtr res)
+  {
+    for (const auto & p : req->parameters) {
+      rcl_interfaces::msg::SetParametersResult result;
+      if (Parameter::check_exclude_param_id(p.name)) {
+        RCLCPP_WARN_STREAM(get_logger(), "PR: parameter set excluded: " << p.name);
+
+        result.successful = false;
+        result.reason = "Parameter excluded. "
+          "Use ~/set with force if you really need to send that value";
+        res->results.push_back(result);
+        continue;
+      }
+
+      auto to_send = copy_parameter(p.name);
+      if (to_send.param_value.get_type() == rclcpp::PARAMETER_NOT_SET) {
+        RCLCPP_ERROR_STREAM(get_logger(), "PR: Unknown parameter to set: " << p.name);
+
+        result.successful = false;
+        result.reason = "Undeclared parameter";
+        res->results.push_back(result);
+        continue;
+      }
+
+      to_send.param_value = rclcpp::ParameterValue(p.value);
+
+      // NOTE(vooon): It is possible to fill-in send list at once.
+      //              But then it's hard to wait for each result.
+      auto sres = send_param_set_and_wait(to_send);
+      result.successful = sres.success;
+      res->results.push_back(result);
+    }
+  }
+
+  /**
+   * @brief Get parameters atomically (std)
+   */
+  void set_parameters_atomically_cb(
+    const rcl_interfaces::srv::SetParametersAtomically::Request::SharedPtr req [[maybe_unused]],
+    rcl_interfaces::srv::SetParametersAtomically::Response::SharedPtr res)
+  {
+    RCLCPP_ERROR(get_logger(), "PR: Client calls unsupported ~/set_parameters_atomically");
+    res->result.successful = false;
+    res->result.reason = "device do not support atomic set";
+  }
+
+  /**
+   * @brief Describe parameters (std)
+   */
+  void describe_parameters_cb(
+    const rcl_interfaces::srv::DescribeParameters::Request::SharedPtr req,
+    rcl_interfaces::srv::DescribeParameters::Response::SharedPtr res)
+  {
+    unique_lock lock(mutex);
+
+    for (auto name : req->names) {
+      auto it = parameters.find(name);
+      if (it == parameters.end()) {
+        RCLCPP_WARN_STREAM(
+          get_logger(), "PR: Failed to describe parameters: " << name);
+        res->descriptors.emplace_back();
+        continue;
+      }
+
+      res->descriptors.push_back(it->second.to_descriptor());
+    }
+  }
+
+  /**
+   * @brief List parameters (std)
+   */
+  void list_parameters_cb(
+    const rcl_interfaces::srv::ListParameters::Request::SharedPtr req [[maybe_unused]],
+    rcl_interfaces::srv::ListParameters::Response::SharedPtr res)
+  {
+    unique_lock lock(mutex);
+
+    // NOTE(vooon): all fcu parameters are "flat", so no need to check req prefixes or depth
+    for (auto p : parameters) {
+      res->result.names.emplace_back(p.first);
+    }
   }
 };
 
