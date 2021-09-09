@@ -11,5 +11,5 @@ std_msgs/Header header
 uint16 id
 uint16 num_logs
 uint16 last_log_num
-builtin_interfaces/Time time_utc
+time time_utc
 uint32 size

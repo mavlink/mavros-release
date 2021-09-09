@@ -2,76 +2,29 @@
 Changelog for package mavros_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-2.0.3 (2021-06-20)
+1.9.0 (2021-09-09)
 ------------------
-
-2.0.2 (2021-06-20)
-------------------
-
-2.0.1 (2021-06-06)
-------------------
-* Add rcl_interfaces dependency
-* Merge branch 'master' into ros2
-  * master:
-  readme: update
-  1.8.0
-  update changelog
-  Create semgrep-analysis.yml
-  Create codeql-analysis.yml
-* 1.8.0
-* update changelog
-* Contributors: Rob Clarke, Vladimir Ermakov
-
-2.0.0 (2021-05-28)
-------------------
-* msgs: update command codes
-* msgs: update param services
-* plugins: setpoint_velocity: port to ros2
-* Merge branch 'master' into ros2
-  * master:
-  1.7.1
-  update changelog
-  re-generate all pymavlink enums
-  1.7.0
-  update changelog
-* mavros: generate plugin list
-* Merge branch 'master' into ros2
-  * master:
-  msgs: re-generate the code
-  lib: re-generate the code
-  plugins: mission: re-generate the code
-  MissionBase: correction to file information
-  MissionBase: add copyright from origional waypoint.cpp
-  uncrustify
-  whitespace
-  add rallypoint and geofence plugins to mavros plugins xml
-  add rallypoint and geofence plugins to CMakeList
-  Geofence: add geofence plugin
-  Rallypoint: add rallypoint plugin
-  Waypoint: inherit MissionBase class for mission protocol
-  MissionBase: breakout mission protocol from waypoint.cpp
-  README: Update PX4 Autopilot references
-  Fix https://github.com/mavlink/mavros/issues/849
-* router: catch DeviceError
-* router: weak_ptr segfaults, replace with shared_ptr
-* router: implement params handler
-* mavros: router decl done
-* lib: port enum_to_string
-* lib: update sensor_orientation
-* msgs: add linter
-* libmavconn: start porintg, will use plain asio, without boost
-* msgs: remove redundant dependency which result in colcon warning
-* msgs: cogify file lists
-* Merge pull request `#1186 <https://github.com/mavlink/mavros/issues/1186>`_ from PickNikRobotics/ros2
-  mavros_msgs Ros2
-* Merge branch 'ros2' into ros2
-* msgs: start porting to ROS2
-* fixing cmakelists
-* updating msg and srv list
-* reenable VfrHud once renamed to match ROS2 conventions
-  add ros1_bridge mapping rule for renamed VfrHud message
-* make mavro_msgs compile in ROS 2
-* Contributors: Mikael Arguedas, Mike Lautman, Vladimir Ermakov
+* Merge pull request `#1616 <https://github.com/mavlink/mavros/issues/1616>`_ from amilcarlucas/pr/RC_CHANNELS-mavlink2-extensions
+  Mavlink v2.0 specs for RC_CHANNELS_OVERRIDE accepts upto 18 channels.…
+* Changed OverrideRCIn to 18 channels
+* Merge pull request `#1617 <https://github.com/mavlink/mavros/issues/1617>`_ from amilcarlucas/pr/NAV_CONTROLLER_OUTPUT-plugin
+  Added NAV_CONTROLLER_OUTPUT Plugin
+* Merge pull request `#1618 <https://github.com/mavlink/mavros/issues/1618>`_ from amilcarlucas/pr/GPS_INPUT-plugin
+  Added GPS_INPUT plugin
+* Mavlink v2.0 specs for RC_CHANNELS_OVERRIDE accepts upto 18 channels. The plugin publishes channels 9 to 18 if the FCU protocol version is 2.0
+* Added NAV_CONTROLLER_OUTPUT Plugin
+* Added GPS_INPUT plugin
+* Merge branch 'master' into master
+* Update esc_status plugin with datatype change on MAVLink.
+  ESC_INFO MAVLink message was updated to have negative temperates and also at a different resolution. This commit updates those changes on this side.
+* Remove Mount_Status plugin. Add Status data to Mount_Control plugin. Remove Mount_Status message.
+* msgs: fix types for apm's esc telemetry
+* actually allocate memory for the telemetry information
+* added esc_telemetry plugin
+* Add Mount angles message for communications with ardupilotmega.
+* Remove extra message from CMakeLists.
+* Add message and service definition.
+* Contributors: Abhijith Thottumadayil Jagadeesh, André Filipe, Dr.-Ing. Amilcar do Carmo Lucas, Karthik Desai, Ricardo Marques, Russell, Vladimir Ermakov
 
 1.8.0 (2021-05-05)
 ------------------

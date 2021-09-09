@@ -8,5 +8,5 @@ uint8 type
 uint64 size
 
 # Not supported by MAVLink FTP
-#builtin_interfaces/Time atime
+#time atime
 #int32 access_flags
