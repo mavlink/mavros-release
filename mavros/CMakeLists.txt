@@ -3,13 +3,15 @@ project(mavros)
 
 # Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD 20)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a")
 endif()
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # we dont use add_compile_options with pedantic in message packages
   # because the Python C extensions dont comply with it
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
 endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wcomment")
 
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
@@ -124,6 +126,7 @@ add_library(mavros_plugins SHARED
   src/plugins/local_position.cpp
   src/plugins/manual_control.cpp
   src/plugins/mission_protocol_base.cpp
+  src/plugins/nav_controller_output.cpp
   src/plugins/param.cpp
   src/plugins/rallypoint.cpp
   src/plugins/rc_io.cpp
@@ -137,7 +140,7 @@ add_library(mavros_plugins SHARED
   src/plugins/sys_time.cpp
   src/plugins/waypoint.cpp
   src/plugins/wind_estimation.cpp
-  # [[[end]]] (checksum: e0bc1af34a7ae5b7471d95e6d23b7388)
+  # [[[end]]] (checksum: ccf56c1a56e9dccf8464483f7b1eab99)
 )
 add_dependencies(mavros_plugins
   mavros
