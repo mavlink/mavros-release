@@ -55,7 +55,7 @@ using utils::enum_value;
 /**
  * @brief FTP Request message abstraction class
  *
- * @note This class not portable, and works on little-endian machines only.
+ * @note This class is not portable, and works on little-endian machines only.
  */
 class FTPRequest : public mavlink::common::msg::FILE_TRANSFER_PROTOCOL
 {
@@ -71,7 +71,7 @@ public:
     uint8_t req_opcode;         ///< Request opcode returned in kRspAck, kRspNak message
     uint8_t padding[2];         ///< 32 bit aligment padding
     uint32_t offset;            ///< Offsets for List and Read commands
-    uint8_t data[];             ///< command data, varies by Opcode
+    uint8_t * data;              ///< command data, varies by Opcode
   };
 
   /// @brief Command opcodes
@@ -173,8 +173,8 @@ public:
    * @brief Copy string to payload
    *
    * @param[in] s  payload string
-   * @note this function allow null termination inside string
-   *       it used to send multiple strings in one message
+   * @note this function allows null termination inside string
+   *       it is used to send multiple strings in one message
    */
   void set_data_string(const std::string & s)
   {
@@ -193,7 +193,7 @@ public:
   /**
    * @brief Decode and check target system
    */
-  bool decode_valid(plugin::UASPtr uas)
+  bool decode_valid([[maybe_unused]] plugin::UASPtr uas)
   {
 #ifdef FTP_LL_DEBUG
     auto hdr = header();
@@ -204,7 +204,7 @@ public:
 #endif
 
     // return uas->get_system_id() == target_system;
-    return true;  // XXX TODO(vooon): probably whole method not needed anymore
+    return true;  // XXX TODO(vooon): probably whole method is not needed anymore
   }
 
   /**
@@ -257,11 +257,13 @@ public:
     is_error(false),
     r_errno(0),
     list_offset(0),
-    read_offset(0),
-    write_offset(0),
     open_size(0),
     read_size(0),
+    read_offset(0),
     read_buffer{},
+    write_offset(0),
+    write_buffer{},
+    write_it{},
     checksum_crc32(0)
   {
     // since C++ generator do not produce field length defs make check explicit.
