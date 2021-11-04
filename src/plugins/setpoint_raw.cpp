@@ -270,14 +270,14 @@ private:
 
   void attitude_cb(const mavros_msgs::msg::AttitudeTarget::SharedPtr req)
   {
-    double thrust_scaling;
+    double thrust_scaling = 1.0f;
     Eigen::Quaterniond desired_orientation;
     Eigen::Vector3d baselink_angular_rate;
     Eigen::Vector3d body_rate;
     double thrust;
 
     // Set Thrust scaling in px4_config.yaml, setpoint_raw block.
-    // ignore thrust is false by default, unless no thrust scalling is set or thrust is zero
+    // ignore thrust is false by default, unless no thrust scaling is set or thrust is zero
     auto ignore_thrust = req->thrust != 0.0 &&
       !node->get_parameter("thrust_scaling", thrust_scaling);
 
@@ -296,25 +296,25 @@ private:
           "thrust_scaling parameter is set to zero.");
       }
       thrust = std::min(1.0, std::max(0.0, req->thrust * thrust_scaling));
+
+      // Take care of attitude setpoint
+      desired_orientation = ftf::to_eigen(req->orientation);
+
+      // Transform desired orientation to represent aircraft->NED,
+      // MAVROS operates on orientation of base_link->ENU
+      auto ned_desired_orientation = ftf::transform_orientation_enu_ned(
+        ftf::transform_orientation_baselink_aircraft(desired_orientation));
+
+      body_rate = ftf::transform_frame_baselink_aircraft(
+        ftf::to_eigen(req->body_rate));
+
+      set_attitude_target(
+        get_time_boot_ms(req->header.stamp),
+        req->type_mask,
+        ned_desired_orientation,
+        body_rate,
+        thrust);
     }
-
-    // Take care of attitude setpoint
-    desired_orientation = ftf::to_eigen(req->orientation);
-
-    // Transform desired orientation to represent aircraft->NED,
-    // MAVROS operates on orientation of base_link->ENU
-    auto ned_desired_orientation = ftf::transform_orientation_enu_ned(
-      ftf::transform_orientation_baselink_aircraft(desired_orientation));
-
-    body_rate = ftf::transform_frame_baselink_aircraft(
-      ftf::to_eigen(req->body_rate));
-
-    set_attitude_target(
-      get_time_boot_ms(req->header.stamp),
-      req->type_mask,
-      ned_desired_orientation,
-      body_rate,
-      thrust);
   }
 };
 
