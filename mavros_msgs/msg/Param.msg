@@ -1,7 +1,5 @@
 # Parameter msg.
 
-# XXX DEPRECATED: replaced by ParamEvent
-
 std_msgs/Header header
 
 string param_id

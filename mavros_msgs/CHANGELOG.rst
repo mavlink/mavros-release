@@ -2,164 +2,21 @@
 Changelog for package mavros_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-2.0.4 (2021-11-04)
-------------------
-* Merge branch 'master' into ros2
-  * master:
-  1.10.0
-  prepare release
-* 1.10.0
-* prepare release
-* Merge branch 'master' into ros2
-  * master:
-  msgs: update gpsraw to have yaw field
-* msgs: update gpsraw to have yaw field
-* Merge branch 'master' into ros2
-  * master: (25 commits)
-  Remove reference
-  Catch std::length_error in send_message
-  Show ENOTCONN error instead of crash
-  Tunnel: Check for invalid payload length
-  Tunnel.msg: Generate enum with cog
-  mavros_extras: Create tunnel plugin
-  mavros_msgs: Add Tunnel message
-  MountControl.msg: fix copy-paste
-  sys_time.cpp: typo
-  sys_time: publish /clock for simulation times
-  1.9.0
-  update changelog
-  Spelling corrections
-  Changed OverrideRCIn to 18 channels
-  This adds functionality to erase all logs on the SD card via mavlink
-  publish BATTERY2 message as /mavros/battery2 topic
-  Mavlink v2.0 specs for RC_CHANNELS_OVERRIDE accepts upto 18 channels. The plugin publishes channels 9 to 18 if the FCU protocol version is 2.0
-  Added NAV_CONTROLLER_OUTPUT Plugin
-  Added GPS_INPUT plugin
-  Update esc_status plugin with datatype change on MAVLink.
-  ...
-* Merge pull request `#1625 <https://github.com/mavlink/mavros/issues/1625>`_ from scoutdi/tunnel-plugin
-  Plugin for TUNNEL messages
-* Tunnel.msg: Generate enum with cog
-* mavros_msgs: Add Tunnel message
-* Merge pull request `#1623 <https://github.com/mavlink/mavros/issues/1623>`_ from amilcarlucas/pr/more-typo-fixes
-  More typo fixes
-* MountControl.msg: fix copy-paste
-* 1.9.0
-* update changelog
-* Merge pull request `#1616 <https://github.com/mavlink/mavros/issues/1616>`_ from amilcarlucas/pr/RC_CHANNELS-mavlink2-extensions
-  Mavlink v2.0 specs for RC_CHANNELS_OVERRIDE accepts upto 18 channels.…
-* Changed OverrideRCIn to 18 channels
-* Merge pull request `#1617 <https://github.com/mavlink/mavros/issues/1617>`_ from amilcarlucas/pr/NAV_CONTROLLER_OUTPUT-plugin
-  Added NAV_CONTROLLER_OUTPUT Plugin
-* Merge pull request `#1618 <https://github.com/mavlink/mavros/issues/1618>`_ from amilcarlucas/pr/GPS_INPUT-plugin
-  Added GPS_INPUT plugin
-* Mavlink v2.0 specs for RC_CHANNELS_OVERRIDE accepts upto 18 channels. The plugin publishes channels 9 to 18 if the FCU protocol version is 2.0
-* Added NAV_CONTROLLER_OUTPUT Plugin
-* Added GPS_INPUT plugin
-* Merge branch 'master' into master
-* Update esc_status plugin with datatype change on MAVLink.
-  ESC_INFO MAVLink message was updated to have negative temperates and also at a different resolution. This commit updates those changes on this side.
-* Remove Mount_Status plugin. Add Status data to Mount_Control plugin. Remove Mount_Status message.
-* msgs: re-generate file lists
-* Merge branch 'master' into ros2
-  * master:
-  extras: esc_telemetry: fix build
-  extras: fix esc_telemetry centi-volt/amp conversion
-  extras: uncrustify all plugins
-  plugins: reformat xml
-  extras: reformat plugins xml
-  extras: fix apm esc_telemetry
-  msgs: fix types for apm's esc telemetry
-  actually allocate memory for the telemetry information
-  fixed some compile errors
-  added esc_telemetry plugin
-  Reset calibration flag when re-calibrating. Prevent wrong data output.
-  Exclude changes to launch files.
-  Delete debug files.
-  Apply uncrustify changes.
-  Set progress array to global to prevent erasing data.
-  Move Compass calibration report to extras. Rewrite code based on instructions.
-  Remove extra message from CMakeLists.
-  Add message and service definition.
-  Add compass calibration feedback status. Add service to call the 'Next' button in calibrations.
-* msgs: fix types for apm's esc telemetry
-* actually allocate memory for the telemetry information
-* added esc_telemetry plugin
-* Add Mount angles message for communications with ardupilotmega.
-* Remove extra message from CMakeLists.
-* Add message and service definition.
-* Contributors: Abhijith Thottumadayil Jagadeesh, André Filipe, Dr.-Ing. Amilcar do Carmo Lucas, Karthik Desai, Morten Fyhn Amundsen, Ricardo Marques, Russell, Vladimir Ermakov
+1.11.1 (2021-11-24)
+-------------------
 
-2.0.3 (2021-06-20)
-------------------
-
-2.0.2 (2021-06-20)
-------------------
-
-2.0.1 (2021-06-06)
-------------------
-* Add rcl_interfaces dependency
-* Merge branch 'master' into ros2
-  * master:
-  readme: update
-  1.8.0
-  update changelog
-  Create semgrep-analysis.yml
-  Create codeql-analysis.yml
-* 1.8.0
-* update changelog
-* Contributors: Rob Clarke, Vladimir Ermakov
-
-2.0.0 (2021-05-28)
-------------------
-* msgs: update command codes
-* msgs: update param services
-* plugins: setpoint_velocity: port to ros2
-* Merge branch 'master' into ros2
-  * master:
-  1.7.1
-  update changelog
-  re-generate all pymavlink enums
-  1.7.0
-  update changelog
-* mavros: generate plugin list
-* Merge branch 'master' into ros2
-  * master:
-  msgs: re-generate the code
-  lib: re-generate the code
-  plugins: mission: re-generate the code
-  MissionBase: correction to file information
-  MissionBase: add copyright from origional waypoint.cpp
-  uncrustify
-  whitespace
-  add rallypoint and geofence plugins to mavros plugins xml
-  add rallypoint and geofence plugins to CMakeList
-  Geofence: add geofence plugin
-  Rallypoint: add rallypoint plugin
-  Waypoint: inherit MissionBase class for mission protocol
-  MissionBase: breakout mission protocol from waypoint.cpp
-  README: Update PX4 Autopilot references
-  Fix https://github.com/mavlink/mavros/issues/849
-* router: catch DeviceError
-* router: weak_ptr segfaults, replace with shared_ptr
-* router: implement params handler
-* mavros: router decl done
-* lib: port enum_to_string
-* lib: update sensor_orientation
-* msgs: add linter
-* libmavconn: start porintg, will use plain asio, without boost
-* msgs: remove redundant dependency which result in colcon warning
-* msgs: cogify file lists
-* Merge pull request `#1186 <https://github.com/mavlink/mavros/issues/1186>`_ from PickNikRobotics/ros2
-  mavros_msgs Ros2
-* Merge branch 'ros2' into ros2
-* msgs: start porting to ROS2
-* fixing cmakelists
-* updating msg and srv list
-* reenable VfrHud once renamed to match ROS2 conventions
-  add ros1_bridge mapping rule for renamed VfrHud message
-* make mavro_msgs compile in ROS 2
-* Contributors: Mikael Arguedas, Mike Lautman, Vladimir Ermakov
+1.11.0 (2021-11-24)
+-------------------
+* msgs: use pragmas to ignore unaligned pointer warnings
+* msgs: fix convert const
+* msgs: try to hide 'unaligned pointer' warning
+* Merge pull request `#1651 <https://github.com/mavlink/mavros/issues/1651>`_ from Jaeyoung-Lim/pr-image-capture-plugin
+  Add camera plugin for interfacing with mavlink camera protocol
+* Address review comments
+* Add camera plugin for interfacing with mavlink camera protocol
+  Add camera image captured message for handling camera trigger information
+* msgs: add yaw field to GPS_INPUT
+* Contributors: Jaeyoung-Lim, Vladimir Ermakov
 
 1.10.0 (2021-11-04)
 -------------------
