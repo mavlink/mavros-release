@@ -1,3 +1,10 @@
+/*
+ * Copyright 2014 M.H.Kabir.
+ *
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
+ */
 /**
  * @brief VisionPoseEstimate plugin
  * @file vision_pose_estimate.cpp
@@ -7,13 +14,10 @@
  * @addtogroup plugin
  * @{
  */
-/*
- * Copyright 2014 M.H.Kabir.
- *
- * This file is part of the mavros package and subject to the license terms
- * in the top-level LICENSE file of the mavros repository.
- * https://github.com/mavlink/mavros/tree/master/LICENSE.md
- */
+
+#include <tf2_eigen/tf2_eigen.h>
+
+#include <string>
 
 #include "rcpputils/asserts.hpp"
 #include "mavros/mavros_uas.hpp"
@@ -22,13 +26,10 @@
 #include "mavros/plugin_filter.hpp"
 #include "mavros/setpoint_mixin.hpp"
 
-#include <tf2_eigen/tf2_eigen.h>
-
 #include "geometry_msgs/msg/pose_stamped.hpp"
-#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp" //
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 #include "geometry_msgs/msg/vector3_stamped.hpp"
 #include "mavros_msgs/msg/landing_target.hpp"
-
 
 namespace mavros
 {
@@ -48,13 +49,11 @@ class VisionPoseEstimatePlugin : public plugin::Plugin,
   private plugin::TF2ListenerMixin<VisionPoseEstimatePlugin>
 {
 public:
-  VisionPoseEstimatePlugin(plugin::UASPtr uas_)
+  explicit VisionPoseEstimatePlugin(plugin::UASPtr uas_)
   : Plugin(uas_, "vision_pose"),
     tf_rate(10.0)
   {
     enable_node_watch_parameters();
-
-    bool tf_listen;
 
     // tf params
     node_declate_and_watch_parameter(
@@ -116,7 +115,7 @@ private:
    */
   void send_vision_estimate(
     const rclcpp::Time & stamp, const Eigen::Affine3d & tr,
-    const geometry_msgs::msg::PoseWithCovariance::_covariance_type & cov) // Check ::_covariance_type
+    const geometry_msgs::msg::PoseWithCovariance::_covariance_type & cov)
   {
     if (last_transform_stamp == stamp) {
       RCLCPP_DEBUG_THROTTLE(
@@ -145,11 +144,10 @@ private:
     vp.usec = stamp.nanoseconds() / 1000;
     // [[[cog:
     // for f in "xyz":
-    //     cog.outl("vp.%s = position.%s();" % (f, f))
+    //     cog.outl(f"vp.{f} = position.{f}();")
     // for a, b in zip("xyz", ('roll', 'pitch', 'yaw')):
-    //     cog.outl("vp.%s = rpy.%s();" % (b, a))
+    //     cog.outl(f"vp.{b} = rpy.{a}();")
     // ]]]
-
     vp.x = position.x();
     vp.y = position.y();
     vp.z = position.z();
@@ -158,13 +156,11 @@ private:
     vp.yaw = rpy.z();
     // [[[end]]] (checksum: 0aed118405958e3f35e8e7c9386e812f)
 
-
     // just the URT of the 6x6 Pose Covariance Matrix, given
     // that the matrix is symmetric
     ftf::covariance_urt_to_mavlink(cov_map, vp.covariance);
 
     uas->send_message(vp);
-
   }
 
   /* -*- callbacks -*- */

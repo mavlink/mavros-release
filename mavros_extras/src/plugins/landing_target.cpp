@@ -16,6 +16,9 @@
 
 #include <tf2_eigen/tf2_eigen.h>
 
+#include <algorithm>
+#include <string>
+
 #include "rcpputils/asserts.hpp"
 #include "mavros/mavros_uas.hpp"
 #include "mavros/utils.hpp"
@@ -46,7 +49,7 @@ class LandingTargetPlugin : public plugin::Plugin,
   private plugin::TF2ListenerMixin<LandingTargetPlugin>
 {
 public:
-  LandingTargetPlugin(plugin::UASPtr uas_)
+  explicit LandingTargetPlugin(plugin::UASPtr uas_)
   : Plugin(uas_, "landing_target"),
     tf_rate(50.0),
     tf_send(true),
@@ -63,7 +66,6 @@ public:
     mav_frame("LOCAL_NED"),
     land_target_type("VISION_FIDUCIAL")
   {
-
     enable_node_watch_parameters();
 
     // general params
@@ -89,19 +91,21 @@ public:
     node_declate_and_watch_parameter(
       "mav_frame", "LOCAL_NED", [&](const rclcpp::Parameter & p) {
         mav_frame = p.as_string();
-        frame = utils::mav_frame_from_str(mav_frame);                 // MAV_FRAME index based on given frame name (If unknown, defaults to GENERIC)
+        frame = utils::mav_frame_from_str(mav_frame);
+        // MAV_FRAME index based on given frame name (If unknown, defaults to GENERIC)
       });
 
     node_declate_and_watch_parameter(
       "land_target_type", "VISION_FIDUCIAL", [&](const rclcpp::Parameter & p) {
         land_target_type = p.as_string();
-        type = utils::landing_target_type_from_str(land_target_type); // LANDING_TARGET_TYPE index based on given type name (If unknown, defaults to LIGHT_BEACON)
+        type = utils::landing_target_type_from_str(land_target_type);
+        // LANDING_TARGET_TYPE index based on given type name (If unknown, defaults to LIGHT_BEACON)
       });
 
     // target size
     node_declate_and_watch_parameter(
       "target_size.x", 1.0, [&](const rclcpp::Parameter & p) {
-        target_size_x = p.as_double();                                // [meters]
+        target_size_x = p.as_double();  // [meters]
       });
 
     node_declate_and_watch_parameter(
@@ -112,7 +116,7 @@ public:
     // image size
     node_declate_and_watch_parameter(
       "image.width", 640, [&](const rclcpp::Parameter & p) {
-        image_width = p.as_int();                                     // [pixels]
+        image_width = p.as_int();       // [pixels]
       });
 
     node_declate_and_watch_parameter(
@@ -123,24 +127,25 @@ public:
     // camera field-of-view -> should be precised using the calibrated camera intrinsics
     node_declate_and_watch_parameter(
       "camera.fov_x", 2.0071286398, [&](const rclcpp::Parameter & p) {
-        fov_x = p.as_double();                                        // default: 115 degrees in [radians]
+        fov_x = p.as_double();          // default: 115 degrees in [radians]
       });
 
     node_declate_and_watch_parameter(
       "camera.fov_y", 2.0071286398, [&](const rclcpp::Parameter & p) {
-        fov_y = p.as_double();                                        // default: 115 degrees in [radians]
+        fov_y = p.as_double();          // default: 115 degrees in [radians]
       });
 
     // camera focal length
     node_declate_and_watch_parameter(
       "camera.focal_length", 2.8, [&](const rclcpp::Parameter & p) {
-        focal_length = p.as_double();                                 // ex: OpenMV Cam M7: 2.8 [mm]
+        focal_length = p.as_double();   // ex: OpenMV Cam M7: 2.8 [mm]
       });
 
     // tf subsection
     node_declate_and_watch_parameter(
       "tf.rate_limit", 50.0, [&](const rclcpp::Parameter & p) {
-        // no dynamic update here yet. need to modify the thread in setpoint_mixin to handle new rates
+        // no dynamic update here yet. need to modify the thread in
+        // setpoint_mixin to handle new rates
         tf_rate = p.as_double();
       });
 
@@ -333,9 +338,9 @@ private:
        */
       size_rad = {2 * (M_PI / 180.0) * atan(target_size_x / (2 * focal_length)),
         2 * (M_PI / 180.0) * atan(target_size_y / (2 * focal_length))};
-    }
-    // else, the same values are computed considering the displacement relative to X and Y axes of the camera frame reference
-    else {
+    } else {
+      // else, the same values are computed considering the displacement
+      // relative to X and Y axes of the camera frame reference
       cartesian_to_displacement(pos, angle);
       size_rad = {2 * (M_PI / 180.0) * atan(target_size_x / (2 * distance)),
         2 * (M_PI / 180.0) * atan(target_size_y / (2 * distance))};
@@ -356,14 +361,14 @@ private:
     landing_target(
       stamp.nanoseconds() / 1000,
       id,
-      utils::enum_value(frame),                                         // by default, in LOCAL_NED
+      utils::enum_value(frame),         // by default, in LOCAL_NED
       angle,
       distance,
       size_rad,
       pos,
       q,
       utils::enum_value(type),
-      1);                                       // position is valid from the first received msg
+      1);                               // position is valid from the first received msg
   }
 
   /**
@@ -382,11 +387,9 @@ private:
         land_target.z));
     auto orientation = ftf::transform_orientation_aircraft_baselink(
       ftf::transform_orientation_ned_enu(
-        Eigen::Quaterniond(
-          land_target.q[0], land_target.q[1], land_target.q[2],
-          land_target.q[3])));
+        ftf::mavlink_to_quaternion(land_target.q)));
 
-    auto rpy = ftf::quaternion_to_rpy(orientation);
+    // auto rpy = ftf::quaternion_to_rpy(orientation);
 
     RCLCPP_DEBUG_STREAM_THROTTLE(
       get_logger(),
@@ -466,14 +469,14 @@ private:
     landing_target(
       rclcpp::Time(req->header.stamp).nanoseconds() / 1000,
       req->target_num,
-      req->frame,                                       // by default, in LOCAL_NED
+      req->frame,               // by default, in LOCAL_NED
       Eigen::Vector2f(req->angle[0], req->angle[1]),
       req->distance,
       Eigen::Vector2f(req->size[0], req->size[1]),
       position,
       orientation,
       req->type,
-      1);                                               // position is valid from the first received msg
+      1);                       // position is valid from the first received msg
   }
 };
 }       // namespace extra_plugins
