@@ -1,0 +1,13 @@
+Source: ros-rolling-libmavconn
+Section: misc
+Priority: optional
+Maintainer: Vladimir Ermakov <vooon341@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), libasio-dev, libconsole-bridge-dev, python3-empy, ros-rolling-ament-cmake, ros-rolling-ament-cmake-gtest, ros-rolling-ament-lint-auto, ros-rolling-ament-lint-common, ros-rolling-mavlink, ros-rolling-ros-workspace
+Homepage: http://wiki.ros.org/mavros
+Standards-Version: 3.9.2
+
+Package: ros-rolling-libmavconn
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libasio-dev, libconsole-bridge-dev, ros-rolling-mavlink, ros-rolling-ros-workspace
+Description: MAVLink communication library.
+ This library provide unified connection handling classes and URL to connection object mapper. This library can be used in standalone programs.
