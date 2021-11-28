@@ -71,10 +71,8 @@ public:
 
   msgid_t message_id;
 
-  void recv_message(const mavlink_message_t * message, const Framing framing)
+  void recv_message(const mavlink_message_t * message, const Framing framing [[maybe_unused]])
   {
-    (void)framing;
-
     // printf("Got message %u, len: %u, framing: %d\n", message->msgid, message->len, int(framing));
     message_id = message->msgid;
     cond.notify_one();
@@ -107,17 +105,17 @@ TEST_F(UDP, send_message)
 
   // create echo server
   echo = std::make_shared<MAVConnUDP>(42, 200, "0.0.0.0", 45002);
-  echo->message_received_cb = [&](const mavlink_message_t * msg, const Framing framing) {
-      (void)framing;
-
+  echo->connect(
+    [&](const mavlink_message_t * msg, const Framing framing [[maybe_unused]]) {
       echo->send_message(msg);
-    };
+    });
 
   // create client
   client = std::make_shared<MAVConnUDP>(44, 200, "0.0.0.0", 45003, "localhost", 45002);
-  client->message_received_cb = std::bind(
-    &UDP::recv_message, this, std::placeholders::_1,
-    std::placeholders::_2);
+  client->connect(
+    std::bind(
+      &UDP::recv_message, this, std::placeholders::_1,
+      std::placeholders::_2));
 
   // wait echo
   send_heartbeat(client.get());
@@ -135,11 +133,11 @@ TEST_F(TCP, bind_error)
   MAVConnInterface::Ptr conns[2];
 
   conns[0] = std::make_shared<MAVConnTCPServer>(42, 200, "localhost", 57600);
+  conns[0]->connect(MAVConnInterface::ReceivedCb());
   ASSERT_THROW(
     conns[1] = std::make_shared<MAVConnTCPServer>(
       42, 200, "localhost",
-      57600),
-    DeviceError);
+      57600), DeviceError);
 }
 
 TEST_F(TCP, connect_error)
@@ -159,17 +157,17 @@ TEST_F(TCP, send_message)
 
   // create echo server
   echo_server = std::make_shared<MAVConnTCPServer>(42, 200, "0.0.0.0", 57602);
-  echo_server->message_received_cb = [&](const mavlink_message_t * msg, const Framing framing) {
-      (void)framing;
-
+  echo_server->connect(
+    [&](const mavlink_message_t * msg, const Framing framing [[maybe_unused]]) {
       echo_server->send_message(msg);
-    };
+    });
 
   // create client
   client = std::make_shared<MAVConnTCPClient>(44, 200, "localhost", 57602);
-  client->message_received_cb = std::bind(
-    &TCP::recv_message, this, std::placeholders::_1,
-    std::placeholders::_2);
+  client->connect(
+    std::bind(
+      &TCP::recv_message, this, std::placeholders::_1,
+      std::placeholders::_2));
 
   // wait echo
   send_heartbeat(client.get());
@@ -185,11 +183,10 @@ TEST_F(TCP, client_reconnect)
 
   // create echo server
   echo_server = std::make_shared<MAVConnTCPServer>(42, 200, "0.0.0.0", 57604);
-  echo_server->message_received_cb = [&](const mavlink_message_t * msg, const Framing framing) {
-      (void)framing;
-
+  echo_server->connect(
+    [&](const mavlink_message_t * msg, const Framing framing [[maybe_unused]]) {
       echo_server->send_message(msg);
-    };
+    });
 
   EXPECT_NO_THROW(
   {
