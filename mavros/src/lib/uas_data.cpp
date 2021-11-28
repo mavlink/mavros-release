@@ -1,277 +1,158 @@
-/**
- * @brief MAVROS UAS manager (data part)
- * @file uas.cpp
- * @author Vladimir Ermakov <vooon341@gmail.com>
- */
 /*
- * Copyright 2014,2015 Vladimir Ermakov.
+ * Copyright 2014,2015,2021 Vladimir Ermakov.
  *
  * This file is part of the mavros package and subject to the license terms
  * in the top-level LICENSE file of the mavros repository.
  * https://github.com/mavlink/mavros/tree/master/LICENSE.md
  */
+/**
+ * @brief MAVROS UAS manager (data part)
+ * @file uas_data.cpp
+ * @author Vladimir Ermakov <vooon341@gmail.com>
+ */
 
 #include <array>
+#include <memory>
 #include <unordered_map>
 #include <stdexcept>
-#include <mavros/mavros_uas.h>
-#include <mavros/utils.h>
-#include <mavros/px4_custom_mode.h>
 
-using namespace mavros;
-using utils::enum_value;
+#include "mavros/mavros_uas.hpp"
+#include "mavros/utils.hpp"
+#include "mavros/px4_custom_mode.hpp"
 
-UAS::UAS() :
-	tf2_listener(tf2_buffer, true),
-	type(enum_value(MAV_TYPE::GENERIC)),
-	autopilot(enum_value(MAV_AUTOPILOT::GENERIC)),
-	base_mode(0),
-	target_system(1),
-	target_component(1),
-	connected(false),
-	gps_eph(NAN),
-	gps_epv(NAN),
-	gps_fix_type(0),
-	gps_satellites_visible(0),
-	time_offset(0),
-	tsync_mode(UAS::timesync_mode::NONE),
-	fcu_caps_known(false),
-	fcu_capabilities(0)
+using namespace mavros::uas;  // NOLINT
+
+std::once_flag Data::init_flag;
+std::shared_ptr<GeographicLib::Geoid> Data::egm96_5;
+
+
+Data::Data()
+:   imu_enu_data{},
+  imu_ned_data{},
+  gps_fix{},
+  gps_eph(NAN),
+  gps_epv(NAN),
+  gps_fix_type(0),
+  gps_satellites_visible(0)
 {
-	try {
-		// Using smallest dataset with 5' grid,
-		// From default location,
-		// Use cubic interpolation, Thread safe
-		egm96_5 = std::make_shared<GeographicLib::Geoid>("egm96-5", "", true, true);
-	}
-	catch (const std::exception &e) {
-		// catch exception and shutdown node
-		ROS_FATAL_STREAM("UAS: GeographicLib exception: " << e.what() <<
-				" | Run install_geographiclib_dataset.sh script in order to install Geoid Model dataset!");
-		ros::shutdown();
-	}
+  auto & nq = imu_ned_data.orientation;
+  auto & eq = imu_enu_data.orientation;
+  auto & nv = imu_ned_data.angular_velocity;
+  auto & ev = imu_enu_data.angular_velocity;
 
-	// Publish helper TFs used for frame transformation in the odometry plugin
-	std::vector<geometry_msgs::TransformStamped> transform_vector;
-	add_static_transform("map", "map_ned", Eigen::Affine3d(ftf::quaternion_from_rpy(M_PI, 0, M_PI_2)),transform_vector);
-	add_static_transform("odom", "odom_ned", Eigen::Affine3d(ftf::quaternion_from_rpy(M_PI, 0, M_PI_2)),transform_vector);
-	add_static_transform("base_link", "base_link_frd", Eigen::Affine3d(ftf::quaternion_from_rpy(M_PI, 0, 0)),transform_vector);
+  nq.w = 1.0, nq.x = nq.y = nq.z = 0.0;
+  eq.w = 1.0, eq.x = eq.y = eq.z = 0.0;
 
-	tf2_static_broadcaster.sendTransform(transform_vector);
+  nv.x = nv.y = nv.z = 0.0;
+  ev.x = ev.y = ev.z = 0.0;
+
+  gps_fix.status.service = sensor_msgs::msg::NavSatStatus::SERVICE_GPS;
+  gps_fix.status.status = sensor_msgs::msg::NavSatStatus::STATUS_NO_FIX;
+  gps_fix.position_covariance.fill(0.0);
+  gps_fix.position_covariance[0] = -1.0;
+  gps_fix.position_covariance_type = sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
+
+  std::call_once(init_flag, init_geographiclib);
 }
 
-/* -*- heartbeat handlers -*- */
-
-void UAS::update_heartbeat(uint8_t type_, uint8_t autopilot_, uint8_t base_mode_)
+void Data::init_geographiclib()
 {
-	type = type_;
-	autopilot = autopilot_;
-	base_mode = base_mode_;
-}
-
-void UAS::update_connection_status(bool conn_)
-{
-	if (conn_ != connected) {
-		connected = conn_;
-
-		// call all change cb's
-		for (auto &cb : connection_cb_vec)
-			cb(conn_);
-	}
-}
-
-void UAS::add_connection_change_handler(UAS::ConnectionCb cb)
-{
-	lock_guard lock(mutex);
-	connection_cb_vec.push_back(cb);
-}
-
-/* -*- autopilot version -*- */
-
-static uint64_t get_default_caps(UAS::MAV_AUTOPILOT ap_type)
-{
-	// TODO: return default caps mask for known FCU's
-	return 0;
-}
-
-uint64_t UAS::get_capabilities()
-{
-	if (fcu_caps_known) {
-		uint64_t caps = fcu_capabilities;
-		return caps;
-	}
-	else {
-		return get_default_caps(get_autopilot());
-	}
-}
-
-// This function may need a mutex now
-void UAS::update_capabilities(bool known, uint64_t caps)
-{
-	bool process_cb_queue = false;
-
-	if (known != fcu_caps_known) {
-		if (!fcu_caps_known) {
-			process_cb_queue = true;
-		}
-		fcu_caps_known = known;
-	} else if (fcu_caps_known) {	// Implies fcu_caps_known == known
-		if (caps != fcu_capabilities) {
-			process_cb_queue = true;
-		}
-	}
-	else {}	// Capabilities werent known before and arent known after update
-
-	if (process_cb_queue) {
-		fcu_capabilities = caps;
-		for (auto &cb : capabilities_cb_vec) {
-			cb(static_cast<MAV_CAP>(caps));
-		}
-	}
-}
-
-void UAS::add_capabilities_change_handler(UAS::CapabilitiesCb cb)
-{
-	lock_guard lock(mutex);
-	capabilities_cb_vec.push_back(cb);
+  try {
+    // Using smallest dataset with 5' grid,
+    // From default location,
+    // Use cubic interpolation, Thread safe
+    egm96_5 = std::make_shared<GeographicLib::Geoid>("egm96-5", "", true, true);
+  } catch (const std::exception & e) {
+    rcpputils::require_true(
+      false, utils::format(
+        "UAS: GeographicLib exception: %s "
+        "| Run install_geographiclib_dataset.sh script in order to install Geoid Model dataset!",
+        e.what()));
+  }
 }
 
 /* -*- IMU data -*- */
 
-void UAS::update_attitude_imu_enu(sensor_msgs::Imu::Ptr &imu)
+void Data::update_attitude_imu_enu(const sensor_msgs::msg::Imu & imu)
 {
-	lock_guard lock(mutex);
-	imu_enu_data = imu;
+  s_unique_lock lock(mu);
+  imu_enu_data = imu;
 }
 
-void UAS::update_attitude_imu_ned(sensor_msgs::Imu::Ptr &imu)
+void Data::update_attitude_imu_ned(const sensor_msgs::msg::Imu & imu)
 {
-	lock_guard lock(mutex);
-	imu_ned_data = imu;
+  s_unique_lock lock(mu);
+  imu_ned_data = imu;
 }
 
-sensor_msgs::Imu::Ptr UAS::get_attitude_imu_enu()
+sensor_msgs::msg::Imu Data::get_attitude_imu_enu()
 {
-	lock_guard lock(mutex);
-	return imu_enu_data;
+  s_shared_lock lock(mu);
+  return imu_enu_data;
 }
 
-sensor_msgs::Imu::Ptr UAS::get_attitude_imu_ned()
+sensor_msgs::msg::Imu Data::get_attitude_imu_ned()
 {
-	lock_guard lock(mutex);
-	return imu_ned_data;
+  s_shared_lock lock(mu);
+  return imu_ned_data;
 }
 
-geometry_msgs::Quaternion UAS::get_attitude_orientation_enu()
+geometry_msgs::msg::Quaternion Data::get_attitude_orientation_enu()
 {
-	lock_guard lock(mutex);
-	if (imu_enu_data)
-		return imu_enu_data->orientation;
-	else {
-		// fallback - return identity
-		geometry_msgs::Quaternion q;
-		q.w = 1.0; q.x = q.y = q.z = 0.0;
-		return q;
-	}
+  s_shared_lock lock(mu);
+
+  return imu_enu_data.orientation;
 }
 
-geometry_msgs::Quaternion UAS::get_attitude_orientation_ned()
+geometry_msgs::msg::Quaternion Data::get_attitude_orientation_ned()
 {
-	lock_guard lock(mutex);
-	if (imu_ned_data)
-		return imu_ned_data->orientation;
-	else {
-		// fallback - return identity
-		geometry_msgs::Quaternion q;
-		q.w = 1.0; q.x = q.y = q.z = 0.0;
-		return q;
-	}
+  s_shared_lock lock(mu);
+
+  return imu_ned_data.orientation;
 }
 
-geometry_msgs::Vector3 UAS::get_attitude_angular_velocity_enu()
+geometry_msgs::msg::Vector3 Data::get_attitude_angular_velocity_enu()
 {
-	lock_guard lock(mutex);
-	if (imu_enu_data)
-		return imu_enu_data->angular_velocity;
-	else {
-		// fallback
-		geometry_msgs::Vector3 v;
-		v.x = v.y = v.z = 0.0;
-		return v;
-	}
+  s_shared_lock lock(mu);
+  return imu_enu_data.angular_velocity;
 }
 
-geometry_msgs::Vector3 UAS::get_attitude_angular_velocity_ned()
+geometry_msgs::msg::Vector3 Data::get_attitude_angular_velocity_ned()
 {
-	lock_guard lock(mutex);
-	if (imu_ned_data)
-		return imu_ned_data->angular_velocity;
-	else {
-		// fallback
-		geometry_msgs::Vector3 v;
-		v.x = v.y = v.z = 0.0;
-		return v;
-	}
+  s_shared_lock lock(mu);
+  return imu_ned_data.angular_velocity;
 }
-
 
 /* -*- GPS data -*- */
 
-void UAS::update_gps_fix_epts(sensor_msgs::NavSatFix::Ptr &fix,
-	float eph, float epv,
-	int fix_type, int satellites_visible)
+void Data::update_gps_fix_epts(
+  const sensor_msgs::msg::NavSatFix & fix,
+  float eph, float epv,
+  int fix_type, int satellites_visible)
 {
-	lock_guard lock(mutex);
+  s_unique_lock lock(mu);
 
-	gps_fix = fix;
-	gps_eph = eph;
-	gps_epv = epv;
-	gps_fix_type = fix_type;
-	gps_satellites_visible = satellites_visible;
+  gps_fix = fix;
+  gps_eph = eph;
+  gps_epv = epv;
+  gps_fix_type = fix_type;
+  gps_satellites_visible = satellites_visible;
 }
 
 //! Returns EPH, EPV, Fix type and satellites visible
-void UAS::get_gps_epts(float &eph, float &epv, int &fix_type, int &satellites_visible)
+void Data::get_gps_epts(float & eph, float & epv, int & fix_type, int & satellites_visible)
 {
-	lock_guard lock(mutex);
+  s_shared_lock lock(mu);
 
-	eph = gps_eph;
-	epv = gps_epv;
-	fix_type = gps_fix_type;
-	satellites_visible = gps_satellites_visible;
+  eph = gps_eph;
+  epv = gps_epv;
+  fix_type = gps_fix_type;
+  satellites_visible = gps_satellites_visible;
 }
 
 //! Retunrs last GPS RAW message
-sensor_msgs::NavSatFix::Ptr UAS::get_gps_fix()
+sensor_msgs::msg::NavSatFix Data::get_gps_fix()
 {
-	lock_guard lock(mutex);
-	return gps_fix;
-}
-
-/* -*- transform -*- */
-
-//! Stack static transform into vector
-void UAS::add_static_transform(const std::string &frame_id, const std::string &child_id, const Eigen::Affine3d &tr, std::vector<geometry_msgs::TransformStamped>& vector)
-{
-	geometry_msgs::TransformStamped static_transform;
-
-	static_transform.header.stamp = ros::Time::now();
-	static_transform.header.frame_id = frame_id;
-	static_transform.child_frame_id = child_id;
-	tf::transformEigenToMsg(tr, static_transform.transform);
-
-	vector.emplace_back(static_transform);
-}
-
-//! Publishes static transform
-void UAS::publish_static_transform(const std::string &frame_id, const std::string &child_id, const Eigen::Affine3d &tr)
-{
-	geometry_msgs::TransformStamped static_transformStamped;
-
-	static_transformStamped.header.stamp = ros::Time::now();
-	static_transformStamped.header.frame_id = frame_id;
-	static_transformStamped.child_frame_id = child_id;
-	tf::transformEigenToMsg(tr, static_transformStamped.transform);
-
-	tf2_static_broadcaster.sendTransform(static_transformStamped);
+  s_shared_lock lock(mu);
+  return gps_fix;
 }
