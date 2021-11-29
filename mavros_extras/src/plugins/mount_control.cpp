@@ -1,10 +1,3 @@
-/*
- * Copyright 2019 Jaeyoung Lim.
- *
- * This file is part of the mavros package and subject to the license terms
- * in the top-level LICENSE file of the mavros repository.
- * https://github.com/mavlink/mavros/tree/master/LICENSE.md
- */
 /**
  * @brief Mount Control plugin
  * @file mount_control.cpp
@@ -13,28 +6,24 @@
  * @addtogroup plugin
  * @{
  */
+/*
+ * Copyright 2019 Jaeyoung Lim.
+ *
+ * This file is part of the mavros package and subject to the license terms
+ * in the top-level LICENSE file of the mavros repository.
+ * https://github.com/mavlink/mavros/tree/master/LICENSE.md
+ */
 
-#include <tf2_eigen/tf2_eigen.h>
+#include <mavros/mavros_plugin.h>
 
-#include <memory>
+#include <mavros_msgs/CommandLong.h>
+#include <mavros_msgs/MountControl.h>
+#include <geometry_msgs/Quaternion.h>
+#include <geometry_msgs/Vector3Stamped.h>
+#include <mavros_msgs/MountConfigure.h>
 
-#include "rcpputils/asserts.hpp"
-#include "mavros/mavros_uas.hpp"
-#include "mavros/plugin.hpp"
-#include "mavros/plugin_filter.hpp"
-
-#include "mavros_msgs/srv/command_long.hpp"
-#include "mavros_msgs/msg/mount_control.hpp"
-#include "geometry_msgs/msg/quaternion.hpp"
-#include "geometry_msgs/msg/vector3_stamped.hpp"
-#include "mavros_msgs/srv/mount_configure.hpp"
-
-namespace mavros
-{
-namespace extra_plugins
-{
-using namespace std::placeholders;      // NOLINT
-
+namespace mavros {
+namespace extra_plugins {
 //! Mavlink enumerations
 using mavlink::common::MAV_MOUNT_MODE;
 using mavlink::common::MAV_CMD;
@@ -42,158 +31,143 @@ using utils::enum_value;
 
 /**
  * @brief Mount Control plugin
- * @plugin mount_control
  *
  * Publishes Mission commands to control the camera or antenna mount.
  * @see command_cb()
  */
-class MountControlPlugin : public plugin::Plugin
-{
+class MountControlPlugin : public plugin::PluginBase {
 public:
-  explicit MountControlPlugin(plugin::UASPtr uas_)
-  : Plugin(uas_, "mount_control")
-  {
-    command_sub = node->create_subscription<mavros_msgs::msg::MountControl>(
-      "~/command", 10, std::bind(
-        &MountControlPlugin::command_cb, this,
-        _1));
+	MountControlPlugin() : PluginBase(),
+		nh("~"),
+		mount_nh("~mount_control")
+	{ }
 
-    mount_orientation_pub = node->create_publisher<geometry_msgs::msg::Quaternion>(
-      "~/orientation",
-      10);
-    mount_status_pub = node->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/status", 10);
+	void initialize(UAS &uas_) override
+	{
+		PluginBase::initialize(uas_);
 
-    configure_srv = node->create_service<mavros_msgs::srv::MountConfigure>(
-      "~/configure", std::bind(
-        &MountControlPlugin::mount_configure_cb,
-        this, _1, _2));
-  }
+		command_sub = mount_nh.subscribe("command", 10, &MountControlPlugin::command_cb, this);
+		mount_orientation_pub = mount_nh.advertise<geometry_msgs::Quaternion>("orientation", 10);
+		mount_status_pub = mount_nh.advertise<geometry_msgs::Vector3Stamped>("status", 10);
+		configure_srv = mount_nh.advertiseService("configure", &MountControlPlugin::mount_configure_cb, this);
+	}
 
-  Subscriptions get_subscriptions() override
-  {
-    return {
-      make_handler(&MountControlPlugin::handle_mount_orientation),
-      make_handler(&MountControlPlugin::handle_mount_status)
-    };
-  }
+	Subscriptions get_subscriptions() override
+	{
+		return {
+			make_handler(&MountControlPlugin::handle_mount_orientation),
+			make_handler(&MountControlPlugin::handle_mount_status)
+		};
+	}
 
 private:
-  rclcpp::Subscription<mavros_msgs::msg::MountControl>::SharedPtr command_sub;
+	ros::NodeHandle nh;
+	ros::NodeHandle mount_nh;
+	ros::Subscriber command_sub;
+	ros::Publisher mount_orientation_pub;
+	ros::Publisher mount_status_pub;
+	ros::ServiceServer configure_srv;
 
-  rclcpp::Publisher<geometry_msgs::msg::Quaternion>::SharedPtr mount_orientation_pub;
-  rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr mount_status_pub;
+	/**
+	 * @brief Publish the mount orientation
+	 *
+	 * Message specification: https://mavlink.io/en/messages/common.html#MOUNT_ORIENTATION
+	 * @param msg   the mavlink message
+	 * @param mo	received MountOrientation msg
+	 */
+	void handle_mount_orientation(const mavlink::mavlink_message_t *msg, mavlink::common::msg::MOUNT_ORIENTATION &mo)
+	{
+		auto q = ftf::quaternion_from_rpy(Eigen::Vector3d(mo.roll, mo.pitch, mo.yaw) * M_PI / 180.0);
+		geometry_msgs::Quaternion quaternion_msg;
+		tf::quaternionEigenToMsg(q, quaternion_msg);
+		mount_orientation_pub.publish(quaternion_msg);
+	}
 
-  rclcpp::Service<mavros_msgs::srv::MountConfigure>::SharedPtr configure_srv;
+	/**
+	 * @brief Publish the mount status
+	 *
+	 * @param msg   the mavlink message
+	 * @param ms	received MountStatus msg
+	 */
+	void handle_mount_status(const mavlink::mavlink_message_t *, mavlink::ardupilotmega::msg::MOUNT_STATUS &ms)
+	{
+		geometry_msgs::Vector3Stamped publish_msg;
 
-  /**
-   * @brief Publish the mount orientation
-   *
-   * Message specification: https://mavlink.io/en/messages/common.html#MOUNT_ORIENTATION
-   * @param msg   the mavlink message
-   * @param mo	received MountOrientation msg
-   */
-  void handle_mount_orientation(
-    const mavlink::mavlink_message_t * msg [[maybe_unused]],
-    mavlink::common::msg::MOUNT_ORIENTATION & mo,
-    plugin::filter::SystemAndOk filter [[maybe_unused]])
-  {
-    auto q = ftf::quaternion_from_rpy(Eigen::Vector3d(mo.roll, mo.pitch, mo.yaw) * M_PI / 180.0);
+		publish_msg.header.stamp = ros::Time::now();
 
-    geometry_msgs::msg::Quaternion quaternion_msg = tf2::toMsg(q);
+		publish_msg.header.frame_id = std::to_string(ms.target_component);
 
-    mount_orientation_pub->publish(quaternion_msg);
-  }
+		auto vec = Eigen::Vector3d(ms.pointing_b, ms.pointing_a, ms.pointing_c) * M_PI / 18000.0;
+		tf::vectorEigenToMsg(vec, publish_msg.vector);
 
-  /**
-   * @brief Publish the mount status
-   *
-   * @param msg   the mavlink message
-   * @param ms	received MountStatus msg
-   */
-  void handle_mount_status(
-    const mavlink::mavlink_message_t * mmsg [[maybe_unused]],
-    mavlink::ardupilotmega::msg::MOUNT_STATUS & ms,
-    plugin::filter::SystemAndOk filter [[maybe_unused]])
-  {
-    geometry_msgs::msg::Vector3Stamped publish_msg;
+		mount_status_pub.publish(publish_msg);
 
-    publish_msg.header.stamp = node->now();
-    publish_msg.header.frame_id = std::to_string(ms.target_component);
+		// pointing_X is cdeg
+		auto q = ftf::quaternion_from_rpy(Eigen::Vector3d(ms.pointing_b, ms.pointing_a, ms.pointing_c) * M_PI / 18000.0);
+		geometry_msgs::Quaternion quaternion_msg;
+		tf::quaternionEigenToMsg(q, quaternion_msg);
+		mount_orientation_pub.publish(quaternion_msg);
+	}
 
-    auto vec = Eigen::Vector3d(ms.pointing_b, ms.pointing_a, ms.pointing_c) * M_PI / 18000.0;
-    tf2::toMsg(vec, publish_msg.vector);
+	/**
+	 * @brief Send mount control commands to vehicle
+	 *
+	 * Message specification: https://mavlink.io/en/messages/common.html#MAV_CMD_DO_MOUNT_CONTROL
+	 * @param req	received MountControl msg
+	 */
+	void command_cb(const mavros_msgs::MountControl::ConstPtr &req)
+	{
+		mavlink::common::msg::COMMAND_LONG cmd {};
 
-    mount_status_pub->publish(publish_msg);
+		cmd.target_system = m_uas->get_tgt_system();
+		cmd.target_component = m_uas->get_tgt_component();
+		cmd.command = enum_value(MAV_CMD::DO_MOUNT_CONTROL);
+		cmd.param1 = req->pitch;
+		cmd.param2 = req->roll;
+		cmd.param3 = req->yaw;
+		cmd.param4 = req->altitude;	//
+		cmd.param5 = req->latitude;	// latitude in degrees * 1E7
+		cmd.param6 = req->longitude;	// longitude in degrees * 1E7
+		cmd.param7 = req->mode;	// MAV_MOUNT_MODE
 
-    // pointing_X is cdeg
-    auto q = ftf::quaternion_from_rpy(
-      Eigen::Vector3d(
-        ms.pointing_b, ms.pointing_a,
-        ms.pointing_c) * M_PI / 18000.0);
-    geometry_msgs::msg::Quaternion quaternion_msg = tf2::toMsg(q);
+		UAS_FCU(m_uas)->send_message_ignore_drop(cmd);
+	}
 
-    mount_orientation_pub->publish(quaternion_msg);
-  }
+	bool mount_configure_cb(mavros_msgs::MountConfigure::Request &req,
+		mavros_msgs::MountConfigure::Response &res)
+	{
+		using mavlink::common::MAV_CMD;
 
-  /**
-   * @brief Send mount control commands to vehicle
-   *
-   * Message specification: https://mavlink.io/en/messages/common.html#MAV_CMD_DO_MOUNT_CONTROL
-   * @param req	received MountControl msg
-   */
-  void command_cb(const mavros_msgs::msg::MountControl::SharedPtr req)
-  {
-    mavlink::common::msg::COMMAND_LONG cmd {};
+		try {
+			auto client = nh.serviceClient<mavros_msgs::CommandLong>("cmd/command");
 
-    uas->msg_set_target(cmd);
-    cmd.command = enum_value(MAV_CMD::DO_MOUNT_CONTROL);
-    cmd.param1 = req->pitch;
-    cmd.param2 = req->roll;
-    cmd.param3 = req->yaw;
-    cmd.param4 = req->altitude;         //
-    cmd.param5 = req->latitude;         // latitude in degrees * 1E7
-    cmd.param6 = req->longitude;        // longitude in degrees * 1E7
-    cmd.param7 = req->mode;             // MAV_MOUNT_MODE
+			mavros_msgs::CommandLong cmd{};
 
-    uas->send_message(cmd);
-  }
+			cmd.request.broadcast = false;
+			cmd.request.command = enum_value(MAV_CMD::DO_MOUNT_CONFIGURE);
+			cmd.request.confirmation = false;
+			cmd.request.param1 = req.mode;
+			cmd.request.param2 = req.stabilize_roll;
+			cmd.request.param3 = req.stabilize_pitch;
+			cmd.request.param4 = req.stabilize_yaw;
+			cmd.request.param5 = req.roll_input;
+			cmd.request.param6 = req.pitch_input;
+			cmd.request.param7 = req.yaw_input;
 
-  void mount_configure_cb(
-    mavros_msgs::srv::MountConfigure::Request::SharedPtr req,
-    mavros_msgs::srv::MountConfigure::Response::SharedPtr res)
-  {
-    using mavlink::common::MAV_CMD;
+			ROS_DEBUG_NAMED("mount", "MountConfigure: Request mode %u ", req.mode);
+			res.success = client.call(cmd);
+		}
+		catch (ros::InvalidNameException &ex) {
+			ROS_ERROR_NAMED("mount", "MountConfigure: %s", ex.what());
+		}
 
-    try {
-      auto client = node->create_client<mavros_msgs::srv::CommandLong>("cmd/command");
+		ROS_ERROR_COND_NAMED(!res.success, "mount", "MountConfigure: command plugin service call failed!");
 
-      auto cmdrq = std::make_shared<mavros_msgs::srv::CommandLong::Request>();
-
-      cmdrq->broadcast = false;
-      cmdrq->command = enum_value(MAV_CMD::DO_MOUNT_CONFIGURE);
-      cmdrq->confirmation = false;
-      cmdrq->param1 = req->mode;
-      cmdrq->param2 = req->stabilize_roll;
-      cmdrq->param3 = req->stabilize_pitch;
-      cmdrq->param4 = req->stabilize_yaw;
-      cmdrq->param5 = req->roll_input;
-      cmdrq->param6 = req->pitch_input;
-      cmdrq->param7 = req->yaw_input;
-
-      RCLCPP_DEBUG(get_logger(), "MountConfigure: Request mode %u ", req->mode);
-      auto future = client->async_send_request(cmdrq);
-      auto response = future.get();
-      res->success = response->success;
-    } catch (std::exception & ex) {
-      RCLCPP_ERROR(get_logger(), "MountConfigure: %s", ex.what());
-    }
-
-    RCLCPP_ERROR_EXPRESSION(
-      get_logger(), !res->success, "MountConfigure: command plugin service call failed!");
-  }
+		return res.success;
+	}
 };
-}       // namespace extra_plugins
-}       // namespace mavros
+}	// namespace extra_plugins
+}	// namespace mavros
 
-#include <mavros/mavros_plugin_register_macro.hpp>  // NOLINT
-MAVROS_PLUGIN_REGISTER(mavros::extra_plugins::MountControlPlugin)
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(mavros::extra_plugins::MountControlPlugin, mavros::plugin::PluginBase)
