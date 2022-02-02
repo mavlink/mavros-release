@@ -58,7 +58,8 @@ UAS::UAS(
   fcu_capabilities(0),
   connected(false),
   time_offset(0),
-  tsync_mode(timesync_mode::NONE)
+  tsync_mode(timesync_mode::NONE),
+  mavlink_status({})
 {
   // XXX TODO(vooon): should i use LifecycleNode?
 
@@ -79,7 +80,7 @@ UAS::UAS(
 
   // NOTE(vooon): we couldn't add_plugin() in constructor because it needs shared_from_this()
   startup_delay_timer = this->create_wall_timer(
-    100ms, [this]() {
+    10ms, [this]() {
       startup_delay_timer->cancel();
 
       std::string fcu_protocol;
@@ -95,14 +96,17 @@ UAS::UAS(
 
       exec_spin_thd = thread_ptr(
         new std::thread(
-          [&]() {
+          [this]() {
             utils::set_this_thread_name("uas-exec/%d.%d", source_system, source_component);
+            auto lg = this->get_logger();
 
-            RCLCPP_INFO(this->get_logger(), "UAS Executor started");
+            RCLCPP_INFO(
+              lg, "UAS Executor started, threads: %zu",
+              this->exec.get_number_of_threads());
             this->exec.spin();
-            RCLCPP_WARN(this->get_logger(), "UAS Executor terminated");
+            RCLCPP_WARN(lg, "UAS Executor terminated");
           }),
-        [&](std::thread * t) {
+        [this](std::thread * t) {
           this->exec.cancel();
           t->join();
           delete t;
@@ -318,7 +322,7 @@ void UAS::add_plugin(const std::string & pl_name)
 
     auto pl_node = plugin->get_node();
     if (pl_node && pl_node.get() != this) {
-      RCLCPP_INFO_STREAM(lg, "Plugin " << pl_name << " added to executor");
+      RCLCPP_DEBUG_STREAM(lg, "Plugin " << pl_name << " added to executor");
       exec.add_node(pl_node);
     }
 
