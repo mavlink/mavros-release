@@ -506,19 +506,29 @@ public:
       sensor_qos,
       std::bind(&SystemStatusPlugin::statustext_cb, this, _1));
 
+    srv_cg = node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+
     mode_srv =
       node->create_service<mavros_msgs::srv::SetMode>(
       "set_mode",
-      std::bind(&SystemStatusPlugin::set_mode_cb, this, _1, _2));
+      std::bind(
+        &SystemStatusPlugin::set_mode_cb, this, _1,
+        _2), rmw_qos_profile_services_default, srv_cg);
     stream_rate_srv =
       node->create_service<mavros_msgs::srv::StreamRate>(
       "set_stream_rate",
-      std::bind(&SystemStatusPlugin::set_rate_cb, this, _1, _2));
+      std::bind(
+        &SystemStatusPlugin::set_rate_cb, this, _1,
+        _2), rmw_qos_profile_services_default, srv_cg);
     message_interval_srv = node->create_service<mavros_msgs::srv::MessageInterval>(
       "set_message_interval",
-      std::bind(&SystemStatusPlugin::set_message_interval_cb, this, _1, _2));
+      std::bind(
+        &SystemStatusPlugin::set_message_interval_cb, this, _1,
+        _2), rmw_qos_profile_services_default, srv_cg);
     vehicle_info_get_srv = node->create_service<mavros_msgs::srv::VehicleInfoGet>(
-      "vehicle_info_get", std::bind(&SystemStatusPlugin::vehicle_info_get_cb, this, _1, _2));
+      "vehicle_info_get", std::bind(
+        &SystemStatusPlugin::vehicle_info_get_cb, this, _1,
+        _2), rmw_qos_profile_services_default, srv_cg);
 
     uas->diagnostic_updater.add(hb_diag);
 
@@ -564,6 +574,7 @@ private:
   rclcpp::Publisher<mavros_msgs::msg::StatusText>::SharedPtr statustext_pub;
   rclcpp::Subscription<mavros_msgs::msg::StatusText>::SharedPtr statustext_sub;
 
+  rclcpp::CallbackGroup::SharedPtr srv_cg;
   rclcpp::Service<mavros_msgs::srv::StreamRate>::SharedPtr stream_rate_srv;
   rclcpp::Service<mavros_msgs::srv::MessageInterval>::SharedPtr message_interval_srv;
   rclcpp::Service<mavros_msgs::srv::SetMode>::SharedPtr mode_srv;
@@ -1078,8 +1089,15 @@ private:
         (do_broadcast) ? "broadcast" : "unicast");
 
       auto future = client->async_send_request(cmdrq);
-      auto response = future.get();
-      ret = response->success;
+      // NOTE(vooon): temporary hack from @Michel1968
+      // See: https://github.com/mavlink/mavros/issues/1588#issuecomment-1027699924
+      const auto future_status = future.wait_for(1s);
+      if (future_status == std::future_status::ready) {
+        auto response = future.get();
+        ret = response->success;
+      } else {
+        RCLCPP_ERROR(lg, "VER: autopilot version service timeout");
+      }
     } catch (std::exception & ex) {
       RCLCPP_ERROR_STREAM(lg, "VER: " << ex.what());
     }
@@ -1196,20 +1214,25 @@ private:
 
       RCLCPP_DEBUG(
         lg,
-        "SetMessageInterval: Request msgid %u at %f hz",
+        "SYS: Request msgid %u at %f hz",
         req->message_id, req->message_rate);
 
       auto future = client->async_send_request(cmdrq);
-      auto response = future.get();
-
-      res->success = response->success;
+      // NOTE(vooon): same hack as for VER
+      const auto future_status = future.wait_for(1s);
+      if (future_status == std::future_status::ready) {
+        auto response = future.get();
+        res->success = response->success;
+      } else {
+        RCLCPP_ERROR(lg, "SYS: set_message_interval service timeout");
+      }
     } catch (std::exception & ex) {
-      RCLCPP_ERROR_STREAM(lg, "SetMessageInterval: " << ex.what());
+      RCLCPP_ERROR_STREAM(lg, "SYS: " << ex.what());
     }
 
     RCLCPP_ERROR_EXPRESSION(
       lg, !res->success,
-      "SetMessageInterval: command plugin service call failed!");
+      "SYS: command plugin service call failed!");
   }
 
   void set_mode_cb(
