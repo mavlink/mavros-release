@@ -107,6 +107,7 @@ add_library(mavros_extras_plugins SHARED
   src/plugins/play_tune.cpp
   src/plugins/px4flow.cpp
   src/plugins/rangefinder.cpp
+  src/plugins/terrain.cpp
   src/plugins/trajectory.cpp
   src/plugins/tunnel.cpp
   src/plugins/vfr_hud.cpp
@@ -114,7 +115,7 @@ add_library(mavros_extras_plugins SHARED
   src/plugins/vision_pose_estimate.cpp
   src/plugins/vision_speed_estimate.cpp
   src/plugins/wheel_odometry.cpp
-  # [[[end]]] (checksum: 044490889b58024360d4756d2d5787f6)
+  # [[[end]]] (checksum: cb9fe2c8485e38ad6be75ed375863339)
 )
 ament_target_dependencies(mavros_extras_plugins
   angles
