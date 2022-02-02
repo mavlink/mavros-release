@@ -18,6 +18,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <list>
+#include <memory>
 
 #include "rcpputils/asserts.hpp"
 #include "mavros/mavros_uas.hpp"
@@ -82,36 +83,55 @@ public:
         use_comp_id_system_control = p.as_bool();
       });
 
+    srv_cg = node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+
     command_long_srv =
       node->create_service<mavros_msgs::srv::CommandLong>(
       "~/command",
-      std::bind(&CommandPlugin::command_long_cb, this, _1, _2));
+      std::bind(
+        &CommandPlugin::command_long_cb, this, _1, _2,
+        _3), rmw_qos_profile_services_default, srv_cg);
     command_int_srv =
       node->create_service<mavros_msgs::srv::CommandInt>(
       "~/command_int",
-      std::bind(&CommandPlugin::command_int_cb, this, _1, _2));
+      std::bind(
+        &CommandPlugin::command_int_cb, this, _1, _2,
+        _3), rmw_qos_profile_services_default, srv_cg);
     arming_srv =
       node->create_service<mavros_msgs::srv::CommandBool>(
       "~/arming",
-      std::bind(&CommandPlugin::arming_cb, this, _1, _2));
+      std::bind(
+        &CommandPlugin::arming_cb, this, _1, _2,
+        _3), rmw_qos_profile_services_default, srv_cg);
     set_home_srv =
       node->create_service<mavros_msgs::srv::CommandHome>(
       "~/set_home",
-      std::bind(&CommandPlugin::set_home_cb, this, _1, _2));
+      std::bind(
+        &CommandPlugin::set_home_cb, this, _1, _2,
+        _3), rmw_qos_profile_services_default, srv_cg);
     takeoff_srv =
       node->create_service<mavros_msgs::srv::CommandTOL>(
       "~/takeoff",
-      std::bind(&CommandPlugin::takeoff_cb, this, _1, _2));
+      std::bind(
+        &CommandPlugin::takeoff_cb, this, _1, _2,
+        _3), rmw_qos_profile_services_default, srv_cg);
     land_srv =
       node->create_service<mavros_msgs::srv::CommandTOL>(
       "~/land",
-      std::bind(&CommandPlugin::land_cb, this, _1, _2));
+      std::bind(&CommandPlugin::land_cb, this, _1, _2, _3), rmw_qos_profile_services_default,
+      srv_cg);
     trigger_control_srv = node->create_service<mavros_msgs::srv::CommandTriggerControl>(
-      "~/trigger_control", std::bind(&CommandPlugin::trigger_control_cb, this, _1, _2));
+      "~/trigger_control", std::bind(
+        &CommandPlugin::trigger_control_cb, this, _1, _2,
+        _3), rmw_qos_profile_services_default, srv_cg);
     trigger_interval_srv = node->create_service<mavros_msgs::srv::CommandTriggerInterval>(
-      "~/trigger_interval", std::bind(&CommandPlugin::trigger_interval_cb, this, _1, _2));
+      "~/trigger_interval", std::bind(
+        &CommandPlugin::trigger_interval_cb, this, _1, _2,
+        _3), rmw_qos_profile_services_default, srv_cg);
     vtol_transition_srv = node->create_service<mavros_msgs::srv::CommandVtolTransition>(
-      "~/vtol_transition", std::bind(&CommandPlugin::vtol_transition_cb, this, _1, _2));
+      "~/vtol_transition", std::bind(
+        &CommandPlugin::vtol_transition_cb, this, _1, _2,
+        _3), rmw_qos_profile_services_default, srv_cg);
   }
 
   Subscriptions get_subscriptions() override
@@ -126,6 +146,7 @@ private:
 
   std::mutex mutex;
 
+  rclcpp::CallbackGroup::SharedPtr srv_cg;
   rclcpp::Service<mavros_msgs::srv::CommandLong>::SharedPtr command_long_srv;
   rclcpp::Service<mavros_msgs::srv::CommandInt>::SharedPtr command_int_srv;
   rclcpp::Service<mavros_msgs::srv::CommandBool>::SharedPtr arming_srv;
@@ -339,9 +360,11 @@ private:
   /* -*- callbacks -*- */
 
   void command_long_cb(
+    const std::shared_ptr<rmw_request_id_t> req_header [[maybe_unused]],
     const mavros_msgs::srv::CommandLong::Request::SharedPtr req,
     mavros_msgs::srv::CommandLong::Response::SharedPtr res)
   {
+    // TODO(vooon): rewrite to use async service server
     send_command_long_and_wait(
       req->broadcast,
       req->command, req->confirmation,
@@ -353,6 +376,7 @@ private:
   }
 
   void command_int_cb(
+    const std::shared_ptr<rmw_request_id_t> req_header [[maybe_unused]],
     const mavros_msgs::srv::CommandInt::Request::SharedPtr req,
     mavros_msgs::srv::CommandInt::Response::SharedPtr res)
   {
@@ -367,6 +391,7 @@ private:
   }
 
   void arming_cb(
+    const std::shared_ptr<rmw_request_id_t> req_header [[maybe_unused]],
     const mavros_msgs::srv::CommandBool::Request::SharedPtr req,
     mavros_msgs::srv::CommandBool::Response::SharedPtr res)
   {
@@ -380,6 +405,7 @@ private:
   }
 
   void set_home_cb(
+    const std::shared_ptr<rmw_request_id_t> req_header [[maybe_unused]],
     const mavros_msgs::srv::CommandHome::Request::SharedPtr req,
     mavros_msgs::srv::CommandHome::Response::SharedPtr res)
   {
@@ -393,6 +419,7 @@ private:
   }
 
   void takeoff_cb(
+    const std::shared_ptr<rmw_request_id_t> req_header [[maybe_unused]],
     const mavros_msgs::srv::CommandTOL::Request::SharedPtr req,
     mavros_msgs::srv::CommandTOL::Response::SharedPtr res)
   {
@@ -408,6 +435,7 @@ private:
   }
 
   void land_cb(
+    const std::shared_ptr<rmw_request_id_t> req_header [[maybe_unused]],
     const mavros_msgs::srv::CommandTOL::Request::SharedPtr req,
     mavros_msgs::srv::CommandTOL::Response::SharedPtr res)
   {
@@ -422,6 +450,7 @@ private:
   }
 
   void trigger_control_cb(
+    const std::shared_ptr<rmw_request_id_t> req_header [[maybe_unused]],
     const mavros_msgs::srv::CommandTriggerControl::Request::SharedPtr req,
     mavros_msgs::srv::CommandTriggerControl::Response::SharedPtr res)
   {
@@ -437,6 +466,7 @@ private:
   }
 
   void trigger_interval_cb(
+    const std::shared_ptr<rmw_request_id_t> req_header [[maybe_unused]],
     const mavros_msgs::srv::CommandTriggerInterval::Request::SharedPtr req,
     mavros_msgs::srv::CommandTriggerInterval::Response::SharedPtr res)
   {
@@ -453,6 +483,7 @@ private:
   }
 
   void vtol_transition_cb(
+    const std::shared_ptr<rmw_request_id_t> req_header [[maybe_unused]],
     const mavros_msgs::srv::CommandVtolTransition::Request::SharedPtr req,
     mavros_msgs::srv::CommandVtolTransition::Response::SharedPtr res)
   {
