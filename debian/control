@@ -1,0 +1,12 @@
+Source: ros-rolling-mavros
+Section: misc
+Priority: optional
+Maintainer: Vladimir Ermakov <vooon341@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), geographiclib-tools, google-mock, libconsole-bridge-dev, libeigen3-dev, libgeographic-dev, libgtest-dev, ros-rolling-ament-cmake, ros-rolling-ament-cmake-gmock, ros-rolling-ament-cmake-gtest, ros-rolling-ament-cmake-pytest, ros-rolling-ament-cmake-python, ros-rolling-ament-lint-auto, ros-rolling-ament-lint-common, ros-rolling-angles, ros-rolling-diagnostic-msgs, ros-rolling-diagnostic-updater, ros-rolling-eigen-stl-containers, ros-rolling-eigen3-cmake-module, ros-rolling-geographic-msgs, ros-rolling-geometry-msgs, ros-rolling-libmavconn, ros-rolling-mavlink, ros-rolling-mavros-msgs, ros-rolling-message-filters, ros-rolling-nav-msgs, ros-rolling-pluginlib, ros-rolling-rclcpp, ros-rolling-rclcpp-components, ros-rolling-rcpputils, ros-rolling-sensor-msgs, ros-rolling-std-msgs, ros-rolling-std-srvs, ros-rolling-tf2-eigen, ros-rolling-tf2-ros, ros-rolling-trajectory-msgs, ros-rolling-ros-workspace
+Homepage: http://wiki.ros.org/mavros
+Standards-Version: 3.9.2
+
+Package: ros-rolling-mavros
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, geographiclib-tools, libconsole-bridge-dev, libeigen3-dev, libgeographic-dev, python3-click, ros-rolling-diagnostic-msgs, ros-rolling-diagnostic-updater, ros-rolling-eigen-stl-containers, ros-rolling-eigen3-cmake-module, ros-rolling-geographic-msgs, ros-rolling-geometry-msgs, ros-rolling-libmavconn, ros-rolling-mavlink, ros-rolling-mavros-msgs, ros-rolling-message-filters, ros-rolling-nav-msgs, ros-rolling-pluginlib, ros-rolling-rclcpp, ros-rolling-rclcpp-components, ros-rolling-rclpy, ros-rolling-rcpputils, ros-rolling-rosidl-default-runtime, ros-rolling-sensor-msgs, ros-rolling-std-msgs, ros-rolling-std-srvs, ros-rolling-tf2-eigen, ros-rolling-tf2-ros, ros-rolling-trajectory-msgs, ros-rolling-ros-workspace
+Description: MAVROS -- MAVLink extendable communication node for ROS with proxy for Ground Control Station.
