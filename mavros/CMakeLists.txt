@@ -91,10 +91,11 @@ add_library(mavros SHARED
   src/lib/plugin.cpp
   src/lib/uas_ap.cpp
   src/lib/uas_data.cpp
+  src/lib/uas_executor.cpp
   src/lib/uas_stringify.cpp
   src/lib/uas_tf.cpp
   src/lib/uas_timesync.cpp
-  # [[[end]]] (checksum: b3ecd6fa61c6675105deb192dbdde2fc)
+  # [[[end]]] (checksum: 3239d16fc87982964694f18425f297b1)
 )
 ament_target_dependencies(mavros
   rclcpp
@@ -179,7 +180,7 @@ target_link_libraries(mavros_node mavros)
 
 ament_python_install_package(${PROJECT_NAME})
 
-# NOTE(vooon): for some reason console_scripts do not works with ament_python!
+# NOTE(vooon): for some reason console_scripts do not work with ament_python!
 install(PROGRAMS scripts/mav
   DESTINATION lib/${PROJECT_NAME}
 )
