@@ -393,6 +393,10 @@ private:
 
     tr_desired.header = uas->synchronized_header("local_origin", trajectory.time_usec);
 
+    if (trajectory.valid_points > tr_desired.point_valid.size()) {
+      return;
+    }
+
     for (int i = 0; i < trajectory.valid_points; ++i) {
       tr_desired.point_valid[i] = true;
     }
