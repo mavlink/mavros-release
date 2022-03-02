@@ -1,141 +1,83 @@
-mavros extras
-=============
+MAVROS
+======
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/mavlink/mavros)](https://github.com/mavlink/mavros/releases)  [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/mavlink/mavros?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)  [![CI](https://github.com/mavlink/mavros/actions/workflows/main.yml/badge.svg)](https://github.com/mavlink/mavros/actions/workflows/main.yml)
 
-Some extra plugins and nodes for [mavros][mr].
+MAVLink extendable communication node for ROS.
+
+- Since 2014-08-11 this repository contains several packages.
+- Since 2014-11-02 hydro support separated from master to hydro-devel branch.
+- Since 2015-03-04 all packages also dual licensed under terms of BSD license.
+- Since 2015-08-10 all messages moved to mavros\_msgs package
+- Since 2016-02-05 (v0.17) frame conversion changed again
+- Since 2016-06-22 (pre v0.18) Indigo and Jade separated from master to indigo-devel branch.
+- Since 2016-06-23 (0.18.0) support MAVLink 2.0 without signing.
+- Since 2017-08-23 (0.20.0) [GeographicLib][geolib] and it's datasets are required. Used to convert AMSL (FCU) and WGS84 (ROS) altitudes.
+- Since 2018-05-11 (0.25.0) support building master for Indigo and Jade stopped. Mainly because update of console-bridge package.
+- Since 2018-05-14 (0.25.1) support for Indigo returned. We use compatibility layer for console-bridge.
+- Since 2019-01-03 (0.28.0) support for Indigo by master not guaranteed. Consider update to more recent distro.
+- 2020-01-01 version 1.0.0 released, please see [#1369][iss1369] for reasons and its purpose.
+- 2021-05-28 version 2.0.0 released, it's the first alpha release for ROS2.
 
 
-ADSB
-----
-
-Publish/subscribe to the location and information of an ADS-B vehicle.
-
-
-cam\_imu\_sync
+mavros package
 --------------
 
-Publish camera trigger data for synchronisation of IMU and camera frames.
+It is the main package, please see its [README][mrrm].
+Here you may read [installation instructions][inst].
 
 
-debug\_value
-------------
+mavros\_extras package
+----------------------
 
-Subs/Pubs debug msgs from and to the FCU.
-
-
-distance\_sensor
-----------------
-
-Publish DISTANCE\_SENSOR message data from FCU or connected sensors in companion computer.
+This package contains some extra nodes and plugins for mavros, please see its [README][exrm].
 
 
-fake\_gps
----------
-
-Sends fake GPS from local position estimation source data (motion capture, vision) to FCU.
-
-
-gps\_input
------------
-
-Send GPS\_INPUT messages to the FCU.
-
-
-gps\_status
------------
-
-Publish GPS\_RAW and GPS\_RTK messages from FCU.
-
-
-gps\_rtk
---------
-
-Sends the RTCM messages to the FCU for the RTK Fix.
-
-
-log\_transfer
--------------
-
-Expose firmware functionality, that is related to log transfer
-
-
-mocap\_pose\_estimate
----------------------
-
-Send motion capture pose estimate to FCU.  Currently, not used by the FCU.
-Data can be send via `vision_position` plugin.
-
-
-obstacle\_distance
+libmavconn package
 ------------------
 
-Send obstacle distance report to the FCU.
+This package contain mavconn library, see its [README][libmc].
+LibMAVConn may be used outside of ROS environment.
 
 
-odom
-----
+test\_mavros package
+--------------------
 
-Send odometry to FCU from another estimator.
-
-
-px4flow
--------
-
-Publish `OPTICAL_FLOW_RAD` data from FCU or PX4Flow module.
+This package contain hand-tests and [manual page][test] for APM and PX4 SITL.
+Please see [README][test] first!
 
 
-rangefinder
+mavros\_msgs package
+--------------------
+
+This package contains messages and services used in MAVROS.
+
+
+Support forums and chats
+------------------------
+
+Please ask your questions not related to bugs/feature or requests on:
+
+- [MAVROS discussion in Gitter IM](https://gitter.im/mavlink/mavros)
+- [PX4 Discuss Forum](https://discuss.px4.io/)
+- [PX4 Slack](https://slack.px4.io/)
+- [Ardupilot Discuss Forum](https://discuss.ardupilot.org/)
+- [ArduPilot/VisionProjects in Gitter IM](https://gitter.im/ArduPilot/ardupilot/VisionProjects)
+
+We'd like to keep the project bug tracker as free as possible, so please contact via the above methods. You can also PM us via Gitter and the PX4 Slack.
+
+
+CI Statuses
 -----------
 
-Publish RANGEFINDER message data from FCU sensors in companion computer.
+  - ROS2 Foxy: [![Build Status](http://build.ros2.org/buildStatus/icon?job=Fdev__mavros__ubuntu_focal_amd64)](http://build.ros2.org/job/Fdev__mavros__ubuntu_focal_amd64/)
+  - ROS2 Galactic: [![Build Status](http://build.ros2.org/buildStatus/icon?job=Gdev__mavros__ubuntu_focal_amd64)](http://build.ros2.org/job/Gdev__mavros__ubuntu_focal_amd64/)
+  - ROS2 Rolling: [![Build Status](http://build.ros2.org/buildStatus/icon?job=Rdev__mavros__ubuntu_focal_amd64)](http://build.ros2.org/job/Rdev__mavros__ubuntu_focal_amd64/)
 
 
-trajectory
-----------
-
-Receive planned path from the FCU and send back corrected path (collision free, smoothed) to the FCU.
-
-
-wheel\_odometry
----------------
-
-Compute and publish wheel odometry coming from FCU sensors.
-
-
-vibration
----------
-
-Publish VIBRATION message data from FCU.
-
-
-vision\_pose\_estimate
-----------------------
-
-Send vision pose estimate to FCU.
-
-
-vision\_speed\_estimate
------------------------
-
-Send vision speed estimate to FCU.
-
-
-companion\_process\_status
---------------------------
-
-Send companion process status report to the FCU.
-
-
-servo\_state\_publisher
------------------------
-
-Convert `mavros_msgs/RCOut` to `sensor_msgs/JointState` messages.
-It is required to bind URDF model and real servos.
-
-
-px-ros-pkg replacement
-----------------------
-
-Use `roslaunch mavros_extras px4flow.launch` for that.
-
-
-[mr]: https://github.com/mavlink/mavros
+[mrrm]: https://github.com/mavlink/mavros/blob/master/mavros/README.md
+[exrm]: https://github.com/mavlink/mavros/blob/master/mavros_extras/README.md
+[libmc]: https://github.com/mavlink/mavros/blob/master/libmavconn/README.md
+[test]: https://github.com/mavlink/mavros/blob/master/test_mavros/README.md
+[inst]: https://github.com/mavlink/mavros/blob/master/mavros/README.md#installation
+[geolib]: https://geographiclib.sourceforge.io/
+[iss1369]: https://github.com/mavlink/mavros/issues/1369
