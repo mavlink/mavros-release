@@ -26,6 +26,13 @@ camera can be corellated to get the exact shutter trigger time.</description>
 Plugin for interfacing on the mavlink camera protocol
 @see command_cb()</description>
   </class>
+  <class name="cellular_status" type="mavros::plugin::PluginFactoryTemplate&lt;mavros::extra_plugins::CellularStatusPlugin&gt;" base_class_type="mavros::plugin::PluginFactory">
+    <description>@brief Cellular status plugin.
+@plugin cellular_status
+
+Users must publish to the topic the CellularStatus message and it
+will be relayed to the mavlink components.</description>
+  </class>
   <class name="companion_process_status" type="mavros::plugin::PluginFactoryTemplate&lt;mavros::extra_plugins::CompanionProcessStatusPlugin&gt;" base_class_type="mavros::plugin::PluginFactory">
     <description>@brief Obstacle companion process status plugin
 @plugin companion_process_status
@@ -81,6 +88,12 @@ Sends &lt;a href=&quot;https://mavlink.io/en/messages/common.html#GPS_INPUT&quot
 @plugin gps_status
 
 This plugin publishes GPS sensor data from a Mavlink compatible FCU to ROS.</description>
+  </class>
+  <class name="guided_target" type="mavros::plugin::PluginFactoryTemplate&lt;mavros::extra_plugins::GuidedTargetPlugin&gt;" base_class_type="mavros::plugin::PluginFactory">
+    <description>@brief guided target plugin
+@plugin guided_target
+
+Send and receive setpoint positions from FCU controller.</description>
   </class>
   <class name="hil" type="mavros::plugin::PluginFactoryTemplate&lt;mavros::extra_plugins::HilPlugin&gt;" base_class_type="mavros::plugin::PluginFactory">
     <description>@brief Hil plugin
@@ -149,7 +162,7 @@ Publishes the status of the onboard computer
     <description>@brief Play Tune service
 @plugin play_tune</description>
   </class>
-  <class name="px" type="mavros::plugin::PluginFactoryTemplate&lt;mavros::extra_plugins::PX4FlowPlugin&gt;" base_class_type="mavros::plugin::PluginFactory">
+  <class name="px4flow" type="mavros::plugin::PluginFactoryTemplate&lt;mavros::extra_plugins::PX4FlowPlugin&gt;" base_class_type="mavros::plugin::PluginFactory">
     <description>@brief PX4 Optical Flow plugin
 @plugin px4flow
 
@@ -214,4 +227,4 @@ This plugin allows computing and publishing wheel odometry coming from FCU wheel
 Can use either wheel's RPM or WHEEL_DISTANCE messages (the latter gives better accuracy).</description>
   </class>
 </library>
-<!-- [[[end]]] (checksum: 00fe5ce10a167498b6caab7d805225dd) -->
+<!-- [[[end]]] (checksum: 930b2e95e313b65e21c5dbea68346c73) -->
