@@ -69,8 +69,9 @@ We'd like to keep the project bug tracker as free as possible, so please contact
 CI Statuses
 -----------
 
-  - ROS Melodic: [![Build Status](http://build.ros.org/buildStatus/icon?job=Mdev__mavros__ubuntu_bionic_amd64)](http://build.ros.org/job/Mdev__mavros__ubuntu_bionic_amd64/)
-  - ROS Noetic: [![Build Status](http://build.ros.org/buildStatus/icon?job=Ndev__mavros__ubuntu_focal_amd64)](http://build.ros.org/job/Ndev__mavros__ubuntu_focal_amd64/)
+  - ROS2 Foxy: [![Build Status](http://build.ros2.org/buildStatus/icon?job=Fdev__mavros__ubuntu_focal_amd64)](http://build.ros2.org/job/Fdev__mavros__ubuntu_focal_amd64/)
+  - ROS2 Galactic: [![Build Status](http://build.ros2.org/buildStatus/icon?job=Gdev__mavros__ubuntu_focal_amd64)](http://build.ros2.org/job/Gdev__mavros__ubuntu_focal_amd64/)
+  - ROS2 Rolling: [![Build Status](http://build.ros2.org/buildStatus/icon?job=Rdev__mavros__ubuntu_focal_amd64)](http://build.ros2.org/job/Rdev__mavros__ubuntu_focal_amd64/)
 
 
 [mrrm]: https://github.com/mavlink/mavros/blob/master/mavros/README.md

@@ -2,6 +2,75 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.3.0 (2022-09-24)
+------------------
+* extras: fix linter errors
+* extras: fix toMsg
+* extras: fix build
+* extras: port guided_target
+* mavros: remove custom find script, re-generate
+* Merge branch 'master' into ros2
+  * master:
+  1.14.0
+  update changelog
+  scripts: waypoint and param files are text, not binary
+  libmavconn: fix MAVLink v1.0 output selection
+  plugins: add guided_target to accept offboard position targets
+  add cmake module path for geographiclib on debian based systems
+  use already installed FindGeographicLib.cmake
+* 1.14.0
+* update changelog
+* Merge pull request `#1780 <https://github.com/mavlink/mavros/issues/1780>`_ from snktshrma/master
+  guided_target: accept position-target-global-int messages
+* plugins: add guided_target to accept offboard position targets
+  Update guided_target.cpp
+  Update guided_target.cpp
+  Update mavros_plugins.xml
+  Update CMakeLists.txt
+  Added offboard_position.cpp
+  Update apm_config.yaml
+  Update offboard_position.cpp
+  Update offboard_position.cpp
+  Rename offboard_position.cpp to guided_target.cpp
+  Update CMakeLists.txt
+  Update mavros_plugins.xml
+  Update apm_config.yaml
+  Update guided_target.cpp
+* Contributors: Sanket Sharma, Vladimir Ermakov
+
+2.2.0 (2022-06-27)
+------------------
+* extras: fix build
+* extras: fix build
+* Merge branch 'master' into ros2
+  * master:
+  mount_control.cpp: detect MOUNT_ORIENTATION stale messages
+  ESCTelemetryItem.msg: correct RPM units
+  apm_config.yaml: add mount configuration
+  sys_status.cpp fix free memory for values > 64KiB
+  uncrustify cellular_status.cpp
+  Add CellularStatus plugin and message
+  *_config.yaml: document usage of multiple batteries diagnostics
+  sys_status.cpp: fix compilation
+  sys_status.cpp: support diagnostics on up-to 10 batteries
+  sys_status.cpp: do not use harcoded constants
+  sys_status.cpp: Timeout on MEMINFO and HWSTATUS mavlink messages and publish on the diagnostics
+  sys_status.cpp: fix enabling of mem_diag and hwst_diag
+  sys_status.cpp: Do not use battery1 voltage as voltage for all other batteries (bugfix).
+  sys_status.cpp: ignore sys_status mavlink messages from gimbals
+  mount_control.cpp: use mount_nh for params to keep similarities with other plugins set diag settings before add()
+  sys_status.cpp: remove deprecated BATTERY2 mavlink message support
+  Mount control plugin: add configurable diagnostics
+  Bugfix: increment_f had no value asigned when input LaserScan was bigger than obstacle.distances.size()
+  Bugfix: wrong interpolation when the reduction ratio (scale_factor) is not integer.
+  Disable startup_px4_usb_quirk in px4_config.yaml
+* cmake: style fix
+* cmake: downgrade to C++17 as 20 breaks something in rclcpp
+* cmake: hide -std=c++2a
+* Merge pull request `#1744 <https://github.com/mavlink/mavros/issues/1744>`_ from amilcarlucas/pr_gimbal_diagnostics_fixes
+  mount_control.cpp: detect MOUNT_ORIENTATION stale messages
+* extras: fix cog re to extract plugin name
+
 1.14.0 (2022-09-24)
 -------------------
 * Merge pull request `#1780 <https://github.com/mavlink/mavros/issues/1780>`_ from snktshrma/master
@@ -26,6 +95,10 @@ Changelog for package mavros_extras
   correct MountConfigure response success
   correct constructor initialization order
   some gimbals send negated/inverted angle measurements, correct that to obey the MAVLink frame convention using run-time parameters
+* Merge pull request `#1735 <https://github.com/mavlink/mavros/issues/1735>`_ from clydemcqueen/fix_1734
+  Fix crash in vision_pose plugin
+* Remove unrelated log message
+* Initialize last_transform_stamp with RCL_ROS_TIME, fixes `#1734 <https://github.com/mavlink/mavros/issues/1734>`_
 * Merge pull request `#1727 <https://github.com/mavlink/mavros/issues/1727>`_ from BV-OpenSource/pr-cellular-status
   Pr cellular status
 * uncrustify cellular_status.cpp
@@ -39,7 +112,304 @@ Changelog for package mavros_extras
   Fix obstacle distance
 * Bugfix: increment_f had no value asigned when input LaserScan was bigger than obstacle.distances.size()
 * Bugfix: wrong interpolation when the reduction ratio (scale_factor) is not integer.
-* Contributors: Dr.-Ing. Amilcar do Carmo Lucas, Rui Mendes, Sanket Sharma, Vladimir Ermakov, oroel
+* Contributors: Clyde McQueen, Dr.-Ing. Amilcar do Carmo Lucas, Rui Mendes, Vladimir Ermakov, oroel
+
+2.1.1 (2022-03-02)
+------------------
+* plugins: Fix misprint
+  Fix `#1709 <https://github.com/mavlink/mavros/issues/1709>`_
+* Contributors: Vladimir Ermakov
+
+2.1.0 (2022-02-02)
+------------------
+* plugins: fix topic names to use  prefix for namespaced ones
+* plugins: fix topic names to use  prefix for namespaced ones
+* ci: fix several lint warnings
+* extras: terrain: fix copy-paste artifact
+* extras: port terrain plugin
+* Merge branch 'master' into ros2
+  * master:
+  1.13.0
+  update changelog
+  py-lib: fix compatibility with py3 for Noetic
+  re-generate all coglets
+  test: add checks for ROTATION_CUSTOM
+  lib: Fix rotation search for CUSTOM
+  Removed CamelCase for class members.  Publish to "report"
+  More explicitly state "TerrainReport" to allow for future extension of the plugin to support other terrain messages
+  Fixed callback name to match `handle\_{MESSAGE_NAME.lower()}` convention
+  Add extra MAV_FRAMES to waypoint message as defined in https://mavlink.io/en/messages/common.html
+  Fixed topic names to match more closely what other plugins use.  Fixed a typo.
+  Add plugin for reporting terrain height estimate from FCU
+  1.12.2
+  update changelog
+  Set time/publish_sim_time to false by default
+  plugin: setpoint_raw: move getParam to initializer
+  extras: trajectory: backport `#1667 <https://github.com/mavlink/mavros/issues/1667>`_
+* 1.13.0
+* update changelog
+* Merge pull request `#1677 <https://github.com/mavlink/mavros/issues/1677>`_ from AndersonRayner/add_terrain
+  Add plugin for reporting terrain height estimate from the FCU
+* Removed CamelCase for class members.  Publish to "report"
+* More explicitly state "TerrainReport" to allow for future extension of the plugin to support other terrain messages
+* Fixed callback name to match `handle\_{MESSAGE_NAME.lower()}` convention
+* Fixed topic names to match more closely what other plugins use.  Fixed a typo.
+* Add plugin for reporting terrain height estimate from FCU
+* 1.12.2
+* update changelog
+* Merge pull request `#1675 <https://github.com/mavlink/mavros/issues/1675>`_ from BOB4Drone/ros2
+  fix bof
+* Update mag_calibration_status.cpp
+* fix code style
+  fix code style
+* Update mag_calibration_status.cpp
+* fix misprint and use size()
+  fix misprint and use size()
+* fix bof
+  fix `#1668 <https://github.com/mavlink/mavros/issues/1668>`_
+* extras: trajectory: backport `#1667 <https://github.com/mavlink/mavros/issues/1667>`_
+* extras: trajectory: make linter happy after `#1667 <https://github.com/mavlink/mavros/issues/1667>`_
+* Merge pull request `#1667 <https://github.com/mavlink/mavros/issues/1667>`_ from BOB4Drone/ros2
+  fix bof
+* fix bof
+* Merge branch 'master' into ros2
+  * master:
+  1.12.1
+  update changelog
+  mavconn: fix connection issue introduced by `#1658 <https://github.com/mavlink/mavros/issues/1658>`_
+  mavros_extras: Fix some warnings
+  mavros: Fix some warnings
+* 1.12.1
+* update changelog
+* Merge pull request `#1660 <https://github.com/mavlink/mavros/issues/1660>`_ from scoutdi/fix-warnings
+  Fix warnings
+* mavros_extras: Fix some warnings
+* extras: fix parameter name
+* extras: fix topic names
+* Contributors: BOB4Drone, Morten Fyhn Amundsen, Vladimir Ermakov, matt
+
+2.0.5 (2021-11-28)
+------------------
+* extras: make cpplint happy
+* extras: fix most of build errors of SSP
+* extras: servo_state_publisher ported. almost...
+* extras: start porting servo_state_publisher
+* extras: make cpplint happy
+* extras: fix some linter errors.
+  Do you know how to make me mad? Just let ament_uncrustify and
+  ament_cpplint require opposite requirements!
+* fix some build warnings; drop old copter vis
+* Merge branch 'master' into ros2
+  * master:
+  1.12.0
+  update changelog
+  Fix multiple bugs
+  lib: fix mission frame debug print
+  extras: distance_sensor: revert back to zero quaternion
+* 1.12.0
+* update changelog
+* extras: fix some more lint warns
+* plugin: fix some compile warnings
+* cmake: require C++20 to build all modules
+* extras: port distance_sensor plugin
+* extras: fix camera plugin
+* extras: port camera plugin
+* lib: ignore MAVPACKED-related warnings from mavlink
+* extras: distance_sensor: revert back to zero quaternion
+  Fix `#1653 <https://github.com/mavlink/mavros/issues/1653>`_
+* msgs: update conversion header
+* Merge branch 'master' into ros2
+  * master:
+  1.11.1
+  update changelog
+  lib: fix build
+* 1.11.1
+* update changelog
+* Merge branch 'master' into ros2
+  * master:
+  1.11.0
+  update changelog
+  lib: fix ftf warnings
+  msgs: use pragmas to ignore unaligned pointer warnings
+  extras: landing_target: fix misprint
+  msgs: fix convert const
+  plugin: setpoint_raw: fix misprint
+  msgs: try to hide 'unaligned pointer' warning
+  plugin: sys: fix compillation error
+  plugin: initialize quaternions with identity
+  plugin: sys: Use wall timers for connection management
+  Use meters for relative altitude
+  distance_sensor: Initialize sensor orientation quaternion to zero
+  Address review comments
+  Add camera plugin for interfacing with mavlink camera protocol
+* 1.11.0
+* update changelog
+* extras: landing_target: fix misprint
+* plugin: initialize quaternions with identity
+  Eigen::Quaternion[d|f] () does not initialize with zeroes or identity.
+  So we must initialize with identity vector objects that can be left
+  unassigned.
+  Related to `#1652 <https://github.com/mavlink/mavros/issues/1652>`_
+* Merge pull request `#1651 <https://github.com/mavlink/mavros/issues/1651>`_ from Jaeyoung-Lim/pr-image-capture-plugin
+  Add camera plugin for interfacing with mavlink camera protocol
+* Merge pull request `#1652 <https://github.com/mavlink/mavros/issues/1652>`_ from scoutdi/avoid-uninit-orientation
+  distance_sensor: Initialize sensor orientation quaternion to zero
+* Use meters for relative altitude
+* distance_sensor: Initialize sensor orientation quaternion to zero
+  Without this, you'll get random garbage data for the quaternion field
+  of the DISTANCE_SENSOR MAVLink messages sent to the autopilot.
+  The quaternion field should be set to zero when unused, according to the
+  MAVLink message's field description.
+* Address review comments
+* Add camera plugin for interfacing with mavlink camera protocol
+  Add camera image captured message for handling camera trigger information
+* extras: port fake_gps
+* extras: port tunnel
+* extras: update metadata
+* extras: port hil
+* extras: fix odom
+* extras: port odom
+* extras: port px4flow
+* extras: fix some linter warnings
+* extras: fix some linter warnings
+* extras: fix some linter warnings
+* extras: fix some linter warnings
+* extras: port wheel_odometry (partially)
+* extras: port vision_speed
+* extras: port vibration
+* extras: port vfr_hud
+* extras: port trajectory
+* extras: port rangefinder
+* extras: port onboard computer status, play_tune
+* extras: fix linter warnings
+* extras: port obstacle_distance
+* extras: update metadata xml
+* extras: port mount_control
+* extras: fix build for Foxy
+* extras: port mocap
+* extras: port mag cal status
+* extras: port log_transfer
+* extras: fix rtcm seq
+* extras: port gps_rtk
+* extras: port gps_input
+* extras: fixing some linter warnings
+* extras: fixing some linter warnings
+* Contributors: Jaeyoung-Lim, Morten Fyhn Amundsen, Vladimir Ermakov
+
+2.0.4 (2021-11-04)
+------------------
+* Merge branch 'master' into ros2
+  * master:
+  1.10.0
+  prepare release
+* 1.10.0
+* prepare release
+* extras: remove safety_area as outdated
+* extras: port esc_telemetry
+* extras: port esc_status plugin
+* extras: porting gps_status
+* Merge branch 'master' into ros2
+  * master: (25 commits)
+  Remove reference
+  Catch std::length_error in send_message
+  Show ENOTCONN error instead of crash
+  Tunnel: Check for invalid payload length
+  Tunnel.msg: Generate enum with cog
+  mavros_extras: Create tunnel plugin
+  mavros_msgs: Add Tunnel message
+  MountControl.msg: fix copy-paste
+  sys_time.cpp: typo
+  sys_time: publish /clock for simulation times
+  1.9.0
+  update changelog
+  Spelling corrections
+  Changed OverrideRCIn to 18 channels
+  This adds functionality to erase all logs on the SD card via mavlink
+  publish BATTERY2 message as /mavros/battery2 topic
+  Mavlink v2.0 specs for RC_CHANNELS_OVERRIDE accepts upto 18 channels. The plugin publishes channels 9 to 18 if the FCU protocol version is 2.0
+  Added NAV_CONTROLLER_OUTPUT Plugin
+  Added GPS_INPUT plugin
+  Update esc_status plugin with datatype change on MAVLink.
+  ...
+* Merge pull request `#1625 <https://github.com/mavlink/mavros/issues/1625>`_ from scoutdi/tunnel-plugin
+  Plugin for TUNNEL messages
+* Tunnel: Check for invalid payload length
+* mavros_extras: Create tunnel plugin
+* Merge pull request `#1605 <https://github.com/mavlink/mavros/issues/1605>`_ from Peter010103/ros2
+  mavros_extras: Ported vision_pose_estimate plugin for ROS2
+* 1.9.0
+* update changelog
+* Merge pull request `#1621 <https://github.com/mavlink/mavros/issues/1621>`_ from amilcarlucas/pr/mount-control-spelling
+  Spelling corrections
+* Spelling corrections
+* Merge pull request `#1615 <https://github.com/mavlink/mavros/issues/1615>`_ from amilcarlucas/pr/erase-logs
+  This adds functionality to erase all logs on the SD card via mavlink
+* Merge pull request `#1618 <https://github.com/mavlink/mavros/issues/1618>`_ from amilcarlucas/pr/GPS_INPUT-plugin
+  Added GPS_INPUT plugin
+* This adds functionality to erase all logs on the SD card via mavlink
+* Added GPS_INPUT plugin
+* Merge pull request `#1606 <https://github.com/mavlink/mavros/issues/1606>`_ from BV-OpenSource/master
+  Add Mount angles message for communications with ardupilotmega.
+* Merge branch 'master' into master
+* Update esc_status plugin with datatype change on MAVLink.
+  ESC_INFO MAVLink message was updated to have negative temperates and also at a different resolution. This commit updates those changes on this side.
+* Convert status data from cdeg to rad.
+* Publish quaternion information with Mount Status mavlink message.
+* Add missing subscription.
+* extras: port cam_imu_sync
+* extras: re-generate cog
+* extras: port debug_value
+* Remove Mount_Status plugin. Add Status data to Mount_Control plugin. Remove Mount_Status message.
+* extras: fix build, add UAS::send_massage(msg, compid)
+* extras: port companion_process_status
+* msgs: re-generate file lists
+* style: apply ament_uncrustify --reformat
+* Merge branch 'master' into ros2
+  * master:
+  extras: esc_telemetry: fix build
+  extras: fix esc_telemetry centi-volt/amp conversion
+  extras: uncrustify all plugins
+  plugins: reformat xml
+  extras: reformat plugins xml
+  extras: fix apm esc_telemetry
+  msgs: fix types for apm's esc telemetry
+  actually allocate memory for the telemetry information
+  fixed some compile errors
+  added esc_telemetry plugin
+  Reset calibration flag when re-calibrating. Prevent wrong data output.
+  Exclude changes to launch files.
+  Delete debug files.
+  Apply uncrustify changes.
+  Set progress array to global to prevent erasing data.
+  Move Compass calibration report to extras. Rewrite code based on instructions.
+  Remove extra message from CMakeLists.
+  Add message and service definition.
+  Add compass calibration feedback status. Add service to call the 'Next' button in calibrations.
+* extras: esc_telemetry: fix build
+* extras: fix esc_telemetry centi-volt/amp conversion
+* extras: uncrustify all plugins
+* extras: reformat plugins xml
+* extras: fix apm esc_telemetry
+* actually allocate memory for the telemetry information
+* fixed some compile errors
+* added esc_telemetry plugin
+* Add Mount angles message for communications with ardupilotmega.
+* Added subscriber callback function for ROS2
+* Added initialise function in vision_pose_estimate
+* Boilerplate vision_pose_estimate plugin
+* extras: landing_target: disable tf listener, it segfaults
+* extras: regenerate plugins xml, ament_uncrustify
+* mavros_extras: improve landing_target logging
+* mavros_extras: ported landing_target plugin to ros2
+* Reset calibration flag when re-calibrating. Prevent wrong data output.
+* Delete debug files.
+* Apply uncrustify changes.
+* Set progress array to global to prevent erasing data.
+* Move Compass calibration report to extras. Rewrite code based on instructions.
+* extras: port 3dr radio
+* extras: add urdf package
+* extras: adsb: begin porting to ros2
+* Contributors: Abhijith Thottumadayil Jagadeesh, André Filipe, David Jablonski, Dr.-Ing. Amilcar do Carmo Lucas, Karthik Desai, Morten Fyhn Amundsen, Peter010103, Ricardo Marques, Russell, Vladimir Ermakov
 
 1.13.0 (2022-01-13)
 -------------------
