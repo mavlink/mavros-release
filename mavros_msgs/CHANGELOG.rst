@@ -2,6 +2,47 @@
 Changelog for package mavros_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.3.0 (2022-09-24)
+------------------
+* Merge branch 'master' into ros2
+  * master:
+  1.14.0
+  update changelog
+  scripts: waypoint and param files are text, not binary
+  libmavconn: fix MAVLink v1.0 output selection
+  plugins: add guided_target to accept offboard position targets
+  add cmake module path for geographiclib on debian based systems
+  use already installed FindGeographicLib.cmake
+* 1.14.0
+* update changelog
+* Contributors: Vladimir Ermakov
+
+2.2.0 (2022-06-27)
+------------------
+* Merge branch 'master' into ros2
+  * master:
+  mount_control.cpp: detect MOUNT_ORIENTATION stale messages
+  ESCTelemetryItem.msg: correct RPM units
+  apm_config.yaml: add mount configuration
+  sys_status.cpp fix free memory for values > 64KiB
+  uncrustify cellular_status.cpp
+  Add CellularStatus plugin and message
+  *_config.yaml: document usage of multiple batteries diagnostics
+  sys_status.cpp: fix compilation
+  sys_status.cpp: support diagnostics on up-to 10 batteries
+  sys_status.cpp: do not use harcoded constants
+  sys_status.cpp: Timeout on MEMINFO and HWSTATUS mavlink messages and publish on the diagnostics
+  sys_status.cpp: fix enabling of mem_diag and hwst_diag
+  sys_status.cpp: Do not use battery1 voltage as voltage for all other batteries (bugfix).
+  sys_status.cpp: ignore sys_status mavlink messages from gimbals
+  mount_control.cpp: use mount_nh for params to keep similarities with other plugins set diag settings before add()
+  sys_status.cpp: remove deprecated BATTERY2 mavlink message support
+  Mount control plugin: add configurable diagnostics
+  Bugfix: increment_f had no value asigned when input LaserScan was bigger than obstacle.distances.size()
+  Bugfix: wrong interpolation when the reduction ratio (scale_factor) is not integer.
+  Disable startup_px4_usb_quirk in px4_config.yaml
+* msgs: support humble
+
 2.1.1 (2022-03-02)
 ------------------
 
@@ -262,6 +303,16 @@ Changelog for package mavros_msgs
   add ros1_bridge mapping rule for renamed VfrHud message
 * make mavro_msgs compile in ROS 2
 * Contributors: Mikael Arguedas, Mike Lautman, Vladimir Ermakov
+
+1.14.0 (2022-09-24)
+-------------------
+* Merge pull request `#1742 <https://github.com/mavlink/mavros/issues/1742>`_ from amilcarlucas/correct_rpm_units
+  ESCTelemetryItem.msg: correct RPM units
+* ESCTelemetryItem.msg: correct RPM units
+* Merge pull request `#1727 <https://github.com/mavlink/mavros/issues/1727>`_ from BV-OpenSource/pr-cellular-status
+  Pr cellular status
+* Add CellularStatus plugin and message
+* Contributors: Dr.-Ing. Amilcar do Carmo Lucas, Rui Mendes, Vladimir Ermakov
 
 1.13.0 (2022-01-13)
 -------------------
