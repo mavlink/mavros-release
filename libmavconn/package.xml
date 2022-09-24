@@ -1,8 +1,7 @@
 <?xml version="1.0"?>
-<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
-<package format="3">
+<package format="2">
   <name>libmavconn</name>
-  <version>2.1.1</version>
+  <version>1.14.0</version>
   <description>
     MAVLink communication library.
     This library provide unified connection handling classes
@@ -12,7 +11,7 @@
   </description>
 
   <maintainer email="vooon341@gmail.com">Vladimir Ermakov</maintainer>
-
+  <author email="vooon341@gmail.com">Vladimir Ermakov</author>
   <license>GPLv3</license>
   <license>LGPLv3</license>
   <license>BSD</license>
@@ -21,21 +20,16 @@
   <url type="repository">https://github.com/mavlink/mavros.git</url>
   <url type="bugtracker">https://github.com/mavlink/mavros/issues</url>
 
-  <author email="vooon341@gmail.com">Vladimir Ermakov</author>
+  <buildtool_depend>catkin</buildtool_depend>
 
-  <buildtool_depend>ament_cmake</buildtool_depend>
-
-  <depend>asio</depend>
+  <depend>boost</depend>
   <depend>mavlink</depend>
   <depend>libconsole-bridge-dev</depend>
-  <build_depend>python3-empy</build_depend>
 
-  <test_depend>ament_cmake_gtest</test_depend>
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
+  <test_depend>rosunit</test_depend>
+  <test_depend>gtest</test_depend>
 
   <export>
-    <build_type>ament_cmake</build_type>
     <rosdoc config="rosdoc.yaml" />
   </export>
 </package>

@@ -32,9 +32,9 @@ Dependencies
 Same as for mavros:
 
   - Linux host
-  - Asio library ( https://think-async.com/Asio/ )
+  - Boost >= 1.46 (used Boost.ASIO)
   - console-bridge library
-  - compiller with C++14 support
+  - compiller with C++11 support
 
 
 License
