@@ -1,0 +1,12 @@
+Source: ros-galactic-mavros
+Section: misc
+Priority: optional
+Maintainer: Vladimir Ermakov <vooon341@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), geographiclib-tools, google-mock <!nocheck>, libconsole-bridge-dev, libeigen3-dev, libgeographic-dev, libgtest-dev <!nocheck>, ros-galactic-ament-cmake, ros-galactic-ament-cmake-gmock <!nocheck>, ros-galactic-ament-cmake-gtest <!nocheck>, ros-galactic-ament-cmake-pytest <!nocheck>, ros-galactic-ament-cmake-python, ros-galactic-ament-lint-auto <!nocheck>, ros-galactic-ament-lint-common <!nocheck>, ros-galactic-angles, ros-galactic-diagnostic-msgs, ros-galactic-diagnostic-updater, ros-galactic-eigen-stl-containers, ros-galactic-eigen3-cmake-module, ros-galactic-geographic-msgs, ros-galactic-geometry-msgs, ros-galactic-libmavconn, ros-galactic-mavlink, ros-galactic-mavros-msgs, ros-galactic-message-filters, ros-galactic-nav-msgs, ros-galactic-pluginlib, ros-galactic-rclcpp, ros-galactic-rclcpp-components, ros-galactic-rcpputils, ros-galactic-sensor-msgs, ros-galactic-std-msgs, ros-galactic-std-srvs, ros-galactic-tf2-eigen, ros-galactic-tf2-ros, ros-galactic-trajectory-msgs, ros-galactic-ros-workspace
+Homepage: http://wiki.ros.org/mavros
+Standards-Version: 3.9.2
+
+Package: ros-galactic-mavros
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, geographiclib-tools, libconsole-bridge-dev, libeigen3-dev, libgeographic-dev, python3-click, ros-galactic-diagnostic-msgs, ros-galactic-diagnostic-updater, ros-galactic-eigen-stl-containers, ros-galactic-eigen3-cmake-module, ros-galactic-geographic-msgs, ros-galactic-geometry-msgs, ros-galactic-libmavconn, ros-galactic-mavlink, ros-galactic-mavros-msgs, ros-galactic-message-filters, ros-galactic-nav-msgs, ros-galactic-pluginlib, ros-galactic-rclcpp, ros-galactic-rclcpp-components, ros-galactic-rclpy, ros-galactic-rcpputils, ros-galactic-rosidl-default-runtime, ros-galactic-sensor-msgs, ros-galactic-std-msgs, ros-galactic-std-srvs, ros-galactic-tf2-eigen, ros-galactic-tf2-ros, ros-galactic-trajectory-msgs, ros-galactic-ros-workspace
+Description: MAVROS -- MAVLink extendable communication node for ROS with proxy for Ground Control Station.
