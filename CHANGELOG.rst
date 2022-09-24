@@ -2,6 +2,118 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.3.0 (2022-09-24)
+------------------
+* extras: fix linter errors
+* extras: fix toMsg
+* extras: fix build
+* extras: port guided_target
+* mavros: remove custom find script, re-generate
+* Merge branch 'master' into ros2
+  * master:
+  1.14.0
+  update changelog
+  scripts: waypoint and param files are text, not binary
+  libmavconn: fix MAVLink v1.0 output selection
+  plugins: add guided_target to accept offboard position targets
+  add cmake module path for geographiclib on debian based systems
+  use already installed FindGeographicLib.cmake
+* 1.14.0
+* update changelog
+* Merge pull request `#1780 <https://github.com/mavlink/mavros/issues/1780>`_ from snktshrma/master
+  guided_target: accept position-target-global-int messages
+* plugins: add guided_target to accept offboard position targets
+  Update guided_target.cpp
+  Update guided_target.cpp
+  Update mavros_plugins.xml
+  Update CMakeLists.txt
+  Added offboard_position.cpp
+  Update apm_config.yaml
+  Update offboard_position.cpp
+  Update offboard_position.cpp
+  Rename offboard_position.cpp to guided_target.cpp
+  Update CMakeLists.txt
+  Update mavros_plugins.xml
+  Update apm_config.yaml
+  Update guided_target.cpp
+* Contributors: Sanket Sharma, Vladimir Ermakov
+
+2.2.0 (2022-06-27)
+------------------
+* extras: fix build
+* extras: fix build
+* Merge branch 'master' into ros2
+  * master:
+  mount_control.cpp: detect MOUNT_ORIENTATION stale messages
+  ESCTelemetryItem.msg: correct RPM units
+  apm_config.yaml: add mount configuration
+  sys_status.cpp fix free memory for values > 64KiB
+  uncrustify cellular_status.cpp
+  Add CellularStatus plugin and message
+  *_config.yaml: document usage of multiple batteries diagnostics
+  sys_status.cpp: fix compilation
+  sys_status.cpp: support diagnostics on up-to 10 batteries
+  sys_status.cpp: do not use harcoded constants
+  sys_status.cpp: Timeout on MEMINFO and HWSTATUS mavlink messages and publish on the diagnostics
+  sys_status.cpp: fix enabling of mem_diag and hwst_diag
+  sys_status.cpp: Do not use battery1 voltage as voltage for all other batteries (bugfix).
+  sys_status.cpp: ignore sys_status mavlink messages from gimbals
+  mount_control.cpp: use mount_nh for params to keep similarities with other plugins set diag settings before add()
+  sys_status.cpp: remove deprecated BATTERY2 mavlink message support
+  Mount control plugin: add configurable diagnostics
+  Bugfix: increment_f had no value asigned when input LaserScan was bigger than obstacle.distances.size()
+  Bugfix: wrong interpolation when the reduction ratio (scale_factor) is not integer.
+  Disable startup_px4_usb_quirk in px4_config.yaml
+* cmake: style fix
+* cmake: downgrade to C++17 as 20 breaks something in rclcpp
+* cmake: hide -std=c++2a
+* Merge pull request `#1744 <https://github.com/mavlink/mavros/issues/1744>`_ from amilcarlucas/pr_gimbal_diagnostics_fixes
+  mount_control.cpp: detect MOUNT_ORIENTATION stale messages
+* extras: fix cog re to extract plugin name
+
+1.14.0 (2022-09-24)
+-------------------
+* Merge pull request `#1780 <https://github.com/mavlink/mavros/issues/1780>`_ from snktshrma/master
+  guided_target: accept position-target-global-int messages
+* plugins: add guided_target to accept offboard position targets
+  Update guided_target.cpp
+  Update guided_target.cpp
+  Update mavros_plugins.xml
+  Update CMakeLists.txt
+  Added offboard_position.cpp
+  Update apm_config.yaml
+  Update offboard_position.cpp
+  Update offboard_position.cpp
+  Rename offboard_position.cpp to guided_target.cpp
+  Update CMakeLists.txt
+  Update mavros_plugins.xml
+  Update apm_config.yaml
+  Update guided_target.cpp
+* Merge pull request `#1744 <https://github.com/mavlink/mavros/issues/1744>`_ from amilcarlucas/pr_gimbal_diagnostics_fixes
+  mount_control.cpp: detect MOUNT_ORIENTATION stale messages
+* mount_control.cpp: detect MOUNT_ORIENTATION stale messages
+  correct MountConfigure response success
+  correct constructor initialization order
+  some gimbals send negated/inverted angle measurements, correct that to obey the MAVLink frame convention using run-time parameters
+* Merge pull request `#1735 <https://github.com/mavlink/mavros/issues/1735>`_ from clydemcqueen/fix_1734
+  Fix crash in vision_pose plugin
+* Remove unrelated log message
+* Initialize last_transform_stamp with RCL_ROS_TIME, fixes `#1734 <https://github.com/mavlink/mavros/issues/1734>`_
+* Merge pull request `#1727 <https://github.com/mavlink/mavros/issues/1727>`_ from BV-OpenSource/pr-cellular-status
+  Pr cellular status
+* uncrustify cellular_status.cpp
+* Add CellularStatus plugin and message
+* Merge pull request `#1702 <https://github.com/mavlink/mavros/issues/1702>`_ from amilcarlucas/mount_diagnostics
+  Mount control plugin: add configurable diagnostics
+* mount_control.cpp: use mount_nh for params to keep similarities with other plugins
+  set diag settings before add()
+* Mount control plugin: add configurable diagnostics
+* Merge pull request `#1700 <https://github.com/mavlink/mavros/issues/1700>`_ from oroelipas/fix-obstacle-distance
+  Fix obstacle distance
+* Bugfix: increment_f had no value asigned when input LaserScan was bigger than obstacle.distances.size()
+* Bugfix: wrong interpolation when the reduction ratio (scale_factor) is not integer.
+* Contributors: Clyde McQueen, Dr.-Ing. Amilcar do Carmo Lucas, Rui Mendes, Vladimir Ermakov, oroel
+
 2.1.1 (2022-03-02)
 ------------------
 * plugins: Fix misprint
