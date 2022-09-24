@@ -1,3 +1,30 @@
+## mavros (galactic) - 2.3.0-1
+
+The packages in the `mavros` repository were released into the `galactic` distro by running `/usr/bin/bloom-release -r galactic mavros` on `Sat, 24 Sep 2022 22:54:20 -0000`
+
+These packages were released:
+- `libmavconn`
+- `mavros`
+- `mavros_extras`
+- `mavros_msgs`
+
+Version of package(s) in repository `mavros`:
+
+- upstream repository: https://github.com/mavlink/mavros.git
+- release repository: https://github.com/mavlink/mavros-release.git
+- rosdistro version: `2.1.1-1`
+- old version: `2.1.1-1`
+- new version: `2.3.0-1`
+
+Versions of tools used:
+
+- bloom version: `0.11.2`
+- catkin_pkg version: `0.5.2`
+- rosdep version: `0.22.1`
+- rosdistro version: `0.9.0`
+- vcstools version: `0.1.42`
+
+
 ## mavros (foxy) - 2.3.0-1
 
 The packages in the `mavros` repository were released into the `foxy` distro by running `/usr/bin/bloom-release -r foxy mavros` on `Sat, 24 Sep 2022 22:31:10 -0000`
