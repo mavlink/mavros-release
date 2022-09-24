@@ -3,8 +3,8 @@ project(mavros)
 
 # Default to C++20
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 20)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a")
+  set(CMAKE_CXX_STANDARD 17)
+  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a")
 endif()
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # we dont use add_compile_options with pedantic in message packages
@@ -34,7 +34,12 @@ find_package(console_bridge REQUIRED)
 
 find_package(eigen3_cmake_module REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(GEOGRAPHICLIB REQUIRED)
+
+## Find GeographicLib
+# Append to CMAKE_MODULE_PATH since debian/ubuntu installs
+# FindGeographicLib.cmake in a nonstand location
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/usr/share/cmake/geographiclib")
+find_package(GeographicLib REQUIRED)
 
 find_package(angles REQUIRED)
 find_package(eigen_stl_containers REQUIRED)
@@ -61,7 +66,7 @@ include_directories(
 include_directories(
   ${mavlink_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
-  ${GEOGRAPHICLIB_INCLUDE_DIRS}
+  ${GeographicLib_INCLUDE_DIRS}
 )
 
 ## Check if the datasets are installed
@@ -112,7 +117,7 @@ ament_target_dependencies(mavros
   tf2_eigen
   Eigen3
 )
-target_link_libraries(mavros ${GEOGRAPHICLIB_LIBRARIES})
+target_link_libraries(mavros ${GeographicLib_LIBRARIES})
 rclcpp_components_register_nodes(mavros "mavros::router::Router" "mavros::uas::UAS")
 
 add_library(mavros_plugins SHARED
@@ -161,6 +166,7 @@ ament_target_dependencies(mavros_plugins
   std_msgs
   std_srvs
   sensor_msgs
+  pluginlib
   nav_msgs
   trajectory_msgs
   rclcpp
