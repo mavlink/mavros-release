@@ -101,7 +101,14 @@ class Checker:
                 if msg is None:
                     return f"{msgid}"
                 else:
-                    return f"{msgid} ({msg.name})"
+                    msg_name = ""
+                    # Since pymavlink version 2.4.32 `name` is renamed to `msgname`.
+                    # We want to stay compatible with prior versions of pymavlink.
+                    if hasattr(msg, "msgname"):
+                        msg_name = msg.msgname
+                    else:
+                        msg_name = msg.name
+                    return f"{msgid} ({msg_name})"
 
             str_ids = self.fmt_ids(address)
             click.secho(
