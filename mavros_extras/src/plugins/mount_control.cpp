@@ -2,12 +2,14 @@
  * @brief Mount Control plugin
  * @file mount_control.cpp
  * @author Jaeyoung Lim <jaeyoung@auterion.com>
+ * @author Dr.-Ing. Amilcar do Carmo Lucas <amilcar.lucas@iav.de>
  *
  * @addtogroup plugin
  * @{
  */
 /*
  * Copyright 2019 Jaeyoung Lim.
+ * Copyright 2021 Dr.-Ing. Amilcar do Carmo Lucas <amilcar.lucas@iav.de>.
  *
  * This file is part of the mavros package and subject to the license terms
  * in the top-level LICENSE file of the mavros repository.
@@ -30,6 +32,131 @@ using mavlink::common::MAV_CMD;
 using utils::enum_value;
 
 /**
+ * @brief Mount diagnostic updater
+ */
+class MountStatusDiag : public diagnostic_updater::DiagnosticTask
+{
+public:
+	MountStatusDiag(const std::string &name) :
+		diagnostic_updater::DiagnosticTask(name),
+		_last_orientation_update(0, 0),
+		_debounce_s(NAN),
+		_roll_deg(NAN),
+		_pitch_deg(NAN),
+		_yaw_deg(NAN),
+		_setpoint_roll_deg(NAN),
+		_setpoint_pitch_deg(NAN),
+		_setpoint_yaw_deg(NAN),
+		_err_threshold_deg(NAN),
+		_error_detected(false),
+		_mode(255)
+	{ }
+
+	void set_err_threshold_deg(float threshold_deg) {
+		std::lock_guard<std::mutex> lock(mutex);
+		_err_threshold_deg = threshold_deg;
+	}
+
+	void set_debounce_s(double debounce_s) {
+		std::lock_guard<std::mutex> lock(mutex);
+		_debounce_s = debounce_s;
+	}
+
+	void set_status(float roll_deg, float pitch_deg, float yaw_deg, ros::Time timestamp) {
+		std::lock_guard<std::mutex> lock(mutex);
+		_roll_deg = roll_deg;
+		_pitch_deg = pitch_deg;
+		_yaw_deg = yaw_deg;
+		_last_orientation_update = timestamp;
+	}
+
+	void set_setpoint(float roll_deg, float pitch_deg, float yaw_deg, uint8_t mode) {
+		std::lock_guard<std::mutex> lock(mutex);
+		_setpoint_roll_deg = roll_deg;
+		_setpoint_pitch_deg = pitch_deg;
+		_setpoint_yaw_deg = yaw_deg;
+		_mode = mode;
+	}
+
+	void run(diagnostic_updater::DiagnosticStatusWrapper &stat)
+	{
+		float roll_err_deg;
+		float pitch_err_deg;
+		float yaw_err_deg;
+		bool error_detected = false;
+		bool stale = false;
+
+		if (_mode != mavros_msgs::MountControl::MAV_MOUNT_MODE_MAVLINK_TARGETING) {
+			// Can only directly compare the MAV_CMD_DO_MOUNT_CONTROL angles with the MOUNT_ORIENTATION angles when in MAVLINK_TARGETING mode
+			stat.summary(diagnostic_msgs::DiagnosticStatus::WARN, "Can not diagnose in this targeting mode");
+			stat.addf("Mode", "%d", _mode);
+			return;
+		}
+
+		const ros::Time now = ros::Time::now();
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			roll_err_deg = _setpoint_roll_deg - _roll_deg;
+			pitch_err_deg = _setpoint_pitch_deg - _pitch_deg;
+			yaw_err_deg = _setpoint_yaw_deg - _yaw_deg;
+
+			// detect errors (setpoint != current angle)
+			if (fabs(roll_err_deg) > _err_threshold_deg) {
+				error_detected = true;
+			}
+			if (fabs(pitch_err_deg) > _err_threshold_deg) {
+				error_detected = true;
+			}
+			if (fabs(yaw_err_deg) > _err_threshold_deg) {
+				error_detected = true;
+			}
+			if (now - _last_orientation_update > ros::Duration(5, 0)) {
+				stale = true;
+			}
+			// accessing the _debounce_s variable should be done inside this mutex,
+			// but we can treat it as an atomic variable, and save the trouble
+		}
+
+		// detect error state changes
+		if (!_error_detected && error_detected) {
+			_error_started = now;
+			_error_detected = true;
+		}
+		if (_error_detected && !error_detected) {
+			_error_detected = false;
+		}
+
+		// debounce errors
+		if (stale) {
+			stat.summary(diagnostic_msgs::DiagnosticStatus::STALE, "No MOUNT_ORIENTATION received in the last 5 s");
+		} else if (_error_detected && (now - _error_started > ros::Duration(_debounce_s))) {
+			stat.summary(diagnostic_msgs::DiagnosticStatus::ERROR, "angle error too high");
+		} else {
+			stat.summary(diagnostic_msgs::DiagnosticStatus::OK, "Normal");
+		}
+
+		stat.addf("Roll err (deg)", "%.1f", roll_err_deg);
+		stat.addf("Pitch err (deg)", "%.1f", pitch_err_deg);
+		stat.addf("Yaw err (deg)", "%.1f", yaw_err_deg);
+	}
+
+private:
+	std::mutex mutex;
+	ros::Time _error_started;
+	ros::Time _last_orientation_update;
+	double _debounce_s;
+	float _roll_deg;
+	float _pitch_deg;
+	float _yaw_deg;
+	float _setpoint_roll_deg;
+	float _setpoint_pitch_deg;
+	float _setpoint_yaw_deg;
+	float _err_threshold_deg;
+	bool _error_detected;
+	uint8_t _mode;
+};
+
+/**
  * @brief Mount Control plugin
  *
  * Publishes Mission commands to control the camera or antenna mount.
@@ -39,6 +166,7 @@ class MountControlPlugin : public plugin::PluginBase {
 public:
 	MountControlPlugin() : PluginBase(),
 		nh("~"),
+		mount_diag("Mount"),
 		mount_nh("~mount_control")
 	{ }
 
@@ -50,6 +178,38 @@ public:
 		mount_orientation_pub = mount_nh.advertise<geometry_msgs::Quaternion>("orientation", 10);
 		mount_status_pub = mount_nh.advertise<geometry_msgs::Vector3Stamped>("status", 10);
 		configure_srv = mount_nh.advertiseService("configure", &MountControlPlugin::mount_configure_cb, this);
+
+		// some gimbals send negated/inverted angle measurements
+		// these parameters correct that to obey the MAVLink frame convention
+		mount_nh.param<bool>("negate_measured_roll", negate_measured_roll, false);
+		mount_nh.param<bool>("negate_measured_pitch", negate_measured_pitch, false);
+		mount_nh.param<bool>("negate_measured_yaw", negate_measured_yaw, false);
+		if (!mount_nh.getParam("negate_measured_roll", negate_measured_roll)) {
+			ROS_WARN("Could not retrive negate_measured_roll parameter value, using default (%d)", negate_measured_roll);
+		}
+		if (!mount_nh.getParam("negate_measured_pitch", negate_measured_pitch)) {
+			ROS_WARN("Could not retrive negate_measured_pitch parameter value, using default (%d)", negate_measured_pitch);
+		}
+		if (!mount_nh.getParam("negate_measured_yaw", negate_measured_yaw)) {
+			ROS_WARN("Could not retrive negate_measured_yaw parameter value, using default (%d)", negate_measured_yaw);
+		}
+
+		bool disable_diag;
+		if (nh.getParam("sys/disable_diag", disable_diag) && !disable_diag) {
+			double debounce_s;
+			double err_threshold_deg;
+			mount_nh.param("debounce_s", debounce_s, 4.0);
+			mount_nh.param("err_threshold_deg", err_threshold_deg, 10.0);
+			if (!mount_nh.getParam("debounce_s", debounce_s)) {
+				ROS_WARN("Could not retrive debounce_s parameter value, using default (%f)", debounce_s);
+			}
+			if (!mount_nh.getParam("err_threshold_deg", err_threshold_deg)) {
+				ROS_WARN("Could not retrive err_threshold_deg parameter value, using default (%f)", err_threshold_deg);
+			}
+			mount_diag.set_debounce_s(debounce_s);
+			mount_diag.set_err_threshold_deg(err_threshold_deg);
+			UAS_DIAG(m_uas).add(mount_diag);
+		}
 	}
 
 	Subscriptions get_subscriptions() override
@@ -68,6 +228,11 @@ private:
 	ros::Publisher mount_status_pub;
 	ros::ServiceServer configure_srv;
 
+	MountStatusDiag mount_diag;
+	bool negate_measured_roll;
+	bool negate_measured_pitch;
+	bool negate_measured_yaw;
+
 	/**
 	 * @brief Publish the mount orientation
 	 *
@@ -77,10 +242,24 @@ private:
 	 */
 	void handle_mount_orientation(const mavlink::mavlink_message_t *msg, mavlink::common::msg::MOUNT_ORIENTATION &mo)
 	{
-		auto q = ftf::quaternion_from_rpy(Eigen::Vector3d(mo.roll, mo.pitch, mo.yaw) * M_PI / 180.0);
+		const auto timestamp = ros::Time::now();
+		// some gimbals send negated/inverted angle measurements, correct that to obey the MAVLink frame convention
+		if (negate_measured_roll) {
+			mo.roll = -mo.roll;
+		}
+		if (negate_measured_pitch) {
+			mo.pitch = -mo.pitch;
+		}
+		if (negate_measured_yaw) {
+			mo.yaw = -mo.yaw;
+			mo.yaw_absolute = -mo.yaw_absolute;
+		}
+		const auto q = ftf::quaternion_from_rpy(Eigen::Vector3d(mo.roll, mo.pitch, mo.yaw) * M_PI / 180.0);
 		geometry_msgs::Quaternion quaternion_msg;
 		tf::quaternionEigenToMsg(q, quaternion_msg);
 		mount_orientation_pub.publish(quaternion_msg);
+
+		mount_diag.set_status(mo.roll, mo.pitch, mo.yaw_absolute, timestamp);
 	}
 
 	/**
@@ -131,6 +310,8 @@ private:
 		cmd.param7 = req->mode;	// MAV_MOUNT_MODE
 
 		UAS_FCU(m_uas)->send_message_ignore_drop(cmd);
+
+		mount_diag.set_setpoint(req->roll*0.01f, req->pitch*0.01f, req->yaw*0.01f, req->mode);
 	}
 
 	bool mount_configure_cb(mavros_msgs::MountConfigure::Request &req,
@@ -155,7 +336,8 @@ private:
 			cmd.request.param7 = req.yaw_input;
 
 			ROS_DEBUG_NAMED("mount", "MountConfigure: Request mode %u ", req.mode);
-			res.success = client.call(cmd);
+			client.call(cmd);
+			res.success = cmd.response.success;
 		}
 		catch (ros::InvalidNameException &ex) {
 			ROS_ERROR_NAMED("mount", "MountConfigure: %s", ex.what());
