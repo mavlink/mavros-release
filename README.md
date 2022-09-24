@@ -1,49 +1,83 @@
-MAVCONN library
-===============
+MAVROS
+======
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/mavlink/mavros)](https://github.com/mavlink/mavros/releases)  [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/mavlink/mavros?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)  [![CI](https://github.com/mavlink/mavros/actions/workflows/main.yml/badge.svg)](https://github.com/mavlink/mavros/actions/workflows/main.yml)
 
-It is mavlink connection and communication library used in [MAVROS][mr].
-Since 2014-11-02 it adopted to use outside from ROS environment
-by splitting to individual package and removing dependencies to rosconsole.
+MAVLink extendable communication node for ROS.
+
+- Since 2014-08-11 this repository contains several packages.
+- Since 2014-11-02 hydro support separated from master to hydro-devel branch.
+- Since 2015-03-04 all packages also dual licensed under terms of BSD license.
+- Since 2015-08-10 all messages moved to mavros\_msgs package
+- Since 2016-02-05 (v0.17) frame conversion changed again
+- Since 2016-06-22 (pre v0.18) Indigo and Jade separated from master to indigo-devel branch.
+- Since 2016-06-23 (0.18.0) support MAVLink 2.0 without signing.
+- Since 2017-08-23 (0.20.0) [GeographicLib][geolib] and it's datasets are required. Used to convert AMSL (FCU) and WGS84 (ROS) altitudes.
+- Since 2018-05-11 (0.25.0) support building master for Indigo and Jade stopped. Mainly because update of console-bridge package.
+- Since 2018-05-14 (0.25.1) support for Indigo returned. We use compatibility layer for console-bridge.
+- Since 2019-01-03 (0.28.0) support for Indigo by master not guaranteed. Consider update to more recent distro.
+- 2020-01-01 version 1.0.0 released, please see [#1369][iss1369] for reasons and its purpose.
+- 2021-05-28 version 2.0.0 released, it's the first alpha release for ROS2.
 
 
-Connection URL
+mavros package
 --------------
 
-Connection defined by URL.
-Just pass one of that URL to `MAVConnInterface::open_url()` and get connection object.
-
-Supported schemas:
-
-  - Serial: `/path/to/serial/device[:baudrate]`
-  - Serial: `serial:///path/to/serial/device[:baudrate][?ids=sysid,compid]`
-  - Serial with hardware flow control: `serial-hwfc:///path/to/serial/device[:baudrate][?ids=sysid,compid]`
-  - UDP: `udp://[bind_host][:port]@[remote_host][:port][/?ids=sysid,compid]`
-  - UDP broadcast until GCS discovery: `udp-b://[bind_host][:port]@[:port][/?ids=sysid,compid]`
-  - UDP broadcast (permanent): `udp-pb://[bind_host][:port]@[:port][/?ids=sysid,compid]`
-  - TCP client: `tcp://[server_host][:port][/?ids=sysid,compid]`
-  - TCP server: `tcp-l://[bind_port][:port][/?ids=sysid,compid]`
-
-Note: ids from URL overrides ids given by system\_id & component\_id parameters.
+It is the main package, please see its [README][mrrm].
+Here you may read [installation instructions][inst].
 
 
-Dependencies
-------------
+mavros\_extras package
+----------------------
 
-Same as for mavros:
-
-  - Linux host
-  - Asio library ( https://think-async.com/Asio/ )
-  - console-bridge library
-  - compiller with C++14 support
+This package contains some extra nodes and plugins for mavros, please see its [README][exrm].
 
 
-License
--------
+libmavconn package
+------------------
 
-Licensed under terms of [*LGPLv3*][lgpllic], [*BSD*][bsdlic], or [*GPLv3*][gpllic].
+This package contain mavconn library, see its [README][libmc].
+LibMAVConn may be used outside of ROS environment.
 
 
-[mr]: https://github.com/mavlink/mavros
-[lgpllic]: https://www.gnu.org/licenses/lgpl.html
-[gpllic]: https://www.gnu.org/licenses/gpl.html
-[bsdlic]: https://github.com/mavlink/mavros/blob/master/LICENSE-BSD.txt
+test\_mavros package
+--------------------
+
+This package contain hand-tests and [manual page][test] for APM and PX4 SITL.
+Please see [README][test] first!
+
+
+mavros\_msgs package
+--------------------
+
+This package contains messages and services used in MAVROS.
+
+
+Support forums and chats
+------------------------
+
+Please ask your questions not related to bugs/feature or requests on:
+
+- [MAVROS discussion in Gitter IM](https://gitter.im/mavlink/mavros)
+- [PX4 Discuss Forum](https://discuss.px4.io/)
+- [PX4 Slack](https://slack.px4.io/)
+- [Ardupilot Discuss Forum](https://discuss.ardupilot.org/)
+- [ArduPilot/VisionProjects in Gitter IM](https://gitter.im/ArduPilot/ardupilot/VisionProjects)
+
+We'd like to keep the project bug tracker as free as possible, so please contact via the above methods. You can also PM us via Gitter and the PX4 Slack.
+
+
+CI Statuses
+-----------
+
+  - ROS2 Foxy: [![Build Status](http://build.ros2.org/buildStatus/icon?job=Fdev__mavros__ubuntu_focal_amd64)](http://build.ros2.org/job/Fdev__mavros__ubuntu_focal_amd64/)
+  - ROS2 Galactic: [![Build Status](http://build.ros2.org/buildStatus/icon?job=Gdev__mavros__ubuntu_focal_amd64)](http://build.ros2.org/job/Gdev__mavros__ubuntu_focal_amd64/)
+  - ROS2 Rolling: [![Build Status](http://build.ros2.org/buildStatus/icon?job=Rdev__mavros__ubuntu_focal_amd64)](http://build.ros2.org/job/Rdev__mavros__ubuntu_focal_amd64/)
+
+
+[mrrm]: https://github.com/mavlink/mavros/blob/master/mavros/README.md
+[exrm]: https://github.com/mavlink/mavros/blob/master/mavros_extras/README.md
+[libmc]: https://github.com/mavlink/mavros/blob/master/libmavconn/README.md
+[test]: https://github.com/mavlink/mavros/blob/master/test_mavros/README.md
+[inst]: https://github.com/mavlink/mavros/blob/master/mavros/README.md#installation
+[geolib]: https://geographiclib.sourceforge.io/
+[iss1369]: https://github.com/mavlink/mavros/issues/1369
