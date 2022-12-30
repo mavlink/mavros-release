@@ -149,7 +149,7 @@ private:
 	void handle_position_target_global_int(const mavlink::mavlink_message_t *msg, mavlink::common::msg::POSITION_TARGET_GLOBAL_INT &position_target)
 	{
 		/* check if type_mask field ignores position*/
-		if (position_target.type_mask & (mavros_msgs::GlobalPositionTarget::IGNORE_LATITUDE | mavros_msgs::GlobalPositionTarget::IGNORE_LONGITUDE) > 0) {
+		if (position_target.type_mask & (mavros_msgs::GlobalPositionTarget::IGNORE_LATITUDE | mavros_msgs::GlobalPositionTarget::IGNORE_LONGITUDE)) {
 			ROS_WARN_NAMED("setpoint", "lat and/or lon ignored");
 			return;
 		}
@@ -183,7 +183,7 @@ private:
 
 		/* publish target */
 
-		if (pose->pose.position.x != arr[0] | pose->pose.position.y != arr[1]) {
+		if (pose->pose.position.x != arr[0] || pose->pose.position.y != arr[1]) {
 			setpointg_pub.publish(pose);
 		}
 
