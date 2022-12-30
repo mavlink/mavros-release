@@ -2,6 +2,283 @@
 Changelog for package libmavconn
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.4.0 (2022-12-30)
+------------------
+* Merge branch 'master' into ros2
+  * master:
+  1.15.0
+  update changelog
+  ci: update actions
+  Implement debug float array handler
+  mavros_extras: Fix a sequence point warning
+  mavros_extras: Fix a comparison that shouldn't be bitwise
+  mavros: Fix some warnings
+  mavros_extras: Fix buggy check for lat/lon ignored
+  libmavconn: fix MAVLink v1.0 output selection
+* 1.15.0
+* update changelog
+* Merge pull request `#1794 <https://github.com/mavlink/mavros/issues/1794>`_ from rossizero/master
+  libmavconn: fix MAVLink v1.0 output selection
+* libmavconn: fix MAVLink v1.0 output selection
+  Fix `#1787 <https://github.com/mavlink/mavros/issues/1787>`_
+* Contributors: Vladimir Ermakov, rosrunne
+
+2.3.0 (2022-09-24)
+------------------
+* mavros: remove custom find script, re-generate
+* Merge branch 'master' into ros2
+  * master:
+  1.14.0
+  update changelog
+  scripts: waypoint and param files are text, not binary
+  libmavconn: fix MAVLink v1.0 output selection
+  plugins: add guided_target to accept offboard position targets
+  add cmake module path for geographiclib on debian based systems
+  use already installed FindGeographicLib.cmake
+* 1.14.0
+* update changelog
+* libmavconn: fix MAVLink v1.0 output selection
+  Fix `#1787 <https://github.com/mavlink/mavros/issues/1787>`_
+* Merge pull request `#1775 <https://github.com/mavlink/mavros/issues/1775>`_ from acxz/find-geographiclib
+  use already installed FindGeographicLib.cmake
+* use already installed FindGeographicLib.cmake
+* Contributors: Vladimir Ermakov, acxz
+
+2.2.0 (2022-06-27)
+------------------
+* Merge pull request `#1720 <https://github.com/mavlink/mavros/issues/1720>`_ from SylvainPastor/fix/libmavconn/udp/deadlocks
+  libmavconn: fix UDP deadlocks
+* libmavconn: fix UDP deadlock
+  Same problems as for the TCP:
+  - `#1682 <https://github.com/mavlink/mavros/issues/1682>`_: fix std::system_error when tcp interface loses connection
+  - `#1679 <https://github.com/mavlink/mavros/issues/1679>`_: fix deadlock when call close()
+* Contributors: Sylvain Pastor, Vladimir Ermakov
+
+2.1.1 (2022-03-02)
+------------------
+
+2.1.0 (2022-02-02)
+------------------
+* lib: fix reorder
+* Merge branch 'master' into ros2
+  * master:
+  1.13.0
+  update changelog
+  py-lib: fix compatibility with py3 for Noetic
+  re-generate all coglets
+  test: add checks for ROTATION_CUSTOM
+  lib: Fix rotation search for CUSTOM
+  Removed CamelCase for class members.  Publish to "report"
+  More explicitly state "TerrainReport" to allow for future extension of the plugin to support other terrain messages
+  Fixed callback name to match `handle\_{MESSAGE_NAME.lower()}` convention
+  Add extra MAV_FRAMES to waypoint message as defined in https://mavlink.io/en/messages/common.html
+  Fixed topic names to match more closely what other plugins use.  Fixed a typo.
+  Add plugin for reporting terrain height estimate from FCU
+  1.12.2
+  update changelog
+  Set time/publish_sim_time to false by default
+  plugin: setpoint_raw: move getParam to initializer
+  extras: trajectory: backport `#1667 <https://github.com/mavlink/mavros/issues/1667>`_
+* 1.13.0
+* update changelog
+* Merge pull request `#1682 <https://github.com/mavlink/mavros/issues/1682>`_ from SylvainPastor/fix/libmavconn/tcp/resource_deadlock
+  fix std::system_error when tcp interface loses connection
+* fix code style divergences
+* fix std::system_error when tcp interface loses connection
+  When the tcp connection is lost (remote TCP server stopped), an 'End of file' error is caught
+  by the io_thread in the do_recv() that calls the close() function.
+  In the close() function, we stop the io_service and wait for the end of the io_thread which
+  causes an std::system_error exception (cause: Resource deadlock avoided).
+  Error:   mavconn: tcp0: receive: End of file at line 250 in libmavconn/src/tcp.cpp
+  terminate called after throwing an instance of 'std::system_error'
+  what():  Resource deadlock avoided
+  Aborted (core dumped)
+  fix:
+  - close() function: stop io_service if current thread id != io_thread id
+  - ~MAVConnTCPClient(): stop io_service and io_thread if thread is running
+* Merge pull request `#1679 <https://github.com/mavlink/mavros/issues/1679>`_ from SylvainPastor/libmavconn/fix-tcp-deadlock-when-close
+  libmavconn: fix deadlock when call close()
+* fix deadlock when call close()
+  When calling the close() function (by a different thread), a lock (mutex) is taken at
+  the start of this function which closes the socket and waits the end of io_service thread.
+  Closing the socket causes the 'Operation aborted' error in do_recv() function called by
+  io_service thread which in turn calls the close() function: sthis->close().
+  This causes a 'deadlock'.
+  fix: Reduce the scope of the lock in the close() function so that it is released before
+  waiting for the thread to end.
+* 1.12.2
+* update changelog
+* lib: fix linter errors
+* Merge branch 'master' into ros2
+  * master:
+  1.12.1
+  update changelog
+  mavconn: fix connection issue introduced by `#1658 <https://github.com/mavlink/mavros/issues/1658>`_
+  mavros_extras: Fix some warnings
+  mavros: Fix some warnings
+* 1.12.1
+* update changelog
+* mavconn: fix connection issue introduced by `#1658 <https://github.com/mavlink/mavros/issues/1658>`_
+* Contributors: Sylvain Pastor, Vladimir Ermakov
+
+2.0.5 (2021-11-28)
+------------------
+* extras: fix some linter errors.
+  Do you know how to make me mad? Just let ament_uncrustify and
+  ament_cpplint require opposite requirements!
+* lib: fix linter errors
+* fix some build warnings; drop old copter vis
+* lib: fix merge artifact
+* Merge branch 'master' into ros2
+  * master:
+  1.12.0
+  update changelog
+  Fix multiple bugs
+  lib: fix mission frame debug print
+  extras: distance_sensor: revert back to zero quaternion
+* 1.12.0
+* update changelog
+* Merge pull request `#1658 <https://github.com/mavlink/mavros/issues/1658>`_ from asherikov/as_bugfixes
+  Fix multiple bugs
+* Fix multiple bugs
+  - fix bad_weak_ptr on connect and disconnect
+  - introduce new API to avoid thread race when assigning callbacks
+  - fix uninitialized variable in TCP client constructor which would
+  randomly block TCP server
+  This is an API breaking change: if client code creates connections using
+  make_shared<>() instead of open_url(), it is now necessary to call new
+  connect() method explicitly.
+* cmake: require C++20 to build all modules
+* lib: ignore MAVPACKED-related warnings from mavlink
+* Merge branch 'master' into ros2
+  * master:
+  1.11.1
+  update changelog
+  lib: fix build
+* 1.11.1
+* update changelog
+* Merge branch 'master' into ros2
+  * master:
+  1.11.0
+  update changelog
+  lib: fix ftf warnings
+  msgs: use pragmas to ignore unaligned pointer warnings
+  extras: landing_target: fix misprint
+  msgs: fix convert const
+  plugin: setpoint_raw: fix misprint
+  msgs: try to hide 'unaligned pointer' warning
+  plugin: sys: fix compillation error
+  plugin: initialize quaternions with identity
+  plugin: sys: Use wall timers for connection management
+  Use meters for relative altitude
+  distance_sensor: Initialize sensor orientation quaternion to zero
+  Address review comments
+  Add camera plugin for interfacing with mavlink camera protocol
+* 1.11.0
+* update changelog
+* Contributors: Alexander Sherikov, Vladimir Ermakov
+
+2.0.4 (2021-11-04)
+------------------
+* Merge branch 'master' into ros2
+  * master:
+  1.10.0
+  prepare release
+* 1.10.0
+* prepare release
+* mavconn: update to use std::error_code
+* Merge branch 'master' into ros2
+  * master: (25 commits)
+  Remove reference
+  Catch std::length_error in send_message
+  Show ENOTCONN error instead of crash
+  Tunnel: Check for invalid payload length
+  Tunnel.msg: Generate enum with cog
+  mavros_extras: Create tunnel plugin
+  mavros_msgs: Add Tunnel message
+  MountControl.msg: fix copy-paste
+  sys_time.cpp: typo
+  sys_time: publish /clock for simulation times
+  1.9.0
+  update changelog
+  Spelling corrections
+  Changed OverrideRCIn to 18 channels
+  This adds functionality to erase all logs on the SD card via mavlink
+  publish BATTERY2 message as /mavros/battery2 topic
+  Mavlink v2.0 specs for RC_CHANNELS_OVERRIDE accepts upto 18 channels. The plugin publishes channels 9 to 18 if the FCU protocol version is 2.0
+  Added NAV_CONTROLLER_OUTPUT Plugin
+  Added GPS_INPUT plugin
+  Update esc_status plugin with datatype change on MAVLink.
+  ...
+* Merge pull request `#1626 <https://github.com/mavlink/mavros/issues/1626>`_ from valbok/crash_on_shutdown
+  Show ENOTCONN error instead of crash on socket's shutdown
+* Show ENOTCONN error instead of crash
+  When a client suddenly drops the connection,
+  socket.shutdown() will throw an exception:
+  boost::exception_detail::clone_impl<boost::exception_detail::error_info_injector<boost::system::system_error> >
+  what():  shutdown: Transport endpoint is not connected
+  Showing an error in this common case looks more reasonable than crashing.
+* 1.9.0
+* update changelog
+* Contributors: Val Doroshchuk, Vladimir Ermakov
+
+2.0.3 (2021-06-20)
+------------------
+
+2.0.2 (2021-06-20)
+------------------
+* lib: yet another fix of cmake module
+* lib: fix lint error
+* lib: fix cmake lint error
+* Contributors: Vladimir Ermakov
+
+2.0.1 (2021-06-06)
+------------------
+* Merge branch 'master' into ros2
+  * master:
+  readme: update
+  1.8.0
+  update changelog
+  Create semgrep-analysis.yml
+  Create codeql-analysis.yml
+* 1.8.0
+* update changelog
+* Contributors: Vladimir Ermakov
+
+2.0.0 (2021-05-28)
+------------------
+* pylib: fix flake8
+* libmavconn: fix uncrustify test error
+* Merge branch 'master' into ros2
+  * master:
+  1.7.1
+  update changelog
+  re-generate all pymavlink enums
+  1.7.0
+  update changelog
+* router: rename mavlink to/from to source/sink, i think that terms more descriptive
+* mavros: fix cmake to build libmavros
+* lib: make ament_lint_cmake happy
+* msgs: add linter
+* lib: fix all ament_cpplint errors
+* lib: make cpplint happy
+* lib: make ament_uncrustify happy, update BSD license text to one known by ament_copyright
+* lib: try to fix ament_copyright lint
+* lib: port cpp, update license headers for ament_copyright
+* lib: port to standalone asio
+* lib: remove boost usage from headers
+* lib: update code style
+* lib: rename cpp headers
+* lib: provide copy of em_expand()
+* lib: update readme
+* libmavconn: start porintg, will use plain asio, without boost
+* Merge pull request `#1186 <https://github.com/mavlink/mavros/issues/1186>`_ from PickNikRobotics/ros2
+  mavros_msgs Ros2
+* Merge branch 'ros2' into ros2
+* msgs: start porting to ROS2
+* disable all packages but messages
+* Contributors: Mikael Arguedas, Vladimir Ermakov
+
 1.15.0 (2022-12-30)
 -------------------
 * Merge pull request `#1794 <https://github.com/mavlink/mavros/issues/1794>`_ from rossizero/master
