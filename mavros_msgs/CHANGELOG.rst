@@ -2,6 +2,9 @@
 Changelog for package mavros_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.16.0 (2023-05-05)
+-------------------
+
 1.15.0 (2022-12-30)
 -------------------
 * Merge pull request `#1811 <https://github.com/mavlink/mavros/issues/1811>`_ from scoutdi/debug-float-array
