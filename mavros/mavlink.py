@@ -14,7 +14,7 @@ import rclpy.time
 from pymavlink import mavutil
 from pymavlink.generator.mavcrc import x25crc  # noqa F401
 from std_msgs.msg import Header
-
+from builtin_interfaces.msg import Time
 from mavros_msgs.msg import Mavlink
 
 from .utils import system_now
@@ -84,7 +84,7 @@ def convert_to_payload64(
     """Convert payload bytes to Mavlink.payload64."""
     payload_bytes = bytearray(payload_bytes)
     payload_len = len(payload_bytes)
-    payload_octets = payload_len / 8
+    payload_octets = int(payload_len / 8)
     if payload_len % 8 > 0:
         payload_octets += 1
         payload_bytes += b"\0" * (8 - payload_len % 8)
@@ -104,7 +104,9 @@ def convert_to_rosmsg(
     if stamp is not None:
         header = Header(stamp=stamp)
     else:
-        header = Header(stamp=system_now())
+        stamp = Time()
+        stamp.sec, stamp.nanosec = system_now().seconds_nanoseconds()
+        header = Header(stamp=stamp)
 
     if mavutil.mavlink20():
         # XXX Need some api to retreive signature block.
