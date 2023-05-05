@@ -2,6 +2,9 @@
 Changelog for package libmavconn
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.5.0 (2023-05-05)
+------------------
+
 2.4.0 (2022-12-30)
 ------------------
 * Merge branch 'master' into ros2
