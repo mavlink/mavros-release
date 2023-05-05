@@ -2,6 +2,9 @@
 Changelog for package libmavconn
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.16.0 (2023-05-05)
+-------------------
+
 1.15.0 (2022-12-30)
 -------------------
 * Merge pull request `#1794 <https://github.com/mavlink/mavros/issues/1794>`_ from rossizero/master
