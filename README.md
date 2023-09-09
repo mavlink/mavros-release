@@ -1,3 +1,31 @@
+## mavros (noetic) - 1.17.0-1
+
+The packages in the `mavros` repository were released into the `noetic` distro by running `/usr/bin/bloom-release -r noetic mavros` on `Sat, 09 Sep 2023 11:07:12 -0000`
+
+These packages were released:
+- `libmavconn`
+- `mavros`
+- `mavros_extras`
+- `mavros_msgs`
+- `test_mavros`
+
+Version of package(s) in repository `mavros`:
+
+- upstream repository: https://github.com/mavlink/mavros.git
+- release repository: https://github.com/mavlink/mavros-release.git
+- rosdistro version: `1.16.0-1`
+- old version: `1.16.0-1`
+- new version: `1.17.0-1`
+
+Versions of tools used:
+
+- bloom version: `0.11.2`
+- catkin_pkg version: `0.5.2`
+- rosdep version: `0.22.2`
+- rosdistro version: `0.9.0`
+- vcstools version: `0.1.42`
+
+
 ## mavros (noetic) - 1.16.0-1
 
 The packages in the `mavros` repository were released into the `noetic` distro by running `/usr/bin/bloom-release -r noetic mavros` on `Fri, 05 May 2023 17:21:57 -0000`
