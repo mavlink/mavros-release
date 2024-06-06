@@ -2,6 +2,9 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.19.0 (2024-06-06)
+-------------------
+
 1.18.0 (2024-03-03)
 -------------------
 * [camera plugin] Fix image_index and capture_result not properly filled
