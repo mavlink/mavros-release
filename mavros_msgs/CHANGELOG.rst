@@ -2,6 +2,11 @@
 Changelog for package mavros_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.21.0 (2025-09-08)
+-------------------
+* msgs: copy some ros2 msgs to ros1 to unify format
+* Contributors: Vladimir Ermakov
+
 1.20.1 (2025-05-05)
 -------------------
 
